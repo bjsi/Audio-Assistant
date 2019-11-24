@@ -216,23 +216,41 @@ class Controller():
                    "global extract queue": {
                        "repeat": 1,
                        "single": 1,
-                       "controller": self.extract_mode},
+                       "controller": self.extract_mode,
+                       "dir": 'extractfiles'},
                    "local extract queue": {
                        "repeat": 1,
                        "single": 1,
-                       "controller": self.extract_mode},
+                       "controller": self.extract_mode,
+                       "dir": 'extractfiles'},
                    "global topic queue": {
                        "repeat": 1,
                        "single": 0,
-                       "controller": self.topic_mode}
+                       "controller": self.topic_mode,
+                       "dir": 'topicfiles'}
                    }
 
         playlist, name = playlist
         if playlist is not None and name in options.keys():
             with self.mpd_connection():
                 self.client.clear()
-                for track in playlist:
-                    self.client.add(track)
+                # Prevents command error if the user switches to local extract queue after
+                # recording before mpd has updated its directories. Excludes the unrecognised
+                # file. 
+                if name == 'local extract queue':
+                    mpd_recognised = [ 
+                                        d.get('file')
+                                        for d in self.client.listall(options[name]['dir'])
+                                        if d.get('file') is not None
+                                     ]
+                
+                    for track in playlist:
+                        if track in mpd_recognised:
+                            self.client.add(track)
+                else:
+                    for track in playlist:
+                        self.client.add(track)
+            
                 self.client.repeat(options[name]['repeat'])
                 self.client.single(options[name]['single'])
             
