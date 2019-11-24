@@ -15,7 +15,7 @@ from menu_sounds import *
 # before loop: Controller.connect_device
 
 class Controller():
-    
+
     def __init__(self):
         self.client = mpd.MPDClient() # connect via context manager
         self.host = HOST # from config
@@ -25,7 +25,7 @@ class Controller():
         self.current_playlist = "global topic queue" # loads global topics at start
 
         # TODO Can the event numbers change or are they static?
-        self.inputdevs = map(InputDevice, 
+        self.inputdevs = map(InputDevice,
                             ('/dev/input/event0',
                              '/dev/input/event1',
                              '/dev/input/event2',
@@ -35,9 +35,9 @@ class Controller():
                          for dev in self.inputdevs }
 
         self.choices = {
-            
+
             # active menu options added here
-            # may contain the the contents of 
+            # may contain the the contents of
             # topic_mode, record_mode, extract_mode,
             # cloze_mode or item_mode
             # default on startup is topic_mode
@@ -47,8 +47,8 @@ class Controller():
         ###  Topic mode ###
         self.topic_mode = {
 
-            KEY_X       :   self.toggle,    
-            KEY_B       :   self.previous,      
+            KEY_X       :   self.toggle,
+            KEY_B       :   self.previous,
             KEY_Y       :   self.next,
            #KEY_UP      :   self.vol_up,
             KEY_RIGHT   :   self.seek_forward,
@@ -137,12 +137,13 @@ class Controller():
         topics = (session
                   .query(TopicFile)
                   .filter_by(deleted=False)
+                  .filter(TopicFile.cur_timestamp / TopicFile.duration < 0.9)
                   .order_by(TopicFile.created_at.asc())
                   .all())
         if topics:
-            topics = ( 
+            topics = (
                        os.path.join('topicfiles', os.path.basename(topic.filepath))
-                       for topic in topics 
+                       for topic in topics
                      )
             return topics, "global topic queue"
         else:
@@ -172,10 +173,10 @@ class Controller():
 
 
     def get_topic_extracts(self):
-        """ create a playlist of a topic's extract children """         
+        """ create a playlist of a topic's extract children """
         assert (self.current_playlist == "global topic queue",
                 "Current playlist is not global topic queue.")
-                                        
+
         with self.mpd_connection():
             self.remove_stop_state()
             cur_song = self.client.currentsong()
@@ -183,7 +184,7 @@ class Controller():
         relative_fp = cur_song['file']
         filepath = os.path.join(TOPICFILES_DIR,
                                 os.path.basename(relative_fp))
-            
+
         topic = (session
                  .query(TopicFile)
                  .filter_by(filepath=filepath)
@@ -198,14 +199,14 @@ class Controller():
                             for child in topic.extractfiles
                             if child.deleted == 0
                        )
-            
+
             if children:
                 return children, "local extract queue"
         return None, "local extract queue"
 
 
     def load_playlist(self, playlist: tuple):
-        """ 
+        """
         Playlist tuple contains a generator expression of audio tracks
         and the playlist name
         """
@@ -236,38 +237,38 @@ class Controller():
                 self.client.clear()
                 # Prevents command error if the user switches to local extract queue after
                 # recording before mpd has updated its directories. Excludes the unrecognised
-                # file. 
+                # file.
                 if name == 'local extract queue':
-                    mpd_recognised = [ 
+                    mpd_recognised = [
                                         d.get('file')
                                         for d in self.client.listall(options[name]['dir'])
                                         if d.get('file') is not None
                                      ]
-                
+
                     for track in playlist:
                         if track in mpd_recognised:
                             self.client.add(track)
                 else:
                     for track in playlist:
                         self.client.add(track)
-            
+
                 self.client.repeat(options[name]['repeat'])
                 self.client.single(options[name]['single'])
-            
+
             self.espeak(name)
             self.current_playlist = name
             self.choices = {}
             self.choices.update(options[name]['controller'])
             return
 
-        else: 
+        else:
             self.perror("Error loading playlist \"{}\"."
                    .format(name),
                    "load_playlist")
 
 
     def remove_stop_state(self):
-        """ 
+        """
         mpd status can be stop, play or pause.
         if the status is stop, you can't use toggle to switch between play / pause.
         you also can't get information like current track
@@ -281,18 +282,18 @@ class Controller():
             self.client.pause(1)
         return
 
-    
+
     def get_extract_topic(self):
         """ get the parent topic of the currently playing extract """
-        
+
         assert ( self.current_playlist in ["local extract queue",
                                            "global extract queue"],
                  "Current playlist is neither local nor global extract queue." )
-        
+
         with self.mpd_connection():
             self.remove_stop_state()
             cur_song = self.client.currentsong()
-            
+
         relative_fp = cur_song['file']
         filepath = os.path.join(EXTRACTFILES_DIR,
                                 os.path.basename(relative_fp))
@@ -304,9 +305,9 @@ class Controller():
         if extract:
             parent = extract.topicfiles
             if parent and parent.deleted is False:
-                filepath = os.path.join('topicfiles', 
+                filepath = os.path.join('topicfiles',
                                       os.path.basename(parent.filepath))
-            
+
                 topics = self.get_global_topics()
                 self.load_playlist(topics)
                 with self.mpd_connection():
@@ -339,7 +340,7 @@ class Controller():
             if file:
                 self.client.seekcur(file.cur_timestamp)
 
-            
+
     @contextmanager
     def mpd_connection(self):
         """ Connect, execute mpd command, disconnect """
@@ -356,15 +357,15 @@ class Controller():
 
         dev_name = device['name']
         dev_address = device['address']
-        
+
         count = 0
         while count  < attempts:
             count = count + 1
-            
+
             bt_data = subprocess.getoutput("hcitool con")
             if dev_address in bt_data.split():
                 break
-            
+
             print("{} not connected.".format(dev_name))
             print("Connecting now. Attempt #{}.".format(count))
 
@@ -377,7 +378,7 @@ class Controller():
                 break
 
             # Add error message / exit status code
-            print("Connection attempt {} failed.".format(count))     
+            print("Connection attempt {} failed.".format(count))
             time.sleep(5)
 
         print("Successfully connected to {}.".format(dev_name))
@@ -386,13 +387,13 @@ class Controller():
 
     @negative
     def perror(self, stdoutmsg, function, ttsmsg=''):
-        # error reporting to stdout / espeak    
+        # error reporting to stdout / espeak
         # maybe this should be logging instead
 
         print("Message:", stdoutmsg)
         print("Function:", function)
         if ttsmsg:
-            self.espeak(ttsmsg)            
+            self.espeak(ttsmsg)
 
 
     def espeak(self, msg):
@@ -430,7 +431,7 @@ class Controller():
             self.remove_stop_state()
             self.client.previous()
             relative_fp = self.client.currentsong()['file']
-            
+
             filepath = os.path.join(AUDIOFILES_BASEDIR,
                                     relative_fp)
 
@@ -463,7 +464,7 @@ class Controller():
                 cur_timestamp = file.cur_timestamp
                 self.client.seekcur(float(cur_timestamp))
                 print("next")
-    
+
 
     @click_one
     def seek_forward(self):
@@ -510,7 +511,7 @@ class Controller():
             self.client.setvol(new_vol)
             print("vol down")
 
-    
+
     @click_one
     def start_clozing(self):
         if ( not self.clozing ) and \
@@ -520,7 +521,7 @@ class Controller():
             with self.mpd_connection():
                 cur_song = self.client.currentsong()
                 status = self.client.status()
-            
+
             cur_timestamp = float(status['elapsed'])
             print("cloze start")
             relative_fp = cur_song['file']
@@ -624,7 +625,7 @@ class Controller():
                                      shell=False)
 
             response = child.communicate()[0]
-            
+
             # returncode 0 = bash success exit code
             if child.returncode == 0:
                 subprocess.Popen(['espeak', 'rec stop'], shell=False)
@@ -638,14 +639,14 @@ class Controller():
                            .query(ExtractFile)
                            .order_by(ExtractFile.created_at.desc())
                            .first())
-                
+
                 if extract:
                     timestamp = status['elapsed']
                     extract.topicfile_endstamp = timestamp
                     session.commit()
                 print("kill rec")
 
-            
+
     @click_one
     def start_recording(self):
         if not self.recording and self.current_playlist == "global topic queue":
@@ -653,7 +654,7 @@ class Controller():
                 status = self.client.status()
                 filename = os.path.basename(self.client.currentsong()['file'])
                 self.client.single(1)
-            
+
             self.choices = {}
             self.choices.update(self.record_mode)
 
@@ -665,12 +666,12 @@ class Controller():
 
             subprocess.Popen(['parecord',
                               '--channels=1',
-                              '-d', 
-                              RECORDING_SINK,                          
+                              '-d',
+                              RECORDING_SINK,
                               extract_path], shell=False)
 
             self.recording = True
-            
+
             source_path = os.path.join(TOPICFILES_DIR, filename)
             timestamp = status['elapsed']
 
@@ -687,7 +688,7 @@ class Controller():
                 print("rec")
             else:
                 print("Source file {} for extract {} not found in DB".format(source_path, extract_path))
-    
+
     @click_two
     def delete_extract(self):
         if self.current_playlist in ['global extract queue',
