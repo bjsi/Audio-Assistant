@@ -13,7 +13,6 @@ class Mpd(object):
     """
     Mpd class implements all the functions
     needed to interact with the MPD daemon.
-    It is inherited by the Controller class.
     """
 
     def __init__(self):
@@ -28,6 +27,7 @@ class Mpd(object):
         self.host = HOST if HOST else "localhost"
         self.port = PORT if PORT else 6060
         self.client = MPDClient()
+        self.headphones_connected = False
 
     @contextmanager
     def connection(self):
@@ -47,16 +47,6 @@ class Mpd(object):
         finally:
             self.close()
             self.disconnect()
-
-    def add_many(self, filenames: Iterable[str]):
-        """Add each file in the args iterable to the
-        current playlist
-        :filenames: an iterable of filepaths
-        """
-        if filenames:
-            with self.connection():
-                for f in filenames:
-                    self.client.add(f)
 
     def remove_stop_state(self):
         """MPD state can be play, pause or stop.
@@ -81,7 +71,7 @@ class Mpd(object):
         # TODO check docstring formatting for dicts
         """Get the currently playing song
         :returns: dict containing relative filepath,
-        absolute filepath and elapsed in seconds.miliseconds.
+        absolute filepath and time elapsed in seconds.miliseconds.
         """
         with self.connection():
             self.remove_stop_state()

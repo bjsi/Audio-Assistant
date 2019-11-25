@@ -19,7 +19,7 @@ while True:
     with connection():
         state = client.status()['state']
         filepath = client.currentsong()['file']
-    
+
     cur_time = time.time()
     cur_activity = (session
                    .query(Activity)
@@ -37,7 +37,7 @@ while True:
             session.commit()
 
     elif cur_activity.topicfiles.filepath == filepath or \
-            cur_activity.ectractfiles.extract_filepath == filepath:
+            cur_activity.extractfiles.extract_filepath == filepath:
         if cur_activity.activity == state:
             # .timestamp() converts datetime objects to epoch time
             created_at = cur_activity.created_at.timestamp()
