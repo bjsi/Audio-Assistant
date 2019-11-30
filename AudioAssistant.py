@@ -66,13 +66,14 @@ class AudioAssistant(Mpd, object):
                 KEY_A:      self.load_global_topics,
         }
 
-        self.cloze_mode = {
+        self.cloze_keys = {
                 KEY_X:      self.toggle,
                 KEY_RIGHT:  self.stutter_forward,
                 KEY_LEFT:   self.stutter_backward,
                 KEY_OK:     self.stop_clozing,
         }
 
+    
     @negative
     def perror(self, stdoutmsg: str, function: str):
         # TODO change this to logging?
@@ -158,7 +159,7 @@ class AudioAssistant(Mpd, object):
                  .filter_by(filepath=filepath)
                  .one_or_none())
 
-        if topic and topic.extracfiles:
+        if topic and topic.extractfiles:
             children = (
                             os.path.join(
                                 os.path.basename(EXTRACTFILES_DIR),
@@ -233,7 +234,7 @@ class AudioAssistant(Mpd, object):
 
         """
         cur_song = self.current_song()
-        filepath = cur_song['file']
+        filepath = cur_song['absolute_fp']
         extract = (session
                    .query(ExtractFile)
                    .filter_by(extract_filepath=filepath)
@@ -274,7 +275,7 @@ class AudioAssistant(Mpd, object):
 
                 extract = (session
                            .query(ExtractFile)
-                           .filter_by(extract_filepat=filepath)
+                           .filter_by(extract_filepath=filepath)
                            .one_or_none())
 
                 if extract:
@@ -303,7 +304,7 @@ class AudioAssistant(Mpd, object):
                                      'global extract queue']:
             if self.clozing:
                 cur_song = self.current_song()
-                cur_timestamp = cur_song['elapsed']
+                cur_timestamp = float(cur_song['elapsed'])
                 filepath = cur_song['absolute_fp']
                 extract = (session
                            .query(ExtractFile)
@@ -315,7 +316,7 @@ class AudioAssistant(Mpd, object):
                         session.commit()
                         self.clozing = False
                         self.active_keys = {}
-                        self.active_keys.update(self.extract_mode)
+                        self.active_keys.update(self.extracting_keys)
                 else:
                     self.perror("Couldn't find extract {} in DB"
                                 .format(extract),
