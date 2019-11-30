@@ -1,4 +1,5 @@
 from config import *
+from extract_funcs import cloze_processor
 import time
 import subprocess
 from config import TOPICFILES_DIR
@@ -23,6 +24,7 @@ class AudioAssistant(Mpd, object):
         :recording: Boolean. Am I currently recording?
         :clozing: Boolean. Am I currently making a cloze?
         :current_playlist: String.
+        # TODO These aren't strings
         :*_keys: Dict[int, str]. subsets of CONTROLLER['keys'].
         string values are names of methods to call when the
         buttons are pressed
@@ -30,6 +32,9 @@ class AudioAssistant(Mpd, object):
         Mpd.__init__(self)
         self.recording = False
         self.clozing = False
+        # One of the following: global topic queue [default],
+        # global extract queue, local extract queue,
+        # local item queue
         self.current_playlist = "global topic queue"
 
         # Updated during runtime according to state
@@ -60,7 +65,8 @@ class AudioAssistant(Mpd, object):
                 KEY_RIGHT:  self.stutter_forward,
                 KEY_LEFT:   self.stutter_backward,
                 KEY_UP:     self.get_extract_topic,
-                #KEY_MENU:   self.delete_extract,
+                KEY_DOWN:   self.get_extract_items,
+                # KEY_MENU:   self.delete_extract,
                 GAME_X:     self.volume_up,
                 GAME_B:     self.volume_down,
                 KEY_A:      self.load_global_topics,
@@ -73,7 +79,15 @@ class AudioAssistant(Mpd, object):
                 KEY_OK:     self.stop_clozing,
         }
 
-    
+        self.item_keys = {
+                KEY_X:      self.toggle,
+                KEY_UP:     self.get_item_extract,
+                KEY_B:      self.previous,
+                KEY_Y:      self.next,
+                KEY_A:      self.load_global_topics
+                # KEY_? delete item
+        }
+
     @negative
     def perror(self, stdoutmsg: str, function: str):
         # TODO change this to logging?
@@ -172,6 +186,35 @@ class AudioAssistant(Mpd, object):
                 return children, "local extract queue"
         return None
 
+    # TODO More specific typing
+    def get_item_extract(self):
+        cur_song = self.current_song()
+        filepath = cur_song['absolute_fp']
+        extract = (session
+                   .query(ExtractFile)
+                   .filter_by(question_filepath=filepath)
+                   .one_or_none())
+
+        if extract:
+            # TODO should it send you to the global or local extract queue
+            return extract, "global extract queue"
+        return None
+
+    def get_extract_items(self):
+        cur_song = self.current_song()
+        filepath = cur_song['absolute_fp']
+        extract = (session
+                   .query(ExtractFile)
+                   .filter_by(filepath=filepath)
+                   .one_or_none())
+
+        if extract and (extract.question_filepath and extract.atom_filepath):
+            items = tuple(extract.question_filepath)
+            # TODO rewrite if you change the DB model
+            if items:
+                return items, "local item queue"
+        return None
+
     # TODO More specific type
     def load_playlist(self, data: Tuple):
         """load the playlist and set the global state
@@ -195,7 +238,13 @@ class AudioAssistant(Mpd, object):
                        "repeat": 1,
                        "single": 0,
                        "controller": self.topic_keys,
-                       "dir": 'topicfiles'}
+                       "dir": 'topicfiles'},
+                   "local item queue": {
+                       "repeat": 1,
+                       "single": 1,
+                       "controller": self.item_keys,
+                       "dir": "questionfiles"
+                       }
         }
         if data:
             playlist, name = data
@@ -317,6 +366,12 @@ class AudioAssistant(Mpd, object):
                         self.clozing = False
                         self.active_keys = {}
                         self.active_keys.update(self.extracting_keys)
+                        # Send to the extractor
+                        question, cloze = cloze_processor(extract)
+                        if question and cloze:
+                            extract.question_filepath = question
+                            extract.atom_filepath = cloze
+                            session.commit()
                 else:
                     self.perror("Couldn't find extract {} in DB"
                                 .format(extract),

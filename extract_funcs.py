@@ -1,7 +1,7 @@
 import subprocess
 from config import *
 import os
-from models import ExtractFile, TopicFile, session
+from models import ExtractFile, session
 
 
 # TODO
@@ -9,24 +9,23 @@ from models import ExtractFile, TopicFile, session
 # Add a function to the extract keys to load a local item queue
 
 def cloze_processor(extract):
-      
     ext = ".wav"
-    extract_fp = extract.extract_filepath       
+    extract_fp = extract.extract_filepath
     extract_length = extract.topicfile_endstamp - extract.topicfile_startstamp
     cloze_start = extract.cloze_startstamp
     cloze_end = extract.cloze_endstamp
     # beep length = length of the cloze
     beep_length = cloze_end - cloze_start
 
-    filename = os.path.basename(extract.extract_filepath)    
+    filename = os.path.basename(extract.extract_filepath)
     filename, ext = os.path.splitext(filename)
-    
+
     # TODO Use the rowid of ItemFile to give each a unique name?
     question_fp = os.path.join(QUESTIONFILES_DIR,
-                              (filename + "-" + 
+                              (filename + "-" +
                                "QUESTION" + ext))
     cloze_fp = os.path.join(QUESTIONFILES_DIR,
-                           (filename + "-" + 
+                           (filename + "-" +
                             "CLOZE" + ext))
 
     # Non-blocking
@@ -41,7 +40,7 @@ def cloze_processor(extract):
             'lavfi',
             '-i',
             'sine=frequency=1000:duration=' + str(beep_length),
-            ##FILTERS
+            ## FILTERS
             '-filter_complex',
             # Cut the beginning of the extract before the cloze
             '[0:a]atrim=' + "0" + ":" + str(cloze_start) + "[beg]" + ";" + \
@@ -49,7 +48,7 @@ def cloze_processor(extract):
             '[0:a]atrim=' + str(cloze_start) + ":" + str(cloze_end) + "[cloze]" + ";" + \
             # Cut the end of the extract after the cloze
             '[0:a]atrim=' + str(cloze_end) + ":" + str(extract_length) + "[end]" + ";" + \
-            # concatenate the files and 
+            # concatenate the files and
             # [1:0] is the sine wave
             '[beg][1:0][end]concat=n=3:v=0:a=1[question]',
             '-map',
@@ -61,7 +60,7 @@ def cloze_processor(extract):
             '[cloze]',
             cloze_fp
     ])
-    
+
     # Use named tuple?
     return (question_fp, cloze_fp)
 
@@ -88,4 +87,3 @@ if __name__ == "__main__":
                 extract.question_filepath = question
                 extract.atom_filepath = cloze
                 session.commit()
-
