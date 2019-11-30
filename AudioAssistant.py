@@ -1,4 +1,4 @@
-from config import CONTROLLER
+from config import *
 import time
 import subprocess
 from config import TOPICFILES_DIR
@@ -11,26 +11,6 @@ import os
 from MpdBase import Mpd
 from BluetoothDevices import BTDevice
 from sounds import speak, negative, click_one, click_two
-
-# TODO Need to clean this up
-KEY_X = CONTROLLER[KEY_X]
-KEY_A = CONTROLLER[KEY_A]
-KEY_B = CONTROLLER[KEY_B]
-KEY_Y = CONTROLLER[KEY_Y]
-KEY_PWR = CONTROLLER[KEY_PWR]
-KEY_MENU = CONTROLLER[KEY_MENU]
-KEY_UP = CONTROLLER[KEY_UP]
-KEY_RIGHT = CONTROLLER[KEY_RIGHT]
-KEY_LEFT = CONTROLLER[KEY_LEFT]
-KEY_DOWN = CONTROLLER[KEY_DOWN]
-KEY_OK = CONTROLLER[KEY_OK]
-GAME_X = CONTROLLER[GAME_X]
-GAME_A = CONTROLLER[GAME_A]
-GAME_B = CONTROLLER[GAME_B]
-GAME_Y = CONTROLLER[GAME_Y]
-GAME_PWR = CONTROLLER[GAME_PWR]
-GAME_MENU = CONTROLLER[GAME_MENU]
-GAME_OK = CONTROLLER[GAME_OK]
 
 
 class AudioAssistant(Mpd, object):
@@ -80,7 +60,7 @@ class AudioAssistant(Mpd, object):
                 KEY_RIGHT:  self.stutter_forward,
                 KEY_LEFT:   self.stutter_backward,
                 KEY_UP:     self.get_extract_topic,
-                KEY_MENU:   self.delete_extract,
+                #KEY_MENU:   self.delete_extract,
                 GAME_X:     self.volume_up,
                 GAME_B:     self.volume_down,
                 KEY_A:      self.load_global_topics,
@@ -359,7 +339,8 @@ class AudioAssistant(Mpd, object):
                     self.active_keys = {}
                     self.active_keys.update(self.topic_keys)
                     self.recording = False
-                    self.client.single(0)
+                    with connection():
+                        self.client.single(0)
                     # Get the last inserted extract
                     extract = (session
                                .query(ExtractFile)
@@ -392,7 +373,8 @@ class AudioAssistant(Mpd, object):
                 self.recording = True
                 self.active_keys = {}
                 self.active_keys.update(self.recording_keys)
-                self.client.single(1)
+                with connection():
+                    self.client.single(1)
 
                 source_topic_fp = cur_song['absolute_fp']
                 timestamp = cur_song['elapsed']
@@ -425,7 +407,8 @@ class AudioAssistant(Mpd, object):
                      .filter_by(filepath=filepath)
                      .one_or_none())
             if topic:
-                self.client.seekcur(topic.cur_timestamp)
+                with self.connection():
+                    self.client.seekcur(topic.cur_timestamp)
 
     @click_one
     def play_next(self):

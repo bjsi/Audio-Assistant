@@ -45,8 +45,8 @@ class Mpd(object):
             self.client.connect(self.host, self.port)
             yield
         finally:
-            self.close()
-            self.disconnect()
+            self.client.close()
+            self.client.disconnect()
 
     def remove_stop_state(self):
         """MPD state can be play, pause or stop.
@@ -65,7 +65,7 @@ class Mpd(object):
         """Toggle between play and pause."""
         with self.connection():
             self.remove_stop_state()
-            self.client.pause(0)
+            self.client.pause()
 
     def current_song(self) -> Dict[str, Union[str, float]]:
         # TODO check docstring formatting for dicts

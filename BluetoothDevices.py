@@ -14,15 +14,13 @@ class BTDevice(object):
         self.keys = keys
         self.address = address
         self.name = name
-        self.input_devices
         if input_devices:
-            self.devices = {
-                            device.fd: device
-                            for device in input_devices
-                           }
+            self.input_devices = map(InputDevice, input_devices)
+            self.devices = { device.fd: device
+                             for device in self.input_devices }
         self.connected = False
 
-    def bt_connect(self, attempts: int) -> bool:
+    def bt_connect(self, attempts=5) -> bool:
         """Connect to a bluetooth device
 
         :attempts: TODO
