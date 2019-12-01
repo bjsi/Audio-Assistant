@@ -29,8 +29,10 @@ class AudioAssistant(Mpd, object):
         Mpd.__init__(self)
         self.recording = False
         self.clozing = False
-        # One of the following: global topic queue [default],
-        # global extract queue, local extract queue,
+        # One of the following: 
+        # global topic queue [default],
+        # global extract queue, 
+        # local extract queue,
         # local item queue
         self.current_playlist = "global topic queue"
 
@@ -84,8 +86,7 @@ class AudioAssistant(Mpd, object):
         }
 
     @negative
-    def perror(self, stdoutmsg: str, function: str):
-        # TODO change this to logging?
+    def perror(self, stdoutmsg="", function=""):
         """
         Print a message to stdout with error message and
         function name
@@ -295,8 +296,7 @@ class AudioAssistant(Mpd, object):
                 self.active_keys.update(options[name]['controller'])
                 return
         else:
-            self.perror("Error loading playlist \"{}\"."
-                        .format(name),
+            self.perror("Error loading playlist.",
                         "load_playlist")
 
     def get_extract_topic(self):
@@ -312,7 +312,7 @@ class AudioAssistant(Mpd, object):
                    .one_or_none())
 
         if extract:
-            parent = extract.topicfiles
+            parent = extract.topicfile
             if parent.deleted is False:
                 filepath = os.path.join(os.path.basename(TOPICFILES_DIR),
                                         os.path.basename(parent.filepath))

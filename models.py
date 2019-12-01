@@ -134,10 +134,6 @@ class ExtractFile(Base):
     # with the extract
     extract_transcript = Column(Text, nullable=True)
     
-    # location of the cloze
-    cloze_startstamp = Column(Float, nullable=True) # seconds.miliseconds
-    cloze_endstamp = Column(Float, nullable=True) # seconds.miliseconds
-    
     deleted = Column(Boolean, default=False)
     
     # Relationships
@@ -158,9 +154,11 @@ class ItemFile(Base):
 
     id = Column(Integer, primary_key=True)
     created_at = Column(DateTime, default=datetime.datetime.now())
-    question_filepath = Column(String, nullable=False, unique=True)
-    cloze_filepath = Column(String, nullable=False, unique=True)
-
+    question_filepath = Column(String, unique=True)
+    cloze_filepath = Column(String, unique=True)
+    deleted = Column(Boolean, default=False)
+    cloze_startstamp = Column(Float, nullable=True) # seconds.miliseconds
+    cloze_endstamp = Column(Float, nullable=True) # seconds.miliseconds
     # Relationships
     extract_id = Column(Integer, ForeignKey('extractfiles.id'))
     extractfile = relationship("ExtractFile",
