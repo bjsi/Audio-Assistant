@@ -28,6 +28,7 @@ if __name__ == "__main__":
                  CONTROLLER['input_devices'],
                  CONTROLLER['keys'])
 
+    # TODO Test this
     if controller.bt_connect() and headphones.bt_connect():
         audio_assistant.load_global_topics()
         audio_assistant.seek_to_cur_timestamp()

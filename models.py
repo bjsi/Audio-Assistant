@@ -14,7 +14,6 @@ engine = create_engine(DATABASE_URI)
 Base = declarative_base()
 Session = sessionmaker(bind=engine)
 
-# TODO Do I need to add WAL write ahead logging pragma?
 # Many to many association table
 
 yt_topicfile_tags = Table('yt_topicfile_tags', Base.metadata,
@@ -99,10 +98,10 @@ class TopicFile(Base):
     
     # One to many File <-> Extract
     extractfiles = relationship("ExtractFile",
-                            back_populates="topicfiles")
+                            back_populates="topicfile")
     # One to many File <-> Activity
     activities = relationship("Activity",
-                              back_populates="topicfiles")
+                              back_populates="topicfile")
     # Many to many File <-> Tag
     # Includes 'categories' and 'tags' from ydl
     yttags = relationship('YoutubeTag',
@@ -139,36 +138,37 @@ class ExtractFile(Base):
     cloze_startstamp = Column(Float, nullable=True) # seconds.miliseconds
     cloze_endstamp = Column(Float, nullable=True) # seconds.miliseconds
     
-    question_filepath = Column(String, unique=True) # full clozed extract
-    atom_filepath = Column(String, unique=True) # just the clozed part 
-
     deleted = Column(Boolean, default=False)
     
     # Relationships
+    itemfiles = relationship("ItemFile",
+                             back_populates="extractfile")
+    
+
     topicfile_id = Column(Integer, ForeignKey('topicfiles.id'))
-    topicfiles = relationship("TopicFile",
-                              back_populates="extractfiles")
+    topicfile = relationship("TopicFile",
+                             back_populates="extractfiles")
 
     def __repr__(self):
         return '<TopicFile: filepath=%r created_at=%r>' % (self.filepath, self.created_at)
     
 
-#class ItemFile(Base):
-#    __tablename__ = "itemfiles"
-#
-#    id = Column(Integer, primary_key=True)
-#    created_at = Column(DateTime, default=datetime.datetime.now())
-#    question_filepath = Column(String, nullable=False, unique=True) # full clozed extract
-#    atom_filepath = Column(String, nullable=False, unique=True) # just the clozed part 
-#    
-#    # Relationships
-#    extract_id = Column(Integer, ForeignKey('extractfiles.id'))
-#    extractfiles = relationship("ExtractFile",
-                                #back_populates="itemfiles")
+class ItemFile(Base):
+    __tablename__ = "itemfiles"
+
+    id = Column(Integer, primary_key=True)
+    created_at = Column(DateTime, default=datetime.datetime.now())
+    question_filepath = Column(String, nullable=False, unique=True)
+    cloze_filepath = Column(String, nullable=False, unique=True)
+
+    # Relationships
+    extract_id = Column(Integer, ForeignKey('extractfiles.id'))
+    extractfile = relationship("ExtractFile",
+                                back_populates="itemfiles")
     
-#    def __repr__(self):
-#        return '<ItemFile: filepath=%r created_at=%r>' % (self.filepath, self.created_at)
-#
+    def __repr__(self):
+        return '<ItemFile: question=%r cloze=%r>' % (self.question_filepath, self.cloze_filepath)
+
 
 class Activity(Base):
     # The mpc_heartbeat script inserts into this table
@@ -182,7 +182,7 @@ class Activity(Base):
 
     # Relationships
     topicfile_id = Column(Integer, ForeignKey('topicfiles.id'))
-    topicfiles = relationship("TopicFile",
+    topicfile = relationship("TopicFile",
                               back_populates="activities")
 
     def __repr__(self):

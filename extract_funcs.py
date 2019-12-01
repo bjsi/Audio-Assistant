@@ -1,23 +1,23 @@
 import subprocess
+from subprocess import DEVNULL
 from config import *
 import os
-from models import ExtractFile, session
+from models import ExtractFile, ItemFile, session
 
 
 # TODO
 # Change the database model to include ItemFile
 # Add a function to the extract keys to load a local item queue
 
-def cloze_processor(extract):
-    ext = ".wav"
-    extract_fp = extract.extract_filepath
-    extract_length = extract.topicfile_endstamp - extract.topicfile_startstamp
-    cloze_start = extract.cloze_startstamp
-    cloze_end = extract.cloze_endstamp
+def cloze_processor(item):
+    extract_fp = item.extractfile.extract_filepath
+    extract_length = item.extractfile.topicfile_endstamp - item.extractfile.topicfile_startstamp
+    cloze_start = item.cloze_startstamp
+    cloze_end = item.cloze_endstamp
     # beep length = length of the cloze
     beep_length = cloze_end - cloze_start
 
-    filename = os.path.basename(extract.extract_filepath)
+    filename = os.path.basename(extract_fp)
     filename, ext = os.path.splitext(filename)
 
     # TODO Use the rowid of ItemFile to give each a unique name?
@@ -59,31 +59,30 @@ def cloze_processor(extract):
             # Output the clozed word / phrase
             '[cloze]',
             cloze_fp
-    ])
+    ], shell=False, stdout=DEVNULL)
 
     # Use named tuple?
-    return (question_fp, cloze_fp)
+    return question_fp, cloze_fp
 
 
-def get_extracts():
-    extracts = (session
-                .query(ExtractFile)
-                .filter(ExtractFile.cloze_startstamp != None)
-                .filter(ExtractFile.cloze_endstamp != None)
-                .filter_by(id=1)
-                .all())
-    if extracts:
-        return extracts
+def get_items():
+    items  = (session
+              .query(ItemFile)
+              .filter(ItemFile.cloze_startstamp != None)
+              .filter(ItemFile.cloze_endstamp != None)
+              .all())
+    if items:
+        return items
     else:
         return None
 
 
 if __name__ == "__main__":
-    extracts = get_extracts()
-    if extracts:
-        for extract in extracts:
-            question, cloze = cloze_processor(extract)
+    items = get_items()
+    if items:
+        for item in items:
+            question, cloze = cloze_processor(item)
             if question and cloze:
-                extract.question_filepath = question
-                extract.atom_filepath = cloze
+                item.question_filepath = question
+                item.cloze_filepath = cloze
                 session.commit()

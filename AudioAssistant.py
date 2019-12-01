@@ -2,11 +2,8 @@ from config import *
 from extract_funcs import cloze_processor
 import time
 import subprocess
-from config import TOPICFILES_DIR
-from config import EXTRACTFILES_EXT
-from config import RECORDING_SINK
-from config import EXTRACTFILES_DIR
-from models import TopicFile, ExtractFile, session
+from config import *
+from models import TopicFile, ExtractFile, ItemFile, session
 from typing import Optional, Tuple
 import os
 from MpdBase import Mpd
@@ -65,8 +62,7 @@ class AudioAssistant(Mpd, object):
                 KEY_RIGHT:  self.stutter_forward,
                 KEY_LEFT:   self.stutter_backward,
                 KEY_UP:     self.get_extract_topic,
-                KEY_DOWN:   self.get_extract_items,
-                # KEY_MENU:   self.delete_extract,
+                KEY_DOWN:   self.load_extract_items,
                 GAME_X:     self.volume_up,
                 GAME_B:     self.volume_down,
                 KEY_A:      self.load_global_topics,
@@ -85,7 +81,6 @@ class AudioAssistant(Mpd, object):
                 KEY_B:      self.previous,
                 KEY_Y:      self.next,
                 KEY_A:      self.load_global_topics
-                # KEY_? delete item
         }
 
     @negative
@@ -109,6 +104,10 @@ class AudioAssistant(Mpd, object):
     def load_topic_extracts(self):
         extracts = self.get_topic_extracts()
         self.load_playlist(extracts)
+
+    def load_extract_items(self):
+        items = self.get_extract_items()
+        self.load_playlist(items)
 
     # TODO more specific typing
     def get_global_topics(self) -> Optional[Tuple]:
@@ -174,47 +173,69 @@ class AudioAssistant(Mpd, object):
                  .one_or_none())
 
         if topic and topic.extractfiles:
-            children = (
+            extracts = (
                             os.path.join(
                                 os.path.basename(EXTRACTFILES_DIR),
-                                os.path.basename(child.extract_filepath))
-                            for child in topic.extractfiles
-                            if child.deleted == 0
+                                os.path.basename(extract.extract_filepath))
+                            for extract in topic.extractfiles
+                            if extract.deleted == 0
                        )
 
-            if children:
-                return children, "local extract queue"
+            if extracts:
+                return extracts, "local extract queue"
         return None
 
     # TODO More specific typing
     def get_item_extract(self):
         cur_song = self.current_song()
         filepath = cur_song['absolute_fp']
-        extract = (session
-                   .query(ExtractFile)
-                   .filter_by(question_filepath=filepath)
-                   .one_or_none())
 
-        if extract:
-            # TODO should it send you to the global or local extract queue
-            return extract, "global extract queue"
-        return None
+        item = (session
+                .query(ItemFile)
+                .filter_by(question_filepath=filepath)
+                .one_or_none())
+        
+        if item:
+            extract = item.extractfile
+            if extract.deleted is False:
+                filepath = os.path.join(os.path.basename(EXTRACTFILES_DIR),
+                                        os.path.basename(extract.extract_filepath))
+                extracts = self.get_global_extracts()
+                self.load_playlist(extracts)
+                with self.connection():
+                    playlist = self.client.playlistinfo()
+                    for track in playlist:
+                        if track['file'] == filepath:
+                            extract_id = track['id']
+                            break
+                        self.client.moveid(extract_id, 0)
+                        self.remove_stop_state()
+            else:
+                self.perror("Orphan Item: No parent extract found.",
+                            "get_item_extract")
 
     def get_extract_items(self):
         cur_song = self.current_song()
         filepath = cur_song['absolute_fp']
         extract = (session
                    .query(ExtractFile)
-                   .filter_by(filepath=filepath)
+                    # TODO change extract_filepath to just filepath
+                   .filter_by(extract_filepath=filepath)
                    .one_or_none())
+        
+        if extract and extract.itemfiles:
+            items = (
+                            os.path.join(
+                                # TODO change to itemfiles
+                                os.path.basename(QUESTIONFILES_DIR),
+                                os.path.basename(item.filepath))
+                            for item in extract.itemfiles
+                        )
 
-        if extract and (extract.question_filepath and extract.atom_filepath):
-            items = tuple(extract.question_filepath)
-            # TODO rewrite if you change the DB model
             if items:
                 return items, "local item queue"
         return None
-
+    
     # TODO More specific type
     def load_playlist(self, data: Tuple):
         """load the playlist and set the global state
@@ -251,7 +272,8 @@ class AudioAssistant(Mpd, object):
             if playlist and name in options.keys():
                 with self.connection():
                     self.client.clear()
-                    if name == "local extract  queue":
+                    if name in ["local extract  queue",
+                                "local item queue"]:
                         # files mpd has scanned and recognised in mpd base dir
                         mpd_recognised = [
                                             d.get('file')
@@ -328,7 +350,7 @@ class AudioAssistant(Mpd, object):
                            .one_or_none())
 
                 if extract:
-                    extract.cloze_startstamp = cur_timestamp
+                    extract.itemfiles.append(ItemFile(cloze_startstamp=cur_timestamp))
                     session.commit()
                     self.clozing = True
                     self.active_keys = {}
@@ -355,22 +377,25 @@ class AudioAssistant(Mpd, object):
                 cur_song = self.current_song()
                 cur_timestamp = float(cur_song['elapsed'])
                 filepath = cur_song['absolute_fp']
-                extract = (session
-                           .query(ExtractFile)
-                           .filter_by(extract_filepath=filepath)
-                           .one_or_none())
-                if extract:
-                    if extract.cloze_startstamp < cur_timestamp:
-                        extract.cloze_endstamp = cur_timestamp
+                item = (session
+                        .query(ItemFile)
+                        .filter(ItemFile.extractfile.extract_filepath==filepath)
+                        .order_by(ItemFile.created_at.desc())
+                        .one_or_none())
+                if item and item.cloze_startstamp:
+                    # Get the last inserted itemfile
+                    if item.cloze_startstamp  < cur_timestamp:
+                        item.cloze_endstamp = cur_timestamp
                         session.commit()
                         self.clozing = False
                         self.active_keys = {}
                         self.active_keys.update(self.extracting_keys)
+
                         # Send to the extractor
                         question, cloze = cloze_processor(extract)
                         if question and cloze:
-                            extract.question_filepath = question
-                            extract.atom_filepath = cloze
+                            item.question_filepath = question
+                            item.cloze_filepath = cloze
                             session.commit()
                 else:
                     self.perror("Couldn't find extract {} in DB"
@@ -395,7 +420,7 @@ class AudioAssistant(Mpd, object):
                     self.active_keys = {}
                     self.active_keys.update(self.topic_keys)
                     self.recording = False
-                    with connection():
+                    with self.connection():
                         self.client.single(0)
                     # Get the last inserted extract
                     extract = (session
@@ -419,8 +444,9 @@ class AudioAssistant(Mpd, object):
                 extract_fp = os.path.join(EXTRACTFILES_DIR,
                                           os.path.splitext(basename)[0] +
                                           "-" +
-                                          str(int(time.time())),
+                                          str(int(time.time())) +
                                           EXTRACTFILES_EXT)
+                print(extract_fp)
                 subprocess.Popen(['parecord',
                                   '--channels=1',
                                   '-d',
@@ -429,7 +455,7 @@ class AudioAssistant(Mpd, object):
                 self.recording = True
                 self.active_keys = {}
                 self.active_keys.update(self.recording_keys)
-                with connection():
+                with self.connection():
                     self.client.single(1)
 
                 source_topic_fp = cur_song['absolute_fp']
