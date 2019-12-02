@@ -174,14 +174,14 @@ class AudioAssistant(Mpd, object):
                  .one_or_none())
 
         if topic and topic.extractfiles:
-            extracts = (
+            extracts = []
+            for extract in topic.extractfiles:
+                if extract.deleted == 0 and extract.extract_filepath is not None:
+                    extracts.append(
                             os.path.join(
                                 os.path.basename(EXTRACTFILES_DIR),
                                 os.path.basename(extract.extract_filepath))
-                            for extract in topic.extractfiles
-                            if extract.deleted == 0
-                       )
-
+                    )
             if extracts:
                 return extracts, "local extract queue"
         return None
@@ -220,18 +220,19 @@ class AudioAssistant(Mpd, object):
         filepath = cur_song['absolute_fp']
         extract = (session
                    .query(ExtractFile)
-                    # TODO change extract_filepath to just filepath
                    .filter_by(extract_filepath=filepath)
                    .one_or_none())
         
         if extract and extract.itemfiles:
-            items = (
+            # using list to check for existence
+            items = []
+            for item in extract.itemfiles:
+                if item.question_filepath is not None:
+                    items.append(
                             os.path.join(
-                                # TODO change to itemfiles
                                 os.path.basename(QUESTIONFILES_DIR),
-                                os.path.basename(item.filepath))
-                            for item in extract.itemfiles
-                        )
+                                os.path.basename(item.question_filepath))
+                    )
 
             if items:
                 return items, "local item queue"
@@ -273,20 +274,17 @@ class AudioAssistant(Mpd, object):
             if playlist and name in options.keys():
                 with self.connection():
                     self.client.clear()
-                    if name in ["local extract  queue",
-                                "local item queue"]:
-                        # files mpd has scanned and recognised in mpd base dir
-                        mpd_recognised = [
-                                            d.get('file')
-                                            for d in self.client.listall(options[name]['dir'])
-                                            if d.get('file') is not None
-                                         ]
-                        for track in playlist:
-                            if track in mpd_recognised:
-                                self.client.add(track)
-                    else:
-                        for track in playlist:
+                    # files mpd has scanned and recognised in mpd base dir
+                    # hacky
+                    mpd_recognised = [
+                                        d.get('file')
+                                        for d in self.client.listall(options[name]['dir'])
+                                        if d.get('file') is not None
+                                     ]
+                    for track in playlist:
+                        if track in mpd_recognised:
                             self.client.add(track)
+
                     self.client.repeat(options[name]['repeat'])
                     self.client.single(options[name]['single'])
 
@@ -377,25 +375,28 @@ class AudioAssistant(Mpd, object):
                 cur_song = self.current_song()
                 cur_timestamp = float(cur_song['elapsed'])
                 filepath = cur_song['absolute_fp']
-                item = (session
-                        .query(ItemFile)
-                        .filter(ItemFile.extractfile.extract_filepath==filepath)
-                        .order_by(ItemFile.created_at.desc())
-                        .one_or_none())
-                if item and item.cloze_startstamp:
+                extract = (session
+                           .query(ExtractFile)
+                           .filter_by(extract_filepath=filepath)
+                           .one_or_none())
+
+                if extract:
+                    items = extract.itemfiles
+                    last_item = max(items, key=lambda item: item.created_at)
+                if last_item and last_item.cloze_startstamp:
                     # Get the last inserted itemfile
-                    if item.cloze_startstamp  < cur_timestamp:
-                        item.cloze_endstamp = cur_timestamp
+                    if last_item.cloze_startstamp  < cur_timestamp:
+                        last_item.cloze_endstamp = cur_timestamp
                         session.commit()
                         self.clozing = False
                         self.active_keys = {}
                         self.active_keys.update(self.extracting_keys)
 
                         # Send to the extractor
-                        question, cloze = cloze_processor(extract)
+                        question, cloze = cloze_processor(last_item)
                         if question and cloze:
-                            item.question_filepath = question
-                            item.cloze_filepath = cloze
+                            last_item.question_filepath = question
+                            last_item.cloze_filepath = cloze
                             session.commit()
                 else:
                     self.perror("Couldn't find extract {} in DB"

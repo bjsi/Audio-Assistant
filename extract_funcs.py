@@ -10,12 +10,15 @@ from models import ExtractFile, ItemFile, session
 # Add a function to the extract keys to load a local item queue
 
 def cloze_processor(item):
-    extract_fp = item.extractfile.extract_filepath
-    extract_length = item.extractfile.topicfile_endstamp - item.extractfile.topicfile_startstamp
+    # the parent extract
+    extract = item.extractfile
+    extract_fp = extract.extract_filepath
+    extract_length = extract.topicfile_endstamp - extract.topicfile_startstamp
     cloze_start = item.cloze_startstamp
     cloze_end = item.cloze_endstamp
     # beep length = length of the cloze
     beep_length = cloze_end - cloze_start
+    item_id = item.id
 
     filename = os.path.basename(extract_fp)
     filename, ext = os.path.splitext(filename)
@@ -23,10 +26,15 @@ def cloze_processor(item):
     # TODO Use the rowid of ItemFile to give each a unique name?
     question_fp = os.path.join(QUESTIONFILES_DIR,
                               (filename + "-" +
-                               "QUESTION" + ext))
+                               "QUESTION" + "-" +
+                               str(item_id) +
+                               ext))
+
     cloze_fp = os.path.join(QUESTIONFILES_DIR,
                            (filename + "-" +
-                            "CLOZE" + ext))
+                            "CLOZE" + "-" +
+                            str(item_id) +
+                            ext))
 
     # Non-blocking
     subprocess.Popen([
@@ -68,12 +76,14 @@ def cloze_processor(item):
 def get_items():
     items  = (session
               .query(ItemFile)
-              .filter(ItemFile.cloze_startstamp != None)
               .filter(ItemFile.cloze_endstamp != None)
               .all())
     if items:
+        print("Items:")
+        print(items)
         return items
     else:
+        print("No items!")
         return None
 
 

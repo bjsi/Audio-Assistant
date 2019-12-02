@@ -157,8 +157,8 @@ class ItemFile(Base):
     question_filepath = Column(String, unique=True)
     cloze_filepath = Column(String, unique=True)
     deleted = Column(Boolean, default=False)
-    cloze_startstamp = Column(Float, nullable=True) # seconds.miliseconds
-    cloze_endstamp = Column(Float, nullable=True) # seconds.miliseconds
+    cloze_startstamp = Column(Float) # seconds.miliseconds
+    cloze_endstamp = Column(Float) # seconds.miliseconds
     # Relationships
     extract_id = Column(Integer, ForeignKey('extractfiles.id'))
     extractfile = relationship("ExtractFile",
