@@ -1,4 +1,5 @@
 from config import *
+import mpd
 from extract_funcs import cloze_processor
 import time
 import subprocess
@@ -174,14 +175,22 @@ class AudioAssistant(Mpd, object):
                  .one_or_none())
 
         if topic and topic.extractfiles:
-            extracts = []
-            for extract in topic.extractfiles:
-                if extract.deleted == 0 and extract.extract_filepath is not None:
-                    extracts.append(
-                            os.path.join(
-                                os.path.basename(EXTRACTFILES_DIR),
-                                os.path.basename(extract.extract_filepath))
-                    )
+            extracts = [] 
+            with self.connection():
+                for extract in topic.extractfiles:
+                # What if it's deleted
+                    try:
+                        recognised = self.client.find('file',
+                                        os.path.join(
+                                            os.path.basename(EXTRACTFILES_DIR),
+                                            os.path.basename(extract.extract_filepath)))
+                        if recognised:
+                            extracts.append(recognised[0]['file'])
+                    except mpd.base.CommandError:
+                        print("Mpd doesn't recognise {}"
+                              .format(extract.extract_filepath))
+                        continue
+
             if extracts:
                 return extracts, "local extract queue"
         return None
@@ -226,18 +235,24 @@ class AudioAssistant(Mpd, object):
         if extract and extract.itemfiles:
             # using list to check for existence
             items = []
-            for item in extract.itemfiles:
-                if item.question_filepath is not None:
-                    items.append(
-                            os.path.join(
-                                os.path.basename(QUESTIONFILES_DIR),
-                                os.path.basename(item.question_filepath))
-                    )
-
+            with self.connection():
+                for item in extract.itemfiles:
+                    # What if it's deleted
+                    try:
+                        recognised = self.client.find('file',
+                                            os.path.join(
+                                                os.path.basename(QUESTIONFILES_DIR),
+                                                os.path.basename(item.question_filepath)))
+                        if recognised:
+                            items.append(recognised[0]['file'])
+                    except mpd.base.CommandError:
+                        print("Mpd doesn't recognise {}"
+                              .format(item.filepath))
+                        continue
             if items:
                 return items, "local item queue"
         return None
-    
+
     # TODO More specific type
     def load_playlist(self, data: Tuple):
         """load the playlist and set the global state
