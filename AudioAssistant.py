@@ -238,17 +238,18 @@ class AudioAssistant(Mpd, object):
             with self.connection():
                 for item in extract.itemfiles:
                     # What if it's deleted
-                    try:
-                        recognised = self.client.find('file',
-                                            os.path.join(
-                                                os.path.basename(QUESTIONFILES_DIR),
-                                                os.path.basename(item.question_filepath)))
-                        if recognised:
-                            items.append(recognised[0]['file'])
-                    except mpd.base.CommandError:
-                        print("Mpd doesn't recognise {}"
-                              .format(item.filepath))
-                        continue
+                    if item.question_filepath:
+                        try:
+                            recognised = self.client.find('file',
+                                                os.path.join(
+                                                    os.path.basename(QUESTIONFILES_DIR),
+                                                    os.path.basename(item.question_filepath)))
+                            if recognised:
+                                items.append(recognised[0]['file'])
+                        except mpd.base.CommandError:
+                            print("Mpd doesn't recognise {}"
+                                  .format(item.filepath))
+                            continue
             if items:
                 return items, "local item queue"
         return None
