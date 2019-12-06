@@ -17,7 +17,7 @@ Session = sessionmaker(bind=engine)
 # Many to many association table
 
 yt_topicfile_tags = Table('yt_topicfile_tags', Base.metadata,
-                               
+
                           Column('topicfile_id',
                                  Integer,
                                  ForeignKey('topicfiles.id'),
@@ -39,7 +39,7 @@ yt_topicfile_tags = Table('yt_topicfile_tags', Base.metadata,
 # Many to many association table
 
 my_topicfile_tags = Table('my_topicfile_tags', Base.metadata,
-                         
+
                           Column('topicfile_id',
                                  Integer,
                                  ForeignKey('topicfiles.id'),
@@ -95,7 +95,7 @@ class TopicFile(Base):
     created_at = Column(DateTime, default=datetime.datetime.now())
     # created using .en.vtt subtitle files from youtube-dl
     transcript = Column(Text)
-    
+
     # One to many File <-> Extract
     extractfiles = relationship("ExtractFile",
                             back_populates="topicfile")
@@ -121,7 +121,7 @@ class TopicFile(Base):
 class ExtractFile(Base):
     """ In the old version of the project this was called
         extract_files """
-    
+
     __tablename__ = "extractfiles"
 
     id = Column(Integer, primary_key=True)
@@ -129,17 +129,17 @@ class ExtractFile(Base):
     created_at = Column(DateTime, default=datetime.datetime.now())
     topicfile_startstamp = Column(Float, nullable=False) # Seconds.miliseconds
     topicfile_endstamp = Column(Float) # Seconds.miliseconds
-    
+
     # Excerpt from the topicfiles transcript that overlaps
     # with the extract
     extract_transcript = Column(Text, nullable=True)
-    
+
     deleted = Column(Boolean, default=False)
-    
+
     # Relationships
     itemfiles = relationship("ItemFile",
                              back_populates="extractfile")
-    
+
 
     topicfile_id = Column(Integer, ForeignKey('topicfiles.id'))
     topicfile = relationship("TopicFile",
@@ -147,7 +147,7 @@ class ExtractFile(Base):
 
     def __repr__(self):
         return '<TopicFile: filepath=%r created_at=%r>' % (self.filepath, self.created_at)
-    
+
 
 class ItemFile(Base):
     __tablename__ = "itemfiles"
@@ -163,7 +163,7 @@ class ItemFile(Base):
     extract_id = Column(Integer, ForeignKey('extractfiles.id'))
     extractfile = relationship("ExtractFile",
                                 back_populates="itemfiles")
-    
+
     def __repr__(self):
         return '<ItemFile: question=%r cloze=%r>' % (self.question_filepath, self.cloze_filepath)
 
@@ -179,6 +179,8 @@ class Activity(Base):
     duration = Column(Float, default=0)
 
     # Relationships
+    # Allow recording of item / extract activity as
+    # well as topics
     topicfile_id = Column(Integer, ForeignKey('topicfiles.id'))
     topicfile = relationship("TopicFile",
                               back_populates="activities")
@@ -190,7 +192,7 @@ class Activity(Base):
 class YoutubeTag(Base):
     __tablename__ = 'yttags'
 
-    # Got it to work by removing the unique constraint on the 
+    # Got it to work by removing the unique constraint on the
     # tag attribute
 
     id = Column(Integer, primary_key=True)
