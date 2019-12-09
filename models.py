@@ -66,6 +66,8 @@ class TopicFile(Base):
 
     id = Column(Integer,
                 primary_key=True)
+    # TODO Need to explicitly add the youtube download
+    # id
 
     filepath = Column(String,
                       nullable=False,

@@ -1,14 +1,15 @@
 from flask_restplus import Resource, Api
 import os
-from flask import Flask
-from flask import Blueprint, request
+from flask import Blueprint, request, Flask, render_template
 from flask_restplus import fields
 from models import session, TopicFile, ExtractFile, ItemFile
 from flask_restplus import reqparse
+from flask_cors import CORS
 
 # blueprint = Blueprint('api', __name__)
 
 app = Flask(__name__)
+CORS(app)
 
 api = Api(app,
           title="Audio Assistant",
@@ -34,6 +35,33 @@ activity_ns = api.namespace('activities',
                                         "Activity-related information from "
                                         "the database")
 
+item_model = api.model('Item', {
+    'id': fields.Integer,
+    'created_at': fields.DateTime,
+    'question_filepath': fields.String,
+    'cloze_filepath': fields.String,
+    'deleted': fields.Boolean,
+    'cloze_startstamp': fields.Float,
+    'cloze_endstamp': fields.Float,
+    'extractfile': fields.Integer,
+    })
+
+extract_model = api.model('Extract', {
+    'id': fields.Integer,
+    # TODO switch to just filepath
+    'extract_filepath': fields.String,
+    'created_at': fields.DateTime,
+    'topicfile_startstamp': fields.Float,
+    'topicfile_endstamp': fields.Float,
+    # TODO switch to just transcript
+    'extract_transcript': fields.String,
+    'deleted': fields.Boolean,
+    # A list of ItemFile ids
+    'itemfiles': fields.List(fields.Nested(item_model)),
+    # Parent topic id
+    'topicfile': fields.Integer,
+    })
+
 topic_model = api.model('Topic', {
     'id': fields.Integer,
     'filepath': fields.String,
@@ -51,40 +79,15 @@ topic_model = api.model('Topic', {
     'created_at': fields.DateTime,
     'transcript': fields.String,
     # A list of ExtractFile ids
-    'extractfiles': fields.List(fields.Integer),
+    'extractfiles': fields.List(fields.Nested(extract_model)),
     # A list of youtube tags
     'yttags': fields.List(fields.String),
     # A list of my own tags (term extracted from transcript)
     'mytags': fields.List(fields.String),
     # TODO activities: a list of events like activity watch
+    'rendered': fields.String
     })
 
-extract_model = api.model('Extract', {
-    'id': fields.Integer,
-    # TODO switch to just filepath
-    'extract_filepath': fields.String,
-    'created_at': fields.DateTime,
-    'topicfile_startstamp': fields.Float,
-    'topicfile_endstamp': fields.Float,
-    # TODO switch to just transcript
-    'extract_transcript': fields.String,
-    'deleted': fields.Boolean,
-    # A list of ItemFile ids
-    'itemfiles': fields.List(fields.Integer),
-    # Parent topic id
-    'topicfile': fields.Integer,
-    })
-
-item_model = api.model('Item', {
-    'id': fields.Integer,
-    'created_at': fields.DateTime,
-    'question_filepath': fields.String,
-    'cloze_filepath': fields.String,
-    'deleted': fields.Boolean,
-    'cloze_startstamp': fields.Float,
-    'cloze_endstamp': fields.Float,
-    'extractfile': fields.Integer,
-    })
 
 # TODO activity model
 
@@ -167,15 +170,14 @@ class Topics(Resource):
         """ Get outstanding Topics
         Allows the user to read a list of all topic files
         in the database that have not been deleted"""
-        args = parser.parse_args()
 
-        if args['deleted'] is None:
-            args['deleted'] = 0
+        # including extracts in the topics model
+
+        args = parser.parse_args()
 
         if args['start'] and args['end']:
             topics = (session
                       .query(TopicFile)
-                      .filter_by(deleted=args['deleted'])
                       .filter(TopicFile.created_at > args['start'])
                       .filter(TopicFile.created_at < args['end'])
                       .all())
@@ -183,13 +185,13 @@ class Topics(Resource):
         else:
             topics = (session
                       .query(TopicFile)
-                      .filter_by(deleted=args['deleted'])
                       .order_by(TopicFile.created_at.desc())
                       .all())
         if topics:
             topics = [
                         {
                             'id': topic.id,
+                            'thumbnail_url': topic.thumbnail_url,
                             'filepath': topic.filepath,
                             'downloaded': topic.downloaded,
                             'deleted': topic.deleted,
@@ -204,8 +206,31 @@ class Topics(Resource):
                             'created_at': topic.created_at,
                             'transcript': topic.transcript,
                             'extractfiles': [
-                                               extract.id
-                                               for extract in topic.extractfiles
+                                                {
+                                                  "id": extract.id,
+                                                  "extract_filepath": extract.extract_filepath,
+                                                  "created_at": extract.created_at,
+                                                  "topicfile_startstamp": extract.topicfile_startstamp,
+                                                  "topicfile_endstamp": extract.topicfile_endstamp,
+                                                  "deleted": extract.deleted,
+                                                  "itemfiles": [
+                                                                {
+                                                                    'id': item.id,
+                                                                    'created_at': item.created_at,
+                                                                    'question_filepath': item.question_filepath,
+                                                                    'cloze_filepath': item.cloze_filepath,
+                                                                    'deleted': item.deleted,
+                                                                    'cloze_startstamp': item.cloze_startstamp,
+                                                                    'cloze_stopstamp': item.cloze_endstamp,
+                                                                    'extractfile': item.extractfile.id
+                                                                }
+                                                                for item in extract.itemfiles
+                                                               ],
+                                                  "topicfile": topic.id
+                                                }
+                                                for extract in topic.extractfiles
+                                                # Not working?
+                                                if extract.topicfile_endstamp is not None
                                             ],
 
                             'yttags': [
@@ -216,7 +241,9 @@ class Topics(Resource):
                             'mytags': [
                                         tag.tag
                                         for tag in topic.mytags
-                                      ]
+                                      ],
+
+                            'rendered': render_template("topic.html", topic=topic)
                         }
                         for topic in topics
                     ]

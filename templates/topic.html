@@ -1,0 +1,60 @@
+{# Topic Template #}
+
+<div class="card border-primary mb-2" id="{{ topic.id }}">
+    <div class="card-header">
+        <p class="card-text">{{ topic.created_at }}</p>
+    </div>
+    <div class="card-body">
+        <h5 class="card-title">{{ topic.title }}</h5>
+        <h6 class="card-subtitle mb-2 text-muted">
+            <a href="https://youtube.com">Youtube</a>
+        </h6>
+        <img class="card-img mb-3" src="{{ topic.thumbnail_url }}">
+
+        {# if no extractfiles #}
+        <div class="progress mb-2">
+            {% if not topic.extractfiles %}
+                <div class="progress-bar bg-info"
+                     role="progressbar"
+                     style="width: {{ (topic.cur_timestamp/topic.duration)*100 }}%"
+                     aria-valuenow="{{ (topic.cur_timestamp/topic.duration)*100 }}"
+                     aria-valuemin="0"
+                     aria-valuemax="100">
+                </div>
+            {% else %}
+                <div class="progress-bar bg-info"
+                     role="progressbar"
+                     style="width: {{ (topic.extractfiles[0].topicfile_startstamp/topic.duration)*100 }}%"
+                     aria-valuenow="{{ (topic.extractfiles[0].topicfile_startstamp/topic.duration)*100 }}"
+                     aria-valuemin="0"
+                     aria-valuemax="100">
+                </div>
+                {% for extract in topic.extractfiles %}
+                <div class="progress-bar bg-warning"
+                     role="progressbar"
+                     style="width: {{ ((extract.topicfile_endstamp - extract.topicfile_startstamp)/topic.duration)*100 }}%"
+                     aria-valuenow="{{ ((extract.topicfile_endstamp - extract.topicfile_startstamp)/topic.duration)*100 }}"
+                     aria-valuemin="0"
+                     aria-valuemax="100">
+                </div>
+                {% if loop.nextitem is defined %}
+                    <div class="progress-bar bg-info"
+                         role="progressbar"
+                         style="width: {{ ((loop.nextitem.topicfile_startstamp - extract.topicfile_endstamp)/topic.duration)*100 }}%"
+                         aria-valuenow="{{ ((loop.nextitem.topicfile_startstamp - extract.topicfile_endstamp)/topic.duration)*100 }}"
+                         aria-valuemin="0"
+                         aria-valuemax="100">
+                    </div>
+                {% endif %}
+                {% endfor %}
+                <div class="progress-bar bg-info"
+                     role="progressbar"
+                     style="width: {{ ((topic.cur_timestamp - (topic.extractfiles | last).topicfile_endstamp)/topic.duration)*100 }}%"
+                     aria-valuenow="{{ ((topic.cur_timestamp - (topic.extractfiles | last).topicfile_endstamp)/topic.duration)*100 }}"
+                     aria-valuemin="0"
+                     aria-valuemax="100">
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
