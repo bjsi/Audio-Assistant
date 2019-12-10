@@ -64,6 +64,7 @@ extract_model = api.model('Extract', {
 
 topic_model = api.model('Topic', {
     'id': fields.Integer,
+    'upload_id': fields.String,
     'filepath': fields.String,
     'downloaded': fields.Boolean,
     'deleted': fields.Boolean,
@@ -191,6 +192,7 @@ class Topics(Resource):
             topics = [
                         {
                             'id': topic.id,
+                            'upload_id': os.path.splitext(os.path.basename(topic.filepath))[0],
                             'thumbnail_url': topic.thumbnail_url,
                             'filepath': topic.filepath,
                             'downloaded': topic.downloaded,
