@@ -14,30 +14,22 @@ from sounds import speak, negative, click_one, click_two
 
 class AudioAssistant(Mpd, object):
 
-    """Extending core mpd functions adding recording,
+    """Extends core mpd functions adding recording,
        audio cloze deletions, scheduling, queueing etc."""
 
     def __init__(self):
-        """TODO: to be defined.
-        :recording: Boolean. Am I currently recording?
-        :clozing: Boolean. Am I currently making a cloze?
-        :current_playlist: String.
-        # TODO These aren't strings
-        :*_keys: Dict[int, str]. subsets of CONTROLLER['keys'].
-        string values are names of methods to call when the
-        buttons are pressed
+        """
+        :recording: Boolean. True if recording
+        :clozing: Boolean. True if clozing
+        :current_playlist: String. global topic queue, global extract queue local extract queue,
+        local item queue
+        :*_keys: Dict. Enum-like structure mapping keycode constants to method names.
         """
         Mpd.__init__(self)
         self.recording = False
         self.clozing = False
-        # One of the following: 
-        # global topic queue [default],
-        # global extract queue, 
-        # local extract queue,
-        # local item queue
         self.current_playlist = "global topic queue"
 
-        # Updated during runtime according to state
         self.active_keys = {}
 
         self.topic_keys = {
@@ -114,10 +106,8 @@ class AudioAssistant(Mpd, object):
     # TODO more specific typing
     def get_global_topics(self) -> Optional[Tuple]:
         """Query DB for outstanding topics
-            outstanding = not deleted and cur timestamp /
-            duration < 0.9
-        :returns: generator of audio filepaths relative to mpd base dir
-
+        Outstanding
+        :returns: generator of audio filepaths relative to mpd base dir or None
         """
         topics = (session
                   .query(TopicFile)
@@ -175,7 +165,7 @@ class AudioAssistant(Mpd, object):
                  .one_or_none())
 
         if topic and topic.extractfiles:
-            extracts = [] 
+            extracts = []
             with self.connection():
                 for extract in topic.extractfiles:
                 # What if it's deleted
@@ -204,7 +194,7 @@ class AudioAssistant(Mpd, object):
                 .query(ItemFile)
                 .filter_by(question_filepath=filepath)
                 .one_or_none())
-        
+
         if item:
             extract = item.extractfile
             if extract.deleted is False:
@@ -231,7 +221,7 @@ class AudioAssistant(Mpd, object):
                    .query(ExtractFile)
                    .filter_by(extract_filepath=filepath)
                    .one_or_none())
-        
+
         if extract and extract.itemfiles:
             # using list to check for existence
             items = []
@@ -256,11 +246,8 @@ class AudioAssistant(Mpd, object):
 
     # TODO More specific type
     def load_playlist(self, data: Tuple):
-        """load the playlist and set the global state
-
-        :data: TODO
-        :returns: TODO
-
+        """Load the playlist and set the global state
+        :data: Tuple[Iterable of files or None, playlist name]
         """
         options = {
                    "global extract queue": {
@@ -314,9 +301,8 @@ class AudioAssistant(Mpd, object):
                         "load_playlist")
 
     def get_extract_topic(self):
-        """get the parent topic of the current extract
-        :returns: TODO
-
+        """Query and load the parent topic of the current extract
+        Seeks to the current timestamp of the parent topic after loading
         """
         cur_song = self.current_song()
         filepath = cur_song['absolute_fp']
