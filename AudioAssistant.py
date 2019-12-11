@@ -119,6 +119,7 @@ class AudioAssistant(Mpd, object):
                   .all())
 
         if topics:
+            print(topics)
             topics = (
                         os.path.join(
                             os.path.basename(TOPICFILES_DIR),
@@ -142,6 +143,7 @@ class AudioAssistant(Mpd, object):
                     .all())
 
         if extracts:
+            print(extracts)
             extracts = (
                          os.path.join(
                              os.path.basename(EXTRACTFILES_DIR),
@@ -182,6 +184,7 @@ class AudioAssistant(Mpd, object):
                         continue
 
             if extracts:
+                print(extracts)
                 return extracts, "local extract queue"
         return None
 

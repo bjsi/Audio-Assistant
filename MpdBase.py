@@ -169,7 +169,7 @@ class Mpd(object):
             status = self.client.status()
             cur_timestamp = float(status.get('elapsed', 0.0))
             # TODO Keep adjusting the seek amount
-            seek_to = cur_timestamp - 0.18
+            seek_to = cur_timestamp - 0.165
             self.client.seekcur(seek_to)
             self.client.pause(0)
             time.sleep(0.2)

@@ -72,9 +72,9 @@ class TopicFile(Base):
     filepath = Column(String,
                       nullable=False,
                       unique=True)
-    # Set manually
-    # If you just extract info; False
-    # If you extract info and download audio; True
+    
+    # If you just extract info, downloaded = False
+    # If you extract info and download audio, downloaded = True
     downloaded = Column(Boolean, nullable=False)
 
     deleted = Column(Boolean,
@@ -86,7 +86,7 @@ class TopicFile(Base):
     uploader_id = Column(String)
     uploader = Column(String)
     upload_date = Column(String)
-    thumbnail_url = Column(String) # Maybe switch to a BLOB of the actual file
+    thumbnail_url = Column(String)
     view_count = Column(Integer)
     like_count = Column(Integer)
     dislike_count = Column(Integer)
