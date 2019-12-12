@@ -139,6 +139,7 @@ class Mpd(object):
         :returns: TODO
 
         """
+        print("vol up")
         with self.connection():
             status = self.client.status()
             cur_vol = int(status['volume'])
@@ -152,6 +153,7 @@ class Mpd(object):
         :returns: TODO
 
         """
+        print("vol down")
         with self.connection():
             status = self.client.status()
             cur_vol = int(status['volume'])

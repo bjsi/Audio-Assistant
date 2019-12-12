@@ -52,6 +52,18 @@ def positive(func):
     return wrapper
 
 
+def load(func):
+    """ 
+    Makes a bing sound. Used for deleting items and extracts
+    """
+    def wrapper(*args, **kwargs):
+        filename = '/home/pi/bin/lecture_assistant/menu-sounds/load.wav'
+        wave_obj = sa.WaveObject.from_wave_file(filename)
+        play_obj = wave_obj.play()
+        func(*args, **kwargs)
+    return wrapper
+
+
 def speak(words: str):
     """
     Uses the espeak program as text to speech to communicate

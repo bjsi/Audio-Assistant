@@ -95,11 +95,11 @@ class TopicFile(Base):
     # Many to many File >-< Tag
     yttags = relationship('YoutubeTag',
                           secondary=yt_topicfile_tags,
-                          back_populates='topic')
+                          back_populates='topics')
     # Many to many File >-< Tag
     mytags = relationship('MyTag',
                           secondary=my_topicfile_tags,
-                          back_populates='topic')
+                          back_populates='topics')
 
     @property
     def progress(self) -> float:
@@ -137,7 +137,7 @@ class ExtractFile(Base):
 
     # One to one ExtractFile (child) |-| TopicFile (parent)
     topic_id = Column(Integer, ForeignKey('topicfiles.id'))
-    topic = relationship("TopicFile", back_populates="extractfiles")
+    topic = relationship("TopicFile", back_populates="extracts")
 
     # One to many ExtractFile |-< ItemFiles
     items = relationship("ItemFile",

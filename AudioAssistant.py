@@ -9,7 +9,8 @@ from typing import Optional, Tuple
 import os
 from MpdBase import Mpd
 from BluetoothDevices import BTDevice
-from sounds import speak, negative, click_one, click_two
+# TODO Change the name of these
+from sounds import speak, negative, click_one, click_two, load
 
 
 class AudioAssistant(Mpd, object):
@@ -40,9 +41,10 @@ class AudioAssistant(Mpd, object):
                 KEY_LEFT:   self.seek_backward,
                 KEY_DOWN:   self.load_topic_extracts,
                 KEY_OK:     self.start_recording,
+                KEY_A:      self.load_global_extracts,
                 GAME_X:     self.volume_up,
                 GAME_B:     self.volume_down,
-                KEY_A:      self.load_global_extracts
+                #GAME_Y:     self.requires_video
         }
 
         self.recording_keys = {
@@ -58,9 +60,8 @@ class AudioAssistant(Mpd, object):
                 KEY_LEFT:   self.stutter_backward,
                 KEY_UP:     self.get_extract_topic,
                 KEY_DOWN:   self.load_extract_items,
-                GAME_X:     self.volume_up,
-                GAME_B:     self.volume_down,
                 KEY_A:      self.load_global_topics,
+                GAME_X:     self.delete_extract
         }
 
         self.cloze_keys = {
@@ -76,8 +77,7 @@ class AudioAssistant(Mpd, object):
                 KEY_B:      self.previous,
                 KEY_Y:      self.next,
                 KEY_A:      self.load_global_topics,
-
-                #GAME_X:     self.delete_item
+                GAME_X:     self.delete_item
         }
 
     @negative
@@ -113,7 +113,8 @@ class AudioAssistant(Mpd, object):
         topics = (session
                   .query(TopicFile)
                   .filter_by(deleted=False)
-                  .filter(TopicFile.progress < 90)
+                  .filter((TopicFile.cur_timestamp /
+                          TopicFile.duration) < 90)
                   .order_by(TopicFile.created_at.asc())
                   .all())
 
@@ -168,18 +169,18 @@ class AudioAssistant(Mpd, object):
             with self.connection():
                 for extract in topic.extracts:
                 # What if it's deleted
-                    try:
-                        recognised = self.client.find('file',
-                                        os.path.join(
-                                            os.path.basename(EXTRACTFILES_DIR),
-                                            os.path.basename(extract.filepath)))
-                        if recognised:
-                            extracts.append(recognised[0]['file'])
-                    except mpd.base.CommandError:
-                        print("Mpd doesn't recognise {}"
-                              .format(extract.filepath))
-                        continue
-
+                    if not extract.deleted:
+                        try:
+                            recognised = self.client.find('file',
+                                            os.path.join(
+                                                os.path.basename(EXTRACTFILES_DIR),
+                                                os.path.basename(extract.filepath)))
+                            if recognised:
+                                extracts.append(recognised[0]['file'])
+                        except mpd.base.CommandError:
+                            print("Mpd doesn't recognise {}"
+                                  .format(extract.filepath))
+                            continue
             if extracts:
                 print(extracts)
                 return extracts, "local extract queue"
@@ -312,7 +313,6 @@ class AudioAssistant(Mpd, object):
                    .query(ExtractFile)
                    .filter_by(filepath=filepath)
                    .one_or_none())
-
         if extract:
             parent = extract.topic
             if parent.deleted is False:
@@ -322,15 +322,19 @@ class AudioAssistant(Mpd, object):
                 self.load_playlist(topics)
                 with self.connection():
                     playlist = self.client.playlistinfo()
+                    print("Playlist:")
+                    print(playlist)
                     for track in playlist:
                         if track['file'] == filepath:
                             parent_id = track['id']
                     if parent_id:
                         self.client.moveid(parent_id, 0)
                         self.remove_stop_state()
-                        self.client.seekcur(parent.cur_timestamp)
+                        # seek to extract's location within the topic
+                        self.client.seekcur(extract.startstamp)
                     else:
-                        self.perror("Parent topic not found in playlist")
+                        self.perror("Parent topic not found in playlist",
+                                    "get_extract_topic")
             else:
                 self.perror("Orphan extract: No parent",
                             "get_extract_topic")
@@ -435,7 +439,7 @@ class AudioAssistant(Mpd, object):
                                .order_by(ExtractFile.created_at.desc())
                                .first())
                     if extract:
-                        extract.topicfile_endstamp = cur_song['elapsed']
+                        extract.endstamp = cur_song['elapsed']
                         session.commit()
 
     @click_one
@@ -474,7 +478,7 @@ class AudioAssistant(Mpd, object):
                          .one_or_none())
                 if topic:
                     extract = ExtractFile(filepath=extract_fp,
-                                          topicfile_startstamp=timestamp)
+                                          startstamp=timestamp)
                     topic.extracts.append(extract)
                     session.commit()
                 else:
@@ -528,3 +532,44 @@ class AudioAssistant(Mpd, object):
             if topic:
                 with self.connection():
                     self.client.seekcur(float(topic.cur_timestamp))
+
+    @load
+    def delete_item(self):
+        if self.current_playlist == "local item queue":
+            cur_song = self.current_song()
+            filepath = cur_song['absolute_fp']
+            item = (session
+                    .query(ItemFile)
+                    .filter_by(question_filepath=filepath)
+                    .one_or_none())
+            if item:
+                item.deleted = True
+                session.commit()
+                print("Deleted:", item)
+            else:
+                print("Couldn't find item in DB")
+        else:
+            self.perror("Attempted item deletion from {}"
+                        .format(self.current_playlist),
+                        "delete_item")
+
+    @load
+    def delete_extract(self):
+        if self.current_playlist in ["local extract queue",
+                                     "global extract queue"]:
+            cur_song = self.current_song()
+            filepath = cur_song['absolute_fp']
+            extract = (session
+                       .query(ExtractFile)
+                       .filter_by(filepath=filepath)
+                       .one_or_none())
+            if extract:
+                extract.deleted = True
+                session.commit()
+                print("Deleted:", extract)
+            else:
+                self.perror("Couldn't find extract in DB")
+        else:
+            self.perror("Attempted extract deletion from {}"
+                        .format(self.current_playlist),
+                        "delete_item")
