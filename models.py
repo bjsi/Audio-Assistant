@@ -9,16 +9,18 @@ from sqlalchemy import (Column, Integer,
 import datetime
 from sqlalchemy.orm import sessionmaker
 from config import *
+from typing import Optional
+
 
 engine = create_engine(DATABASE_URI)
 Base = declarative_base()
 Session = sessionmaker(bind=engine)
 
-# Many to many association table
 
+# Many to many association table for youtube tags
 yt_topicfile_tags = Table('yt_topicfile_tags', Base.metadata,
 
-                          Column('topicfile_id',
+                          Column('topic_id',
                                  Integer,
                                  ForeignKey('topicfiles.id'),
                                  primary_key=True,
@@ -33,14 +35,13 @@ yt_topicfile_tags = Table('yt_topicfile_tags', Base.metadata,
                           # Intention: Prevent adding same tag to the same file twice
                           # TODO not working... Might not matter, esp if youtube removes
                           # duplicates automatically
-                          UniqueConstraint('topicfile_id', 'yttag_id'))
+                          UniqueConstraint('topic_id', 'yttag_id'))
 
 
-# Many to many association table
-
+# Many to many association table for my own tags
 my_topicfile_tags = Table('my_topicfile_tags', Base.metadata,
 
-                          Column('topicfile_id',
+                          Column('topic_id',
                                  Integer,
                                  ForeignKey('topicfiles.id'),
                                  primary_key=True,
@@ -55,32 +56,21 @@ my_topicfile_tags = Table('my_topicfile_tags', Base.metadata,
                           # TODO See above
                           # Might not matter if I do a term extraction and then remove duplicates
                           # myself...
-                          UniqueConstraint('topicfile_id', 'mytag_id'))
+                          UniqueConstraint('topic_id', 'mytag_id'))
 
 
 class TopicFile(Base):
-    """ In the old version of the project this was called
-        all_files """
+    """ Topics are full youtube audio files
+    Evevry ExtractFile is a descendant of
+    a TopicFile"""
 
     __tablename__ = 'topicfiles'
 
-    id = Column(Integer,
-                primary_key=True)
-    # TODO Need to explicitly add the youtube download
-    # id
-
-    filepath = Column(String,
-                      nullable=False,
-                      unique=True)
-    
-    # If you just extract info, downloaded = False
-    # If you extract info and download audio, downloaded = True
+    id = Column(Integer, primary_key=True)
+    filepath = Column(String, nullable=False, unique=True)
     downloaded = Column(Boolean, nullable=False)
-
-    deleted = Column(Boolean,
-                     default=False)
-
-    # Retrieved using youtube-dl info_extractor
+    deleted = Column(Boolean, default=False)
+    youtube_id = Column(String)
     title = Column(String)
     duration = Column(Integer)
     uploader_id = Column(String)
@@ -91,67 +81,86 @@ class TopicFile(Base):
     like_count = Column(Integer)
     dislike_count = Column(Integer)
     average_rating = Column(Float)  # 0 to 5 float
-
-    # timestamp in seconds float
-    cur_timestamp = Column(Float, default=0)
+    playback_rate = Column(Float, default=1.0)  # eg. 1, 1.25, 1.5
+    cur_timestamp = Column(Float, default=0)  # seconds.miliseconds
     created_at = Column(DateTime, default=datetime.datetime.now())
-    # created using .en.vtt subtitle files from youtube-dl
     transcript = Column(Text)
 
-    # One to many File <-> Extract
-    extractfiles = relationship("ExtractFile",
-                            back_populates="topicfile")
-    # One to many File <-> Activity
+    # One to many File |-< Extract
+    extracts = relationship("ExtractFile",
+                            back_populates="topic")
+    # One to many File |-< Activity
     activities = relationship("Activity",
-                              back_populates="topicfile")
-    # Many to many File <-> Tag
-    # Includes 'categories' and 'tags' from ydl
+                              back_populates="topic")
+    # Many to many File >-< Tag
     yttags = relationship('YoutubeTag',
                           secondary=yt_topicfile_tags,
-                          back_populates='topicfiles')
-
-    # Many to many File <-> Tag
-    # My own added tags (based on the transcript)
+                          back_populates='topic')
+    # Many to many File >-< Tag
     mytags = relationship('MyTag',
                           secondary=my_topicfile_tags,
-                          back_populates='topicfiles')
+                          back_populates='topic')
 
-    def __repr__(self):
-        return '<File: title=%r filepath=%r>' % (self.title, self.filepath)
+    @property
+    def progress(self) -> float:
+        """" Returns percentage listened to """
+        return (self.cur_timestamp / self.duration) * 100
+
+    @property
+    def url(self) -> str:
+        """ Returns the youtube url of the video """
+        return "https://youtube.com/watch?v=" + self.youtube_id
+
+    @property
+    def channel(self) -> str:
+        """ Returns the url of the uploader's youtube channel """
+        return "https://youtube.com/channel/" + self.channel_id
+
+    def __repr__(self) -> str:
+        return '<TopicFile: title=%r url=%r>' % (self.title, self.url)
 
 
 class ExtractFile(Base):
-    """ In the old version of the project this was called
-        extract_files """
+    """ Recorded sections from TopicFiles
+    ExtractFiles are all descendants of a TopicFile
+    ItemFiles are all descendants of an ExtractFile"""
 
     __tablename__ = "extractfiles"
 
     id = Column(Integer, primary_key=True)
-    extract_filepath = Column(String, nullable=False, unique=True)
+    filepath = Column(String, nullable=False, unique=True)
     created_at = Column(DateTime, default=datetime.datetime.now())
-    topicfile_startstamp = Column(Float, nullable=False) # Seconds.miliseconds
-    topicfile_endstamp = Column(Float) # Seconds.miliseconds
-
-    # Excerpt from the topicfiles transcript that overlaps
-    # with the extract
-    extract_transcript = Column(Text, nullable=True)
-
+    startstamp = Column(Float, nullable=False)  # Seconds.miliseconds
+    endstamp = Column(Float)  # Seconds.miliseconds
+    transcript = Column(Text, nullable=True)
     deleted = Column(Boolean, default=False)
 
-    # Relationships
-    itemfiles = relationship("ItemFile",
-                             back_populates="extractfile")
+    # One to one ExtractFile (child) |-| TopicFile (parent)
+    topic_id = Column(Integer, ForeignKey('topicfiles.id'))
+    topic = relationship("TopicFile", back_populates="extractfiles")
 
+    # One to many ExtractFile |-< ItemFiles
+    items = relationship("ItemFile",
+                         back_populates="extract")
 
-    topicfile_id = Column(Integer, ForeignKey('topicfiles.id'))
-    topicfile = relationship("TopicFile",
-                             back_populates="extractfiles")
+    @property
+    def length(self) -> Optional[float]:
+        """ Return the length of the extract or None """
+        if self.startstamp and self.endstamp:
+            return (self.endstamp - self.startstamp)
+        return None
 
-    def __repr__(self):
-        return '<TopicFile: filepath=%r created_at=%r>' % (self.filepath, self.created_at)
+    def __repr__(self) -> str:
+        return '<ExtractFile: filepath=%r startstamp=%r endstamp=%r length=%r>' % (self.filepath, self.startstamp, self.endstamp, self.length)
 
 
 class ItemFile(Base):
+    """ ItemFile contains a question file and a cloze file
+    Question file has a cloze (beep sound) over a word / phrase
+    Cloze file is the unbeeped word / phrase from the extract file
+    ItemFiles are are descendants of an ExtractFile
+    """
+
     __tablename__ = "itemfiles"
 
     id = Column(Integer, primary_key=True)
@@ -159,14 +168,21 @@ class ItemFile(Base):
     question_filepath = Column(String, unique=True)
     cloze_filepath = Column(String, unique=True)
     deleted = Column(Boolean, default=False)
-    cloze_startstamp = Column(Float) # seconds.miliseconds
-    cloze_endstamp = Column(Float) # seconds.miliseconds
-    # Relationships
-    extract_id = Column(Integer, ForeignKey('extractfiles.id'))
-    extractfile = relationship("ExtractFile",
-                                back_populates="itemfiles")
+    cloze_startstamp = Column(Float)  # seconds.miliseconds
+    cloze_endstamp = Column(Float)  # seconds.miliseconds
 
-    def __repr__(self):
+    # One to one ItemFile (child) |-| ExtractFile (parent)
+    extract_id = Column(Integer, ForeignKey('extractfiles.id'))
+    extract = relationship("ExtractFile", back_populates="items")
+
+    @property
+    def length(self) -> Optional[float]:
+        """ Return the length of the cloze or none"""
+        if self.cloze_startstamp and self.cloze_endstamp:
+            return (self.cloze_startstamp - self.cloze_endstamp)
+        return None
+
+    def __repr__(self) -> str:
         return '<ItemFile: question=%r cloze=%r>' % (self.question_filepath, self.cloze_filepath)
 
 
@@ -176,16 +192,16 @@ class Activity(Base):
     __tablename__ = "activities"
 
     id = Column(Integer, primary_key=True)
-    activity = Column(String, nullable=False) # play, pause
+    activity = Column(String, nullable=False)  # play, pause
     created_at = Column(DateTime, default=datetime.datetime.now())
     duration = Column(Float, default=0)
 
     # Relationships
     # Allow recording of item / extract activity as
     # well as topics
-    topicfile_id = Column(Integer, ForeignKey('topicfiles.id'))
-    topicfile = relationship("TopicFile",
-                              back_populates="activities")
+    topic_id = Column(Integer, ForeignKey('topicfiles.id'))
+    topic = relationship("TopicFile",
+                         back_populates="activities")
 
     def __repr__(self):
         return "<Activity: activity=%r timestamp=%r>" % (self.activity, self.timestamp)
@@ -199,9 +215,9 @@ class YoutubeTag(Base):
 
     id = Column(Integer, primary_key=True)
     tag = Column(String(50), nullable=False)
-    topicfiles = relationship('TopicFile',
-                              secondary=yt_topicfile_tags,
-                              back_populates='yttags')
+    topics = relationship('TopicFile',
+                          secondary=yt_topicfile_tags,
+                          back_populates='yttags')
 
     def __init__(self, tag):
         self.tag = tag
@@ -215,9 +231,9 @@ class MyTag(Base):
 
     id = Column(Integer, primary_key=True)
     tag = Column(String(50), nullable=False)
-    topicfiles = relationship('TopicFile',
-                             secondary=my_topicfile_tags,
-                             back_populates='mytags')
+    topics = relationship('TopicFile',
+                          secondary=my_topicfile_tags,
+                          back_populates='mytags')
 
     def __init__(self, tag):
         self.tag = tag

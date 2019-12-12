@@ -12,21 +12,22 @@ from transcript_funcs import vtt_to_text
 
 # with open('logging.yaml', 'r') as f:
 #     log_cfg = yaml.safe_load(f.read())
-# 
+#
 # logging.config.dictConfig(log_cfg)
 # logger = logging.getLogger('ydl')
 
 
 def finished_hook(target):
     if target['status'] == 'finished':
-        
+
         filepath = target['filename']
         vid_id = os.path.splitext(os.path.basename(filepath))[0]
-        
+
         with youtube_dl.YoutubeDL({}) as ydl:
             info = ydl.extract_info(vid_id, download=False)
-        
+
         title           =   info['title']
+        youtube_id      =   info['id']
         duration        =   info['duration']
         uploader        =   info['uploader']
         uploader_id     =   info['uploader_id']
@@ -40,6 +41,7 @@ def finished_hook(target):
 
         file = TopicFile(filepath=filepath,
                          title=title,
+                         youtube_id=youtube_id,
                          duration=duration,
                          uploader=uploader,
                          uploader_id=uploader_id,
@@ -72,7 +74,7 @@ def finished_hook(target):
 
         return
 
-            
+
 ydl_opts = {
         'format': 'worstaudio/worst',
         #'logger': logger(),
@@ -96,6 +98,6 @@ ydl_opts = {
         'max_downloads': 1,
 }
 
-    
+
 with youtube_dl.YoutubeDL(ydl_opts) as ydl:
     ydl.download(["https://www.youtube.com/playlist?list=PLwmPBqRou8APdG6K-Ks0lV2yL0yqCFHOu"])

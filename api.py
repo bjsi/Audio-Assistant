@@ -35,6 +35,14 @@ activity_ns = api.namespace('activities',
                                         "Activity-related information from "
                                         "the database")
 
+# TODO
+activity_model = api.model('Activity', {
+    'id': fields.Integer,
+    'created_at': fields.DateTime,
+    'activity': fields.String,
+    'duration': fields.Float,
+    })
+
 item_model = api.model('Item', {
     'id': fields.Integer,
     'created_at': fields.DateTime,
@@ -43,28 +51,24 @@ item_model = api.model('Item', {
     'deleted': fields.Boolean,
     'cloze_startstamp': fields.Float,
     'cloze_endstamp': fields.Float,
-    'extractfile': fields.Integer,
+    'extract_id': fields.Integer,
     })
 
 extract_model = api.model('Extract', {
     'id': fields.Integer,
-    # TODO switch to just filepath
-    'extract_filepath': fields.String,
+    'filepath': fields.String,
     'created_at': fields.DateTime,
-    'topicfile_startstamp': fields.Float,
-    'topicfile_endstamp': fields.Float,
-    # TODO switch to just transcript
-    'extract_transcript': fields.String,
+    'startstamp': fields.Float,
+    'endstamp': fields.Float,
+    'transcript': fields.String,
     'deleted': fields.Boolean,
-    # A list of ItemFile ids
-    'itemfiles': fields.List(fields.Nested(item_model)),
-    # Parent topic id
-    'topicfile': fields.Integer,
+    'items': fields.List(fields.Nested(item_model)),
+    'topic_id': fields.Integer,
     })
 
 topic_model = api.model('Topic', {
     'id': fields.Integer,
-    'upload_id': fields.String,
+    'youtube_id': fields.String,
     'filepath': fields.String,
     'downloaded': fields.Boolean,
     'deleted': fields.Boolean,
@@ -79,31 +83,21 @@ topic_model = api.model('Topic', {
     'cur_timestamp': fields.Float,
     'created_at': fields.DateTime,
     'transcript': fields.String,
-    # A list of ExtractFile ids
-    'extractfiles': fields.List(fields.Nested(extract_model)),
-    # A list of youtube tags
+    'extracts': fields.List(fields.Nested(extract_model)),
     'yttags': fields.List(fields.String),
-    # A list of my own tags (term extracted from transcript)
     'mytags': fields.List(fields.String),
+    'rendered': fields.String,  # rendered html using topic.html
+    'progress': fields.Float,
+    'url': fields.String,
+    'channel': fields.String,
+    'playback_rate': fields.Float
     # TODO activities: a list of events like activity watch
-    'rendered': fields.String
-    })
-
-
-# TODO activity model
-
-activity_model = api.model('Activity', {
-    'id': fields.Integer,
-    'created_at': fields.DateTime,
-    'activity': fields.String,
-    'duration': fields.Float,
     })
 
 archive_model = api.model('Archive', {
     'source': fields.String,
     'id': fields.String
     })
-
 
 # add a datetime / timestamp filter to these
 # Add a way to filter by tags
@@ -154,7 +148,7 @@ class Assistant(Resource):
 parser = reqparse.RequestParser()
 parser.add_argument('start',
                     type=str,
-                    help='Find topics after this time',
+                    help='Find Topics after this time',
                     location='list')
 parser.add_argument('end',
                     type=str,
@@ -192,7 +186,7 @@ class Topics(Resource):
             topics = [
                         {
                             'id': topic.id,
-                            'upload_id': os.path.splitext(os.path.basename(topic.filepath))[0],
+                            'youtube_id': topic.youtube_id,
                             'thumbnail_url': topic.thumbnail_url,
                             'filepath': topic.filepath,
                             'downloaded': topic.downloaded,
@@ -206,16 +200,19 @@ class Topics(Resource):
                             'average_rating': topic.average_rating,
                             'cur_timestamp': topic.cur_timestamp,
                             'created_at': topic.created_at,
+                            'url': topic.url,
+                            'channel': topic.channel,
+                            'progress': topic.progress,
                             'transcript': topic.transcript,
-                            'extractfiles': [
+                            'extracts': [
                                                 {
                                                   "id": extract.id,
-                                                  "extract_filepath": extract.extract_filepath,
+                                                  "extract_filepath": extract.filepath,
                                                   "created_at": extract.created_at,
-                                                  "topicfile_startstamp": extract.topicfile_startstamp,
-                                                  "topicfile_endstamp": extract.topicfile_endstamp,
+                                                  "topicfile_startstamp": extract.startstamp,
+                                                  "topicfile_endstamp": extract.endstamp,
                                                   "deleted": extract.deleted,
-                                                  "itemfiles": [
+                                                  "items": [
                                                                 {
                                                                     'id': item.id,
                                                                     'created_at': item.created_at,
@@ -224,15 +221,15 @@ class Topics(Resource):
                                                                     'deleted': item.deleted,
                                                                     'cloze_startstamp': item.cloze_startstamp,
                                                                     'cloze_stopstamp': item.cloze_endstamp,
-                                                                    'extractfile': item.extractfile.id
+                                                                    'extract': item.extractfile.id
                                                                 }
                                                                 for item in extract.itemfiles
                                                                ],
-                                                  "topicfile": topic.id
+                                                  "topic": topic.id
                                                 }
-                                                for extract in topic.extractfiles
+                                                for extract in topic.extracts
                                                 # Not working?
-                                                if extract.topicfile_endstamp is not None
+                                                if extract.endstamp is not None
                                             ],
 
                             'yttags': [
@@ -267,21 +264,21 @@ class TopicExtracts(Resource):
                  .filter_by(id=topic_id)
                  .one_or_none())
         if topic:
-            extracts = topic.extractfiles
+            extracts = topic.extracts
             if extracts:
                 extracts = [
                             {
                               "id": extract.id,
-                              "extract_filepath": extract.extract_filepath,
+                              "filepath": extract.extract_filepath,
                               "created_at": extract.created_at,
-                              "topicfile_startstamp": extract.topicfile_startstamp,
-                              "topicfile_endstamp": extract.topicfile_endstamp,
+                              "startstamp": extract.topicfile_startstamp,
+                              "endstamp": extract.topicfile_endstamp,
                               "deleted": extract.deleted,
-                              "itemfiles": [
+                              "items": [
                                             item.id
-                                            for item in extract.itemfiles
-                                           ],
-                              "topicfile": topic.id
+                                            for item in extract.items
+                                       ],
+                              "topic": topic.id
                             }
                             for extract in extracts
                            ]
@@ -303,6 +300,7 @@ class Topic(Resource):
         if topic:
             topic = {
                         'id': topic.id,
+                        'youtube_id': topic.youtube_id,
                         'filepath': topic.filepath,
                         'downloaded': topic.downloaded,
                         'deleted': topic.deleted,
@@ -315,10 +313,13 @@ class Topic(Resource):
                         'average_rating': topic.average_rating,
                         'cur_timestamp': topic.cur_timestamp,
                         'created_at': topic.created_at,
+                        'progress': topic.progress,
+                        'url': topic.url,
+                        'channel': topic.channel,
                         'transcript': topic.transcript,
                         'extractfiles': [
                                            extract.id
-                                           for extract in topic.extractfiles
+                                           for extract in topic.extracts
                                         ],
 
                         'yttags': [
@@ -365,16 +366,16 @@ class Extracts(Resource):
             extracts = [
                         {
                           "id": extract.id,
-                          "extract_filepath": extract.extract_filepath,
+                          "extract_filepath": extract.filepath,
                           "created_at": extract.created_at,
-                          "topicfile_startstamp": extract.topicfile_startstamp,
-                          "topicfile_endstamp": extract.topicfile_endstamp,
+                          "startstamp": extract.startstamp,
+                          "endstamp": extract.endstamp,
                           "deleted": extract.deleted,
-                          "itemfiles": [
+                          "items": [
                                         item.id
-                                        for item in extract.itemfiles
+                                        for item in extract.items
                                        ],
-                          "topicfile": extract.topicfile.id
+                          "topic": extract.topic.id
                           }
                         for extract in extracts
                        ]
@@ -395,18 +396,17 @@ class Extract(Resource):
                    .one_or_none())
         if extract:
             extract = {
-
                           "id": extract.id,
-                          "extract_filepath": extract.extract_filepath,
+                          "filepath": extract.filepath,
                           "created_at": extract.created_at,
-                          "topicfile_startstamp": extract.topicfile_startstamp,
-                          "topicfile_endstamp": extract.topicfile_endstamp,
+                          "startstamp": extract.startstamp,
+                          "endstamp": extract.endstamp,
                           "deleted": extract.deleted,
-                          "itemfiles": [
+                          "items": [
                                         item.id
-                                        for item in extract.itemfiles
-                                       ],
-                          "topicfile": extract.topicfile.id
+                                        for item in extract.items
+                                   ],
+                          "topic": extract.topic.id
                       }
             return extract
 
@@ -429,6 +429,7 @@ class ExtractParent(Resource):
                 topic = {
 
                             'id': topic.id,
+                            'youtube_id': topic.youtube_id,
                             'filepath': topic.filepath,
                             'downloaded': topic.downloaded,
                             'deleted': topic.deleted,
@@ -441,10 +442,13 @@ class ExtractParent(Resource):
                             'average_rating': topic.average_rating,
                             'cur_timestamp': topic.cur_timestamp,
                             'created_at': topic.created_at,
+                            'progress': topic.progress,
+                            'url': topic.url,
+                            'channel': topic.channel,
                             'transcript': topic.transcript,
-                            'extractfiles': [
+                            'extracts': [
                                                extract.id
-                                               for extract in topic.extractfiles
+                                               for extract in topic.extracts
                                             ],
 
                             'yttags': [
@@ -487,7 +491,7 @@ class Item(Resource):
                             'deleted': item.deleted,
                             'cloze_startstamp': item.cloze_startstamp,
                             'cloze_stopstamp': item.cloze_endstamp,
-                            'extractfile': item.extractfile.id
+                            'extract': item.extract.id
                         }
 
                         for item in items
@@ -510,23 +514,21 @@ class ItemParent(Resource):
                 .one_or_none())
 
         if item:
-            extract = item.extractfile
+            extract = item.extract
             extract = {
                           "id": extract.id,
-                          "extract_filepath": extract.extract_filepath,
+                          "extract_filepath": extract.filepath,
                           "created_at": extract.created_at,
-                          "topicfile_startstamp": extract.topicfile_startstamp,
-                          "topicfile_endstamp": extract.topicfile_endstamp,
+                          "startstamp": extract.startstamp,
+                          "endstamp": extract.endstamp,
                           "deleted": extract.deleted,
-                          "itemfiles": [
+                          "items": [
                                         item.id
-                                        for item in extract.itemfiles
+                                        for item in extract.items
                                        ],
-                          "topicfile": extract.topicfile.id
+                          "topic": extract.topic.id
                       }
             return extract
-
-
 
 
 if __name__ == "__main__":

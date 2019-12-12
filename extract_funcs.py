@@ -11,9 +11,9 @@ from models import ExtractFile, ItemFile, session
 
 def cloze_processor(item):
     # the parent extract
-    extract = item.extractfile
-    extract_fp = extract.extract_filepath
-    extract_length = extract.topicfile_endstamp - extract.topicfile_startstamp
+    extract = item.extract
+    extract_fp = extract.filepath
+    extract_length = extract.endstamp - extract.startstamp
     cloze_start = item.cloze_startstamp
     cloze_end = item.cloze_endstamp
     # beep length = length of the cloze
@@ -23,7 +23,6 @@ def cloze_processor(item):
     filename = os.path.basename(extract_fp)
     filename, ext = os.path.splitext(filename)
 
-    # TODO Use the rowid of ItemFile to give each a unique name?
     question_fp = os.path.join(QUESTIONFILES_DIR,
                               (filename + "-" +
                                "QUESTION" + "-" +
@@ -56,7 +55,7 @@ def cloze_processor(item):
             '[0:a]atrim=' + str(cloze_start) + ":" + str(cloze_end) + "[cloze]" + ";" + \
             # Cut the end of the extract after the cloze
             '[0:a]atrim=' + str(cloze_end) + ":" + str(extract_length) + "[end]" + ";" + \
-            # concatenate the files and
+            # concatenate the files
             # [1:0] is the sine wave
             '[beg][1:0][end]concat=n=3:v=0:a=1[question]',
             '-map',

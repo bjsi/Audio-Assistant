@@ -35,7 +35,7 @@ while True:
                 .filter_by(filepath=filepath)
                 .one_or_none())
         if file:
-            db_timestamp = file.cur_timestamp 
+            db_timestamp = file.cur_timestamp
             if cur_timestamp > db_timestamp:
                 file.cur_timestamp = cur_timestamp
                 session.commit()
