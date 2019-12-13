@@ -1,18 +1,18 @@
 import webvtt
 import os
 import time
-from models import *
+from Models.models import session, ExtractFile, TOPICFILES_DIR
 from config import *
 
 def vtt_to_text(subs_file):
     vtt = webvtt.read(subs_file)
     transcript = ""
-    
+
     lines = []
     for line in vtt:
         # strip newlines
         # split string if newline present in the middle
-        # add lines to an array
+        # add lines to lines array
         lines.extend(line.text.strip().splitlines())
 
     previous = None
@@ -26,14 +26,14 @@ def vtt_to_text(subs_file):
 
 
 def find_within_range(start, end, subs_file):
-    # Returns captions within between a start and 
+    # Returns captions within between a start and
     # end timestamp
 
     # Takes seconds and converts into %H:%M:%S format
     # Works up to 24hrs
     start = time.strftime("%H:%M:%S", time.gmtime(int(start)))
     end = time.strftime("%H:%M:%S", time.gmtime(int(end)))
-    
+
     vtt = webvtt.read(subs_file)
     transcript = ""
     lines = []
@@ -52,8 +52,11 @@ def find_within_range(start, end, subs_file):
 
 
 def update_extract_table():
-    # Check if there exists a subsfile first
-    extracts = session.query(ExtractFile).filter_by(extract_transcript=None).all()
+    # Check if there exists a subs file first
+    extracts = (session
+                .query(ExtractFile)
+                .filter_by(extract_transcript=None)
+                .all())
     if extracts:
         for extract in extracts:
             start = extract.topicfile_startstamp
@@ -62,8 +65,6 @@ def update_extract_table():
             subsfile = os.path.join(
                     TOPICFILES_DIR,
                     os.path.splitext(os.path.basename(filepath))[0] + ".en.vtt")
-
             transcript = find_within_range(start, end, subsfile)
             extract.extract_transcript = transcript
-
             session.commit()

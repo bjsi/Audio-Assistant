@@ -1,13 +1,11 @@
 import youtube_dl
-import sys
 import os
 import logging
 import logging.config
 import yaml
-import json
-from models import *
-from config import *
-from transcript_funcs import vtt_to_text
+from Models.models import TopicFile, session, YoutubeTag
+from config import TOPICFILES_DIR, ARCHIVE_FILE
+from .transcript_funcs import vtt_to_text
 
 
 # with open('logging.yaml', 'r') as f:
@@ -26,18 +24,17 @@ def finished_hook(target):
         with youtube_dl.YoutubeDL({}) as ydl:
             info = ydl.extract_info(vid_id, download=False)
 
-        title           =   info['title']
-        youtube_id      =   info['id']
-        duration        =   info['duration']
-        uploader        =   info['uploader']
-        uploader_id     =   info['uploader_id']
-        thumbnail_url   =   info['thumbnail']
-        upload_date     =   info['upload_date']
-        view_count      =   info['view_count']
-        like_count      =   info['like_count']
-        dislike_count   =   info['dislike_count']
-        average_rating  =   info['average_rating']
-
+        title = info['title']
+        youtube_id = info['id']
+        duration = info['duration']
+        uploader = info['uploader']
+        uploader_id = info['uploader_id']
+        thumbnail_url = info['thumbnail']
+        upload_date = info['upload_date']
+        view_count = info['view_count']
+        like_count = info['like_count']
+        dislike_count = info['dislike_count']
+        average_rating = info['average_rating']
 
         file = TopicFile(filepath=filepath,
                          title=title,
@@ -62,7 +59,6 @@ def finished_hook(target):
         if os.path.exists(subs_file):
             transcript = vtt_to_text(subs_file)
             file.transcript = transcript
-
 
         # TODO Term extraction and add to my_tags
         # Basically:
@@ -93,7 +89,7 @@ ydl_opts = {
         'ignoreerrors': True,
         # output format
         # u'%(playlist_index)s-%(title)s.%(ext)s'
-        'outtmpl': os.path.join(TOPICFILES_DIR,'%(id)s.%(ext)s'),
+        'outtmpl': os.path.join(TOPICFILES_DIR, '%(id)s.%(ext)s'),
         # --add-metadata
         'max_downloads': 1,
 }

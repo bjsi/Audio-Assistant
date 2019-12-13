@@ -151,7 +151,8 @@ class ExtractFile(Base):
         return None
 
     def __repr__(self) -> str:
-        return '<ExtractFile: filepath=%r startstamp=%r endstamp=%r length=%r>' % (self.filepath, self.startstamp, self.endstamp, self.length)
+        return '<ExtractFile: filepath=%r startstamp=%r endstamp=%r length=%r>' % \
+                (self.filepath, self.startstamp, self.endstamp, self.length)
 
 
 class ItemFile(Base):
@@ -183,7 +184,8 @@ class ItemFile(Base):
         return None
 
     def __repr__(self) -> str:
-        return '<ItemFile: question=%r cloze=%r>' % (self.question_filepath, self.cloze_filepath)
+        return '<ItemFile: question=%r cloze=%r>' % \
+                (self.question_filepath, self.cloze_filepath)
 
 
 class Activity(Base):
@@ -204,7 +206,8 @@ class Activity(Base):
                          back_populates="activities")
 
     def __repr__(self):
-        return "<Activity: activity=%r timestamp=%r>" % (self.activity, self.timestamp)
+        return "<Activity: activity=%r timestamp=%r>" % \
+                (self.activity, self.timestamp)
 
 
 class YoutubeTag(Base):

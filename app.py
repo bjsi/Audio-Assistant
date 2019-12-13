@@ -1,5 +1,5 @@
-from AudioAssistant import AudioAssistant
-from BluetoothDevices import BTDevice
+from Queue.Controller import Controller
+from Bluetooth.Device import BTDevice
 from config import CONTROLLER, HEADPHONES
 from select import select
 
@@ -15,23 +15,22 @@ def main_loop():
         for fd in r:
             for event in controller.devices[fd].read():
                 if event.value == 1:
-                    if event.code in audio_assistant.active_keys:
-                        audio_assistant.active_keys[event.code]()
+                    if event.code in C.active_keys:
+                        C.active_keys[event.code]()
 
 
 if __name__ == "__main__":
-    audio_assistant = AudioAssistant()
+    C = Controller()
     headphones = BTDevice(CONTROLLER['address'],
-                 CONTROLLER['name'])
+                          CONTROLLER['name'])
     controller = BTDevice(HEADPHONES['address'],
-                 HEADPHONES['name'],
-                 CONTROLLER['input_devices'],
-                 CONTROLLER['keys'])
+                          HEADPHONES['name'],
+                          CONTROLLER['input_devices'],
+                          CONTROLLER['keys'])
 
     # TODO Test this
     if controller.bt_connect() and headphones.bt_connect():
-        audio_assistant.load_global_topics()
-        audio_assistant.seek_to_cur_timestamp()
+        C.get_global_topics()
         try:
             main_loop()
         except (PermissionError, OSError):

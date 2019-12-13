@@ -53,7 +53,7 @@ def positive(func):
 
 
 def load(func):
-    """ 
+    """
     Makes a bing sound. Used for deleting items and extracts
     """
     def wrapper(*args, **kwargs):

@@ -1,7 +1,7 @@
 from mpd import MPDClient
 import time
 import os
-from typing import Iterable, Dict, Union
+from typing import Dict
 from config import HOST
 from config import PORT
 from config import AUDIOFILES_BASEDIR
@@ -27,7 +27,6 @@ class Mpd(object):
         self.host = HOST if HOST else "localhost"
         self.port = PORT if PORT else 6060
         self.client = MPDClient()
-        self.headphones_connected = False
 
     @contextmanager
     def connection(self):
@@ -35,11 +34,6 @@ class Mpd(object):
         """Create a temporary connection to the mpd
         client to execute a command and immediately
         disconnect
-
-        :args:
-
-        :returns: TODO
-
         """
         try:
             self.client.connect(self.host, self.port)
@@ -66,9 +60,9 @@ class Mpd(object):
         with self.connection():
             self.remove_stop_state()
             self.client.pause()
+        print("Play")
 
-    def current_song(self) -> Dict[str, Union[str, float]]:
-        # TODO check docstring formatting for dicts
+    def current_song(self) -> Dict:
         """Get the currently playing song
         :returns: dict containing relative filepath,
         absolute filepath and time elapsed in seconds.miliseconds.
@@ -85,26 +79,25 @@ class Mpd(object):
             song_info = {'relative_fp': relative_fp,
                          'absolute_fp': absolute_fp,
                          'elapsed': elapsed}
-
             return song_info
 
     def previous(self):
         """Play the previous track
         :returns: TODO
-
         """
         with self.connection():
             self.remove_stop_state()
             self.client.previous()
+        print("Previous")
 
     def next(self):
         """Play the next track
         :returns: TODO
-
         """
         with self.connection():
             self.remove_stop_state()
             self.client.next()
+        print("Next")
 
     def seek_forward(self):
         """An improvement on the seeking command from
@@ -118,6 +111,7 @@ class Mpd(object):
             cur_timestamp = float(status.get('elapsed', 0.0))
             seek_to = cur_timestamp + 6
             self.client.seekcur(seek_to)
+        print("Seek forward")
 
     def seek_backward(self):
         """An improvement on the seeking command from
@@ -133,6 +127,7 @@ class Mpd(object):
             if seek_to < 0:
                 return
             self.client.seekcur(seek_to)
+        print("Seek backward")
 
     def volume_up(self):
         """Increase the volume
@@ -147,6 +142,7 @@ class Mpd(object):
             if new_vol > 100:
                 return
             self.client.setvol(new_vol)
+        print("Volume up")
 
     def volume_down(self):
         """Decrease the volume
@@ -161,6 +157,7 @@ class Mpd(object):
             if new_vol < 0:
                 return
             self.client.setvol(new_vol)
+        print("Volume down")
 
     def stutter_forward(self):
         """Seek forward frame-by-frame
@@ -176,6 +173,7 @@ class Mpd(object):
             self.client.pause(0)
             time.sleep(0.2)
             self.client.pause(1)
+        print("Stutter forward")
 
     def stutter_backward(self):
         """Seek backward frame-by-frame
@@ -192,3 +190,4 @@ class Mpd(object):
             self.client.pause(0)
             time.sleep(0.2)
             self.client.pause(1)
+        print("Stutter backward")

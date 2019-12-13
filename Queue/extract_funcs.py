@@ -1,13 +1,9 @@
 import subprocess
 from subprocess import DEVNULL
-from config import *
+from config import QUESTIONFILES_DIR
 import os
-from models import ExtractFile, ItemFile, session
+from Models.models import ExtractFile, ItemFile, session
 
-
-# TODO
-# Change the database model to include ItemFile
-# Add a function to the extract keys to load a local item queue
 
 def cloze_processor(item):
     # the parent extract
@@ -73,10 +69,10 @@ def cloze_processor(item):
 
 
 def get_items():
-    items  = (session
-              .query(ItemFile)
-              .filter(ItemFile.cloze_endstamp != None)
-              .all())
+    items = (session
+             .query(ItemFile)
+             .filter(ItemFile.cloze_endstamp != None)
+             .all())
     if items:
         print("Items:")
         print(items)

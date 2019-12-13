@@ -16,8 +16,8 @@ class BTDevice(object):
         self.name = name
         if input_devices:
             self.input_devices = map(InputDevice, input_devices)
-            self.devices = { device.fd: device
-                             for device in self.input_devices }
+            self.devices = {device.fd: device
+                            for device in self.input_devices}
         self.connected = False
 
     def bt_connect(self, attempts=5) -> bool:
