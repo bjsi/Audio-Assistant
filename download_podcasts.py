@@ -3,9 +3,9 @@ import os
 import logging
 import logging.config
 import yaml
-from Models.models import TopicFile, session, YoutubeTag
+from models import TopicFile, session, YoutubeTag
 from config import TOPICFILES_DIR, ARCHIVE_FILE
-from .transcript_funcs import vtt_to_text
+from transcript_funcs import vtt_to_text
 
 
 # with open('logging.yaml', 'r') as f:

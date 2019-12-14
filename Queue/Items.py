@@ -1,7 +1,7 @@
 import os
 from config import QUESTIONFILES_DIR
 from MPD.MpdBase import Mpd
-from Models.models import ItemFile, session
+from models import ItemFile, session
 from config import (KEY_X,
                     KEY_B,
                     KEY_Y,
@@ -91,6 +91,10 @@ class ItemQueue(Mpd, object):
         print("Playlist:", self.queue)
         print("Clozing:", self.clozing)
         print("Recording:", self.recording)
+    
+    # TODO
+    def delete_item(self):
+        pass
 
 
 if __name__ == "__main__":

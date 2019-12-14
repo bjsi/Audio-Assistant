@@ -1,7 +1,7 @@
 import webvtt
 import os
 import time
-from Models.models import session, ExtractFile, TOPICFILES_DIR
+from models import session, ExtractFile
 from config import *
 
 def vtt_to_text(subs_file):

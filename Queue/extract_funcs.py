@@ -2,7 +2,7 @@ import subprocess
 from subprocess import DEVNULL
 from config import QUESTIONFILES_DIR
 import os
-from Models.models import ExtractFile, ItemFile, session
+from models import ExtractFile, ItemFile, session
 
 
 def cloze_processor(item):

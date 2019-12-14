@@ -1,5 +1,5 @@
 from .Topics import TopicQueue
-from Models.models import session, TopicFile, ExtractFile, ItemFile
+from models import session, TopicFile, ExtractFile, ItemFile
 from .Extracts import ExtractQueue
 from .Items import ItemQueue
 from config import (KEY_X,
@@ -43,6 +43,9 @@ class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
         self.active_keys = {}
 
         # Keys
+        # TODO 
+        # extend the underlying dicts with
+        # inter-queue methods rather than writing them twice
         self.extracting_keys = {
                 KEY_X:      self.toggle,
                 KEY_B:      self.previous,
@@ -58,8 +61,8 @@ class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
 
         self.topic_keys = {
                 KEY_X:      self.toggle,
-                KEY_B:      self.play_previous,
-                KEY_Y:      self.play_next,
+                KEY_B:      self.prev_topic,
+                KEY_Y:      self.next_topic,
                 KEY_RIGHT:  self.seek_forward,
                 KEY_LEFT:   self.seek_backward,
                 KEY_DOWN:   self.get_topic_extracts,  # <-- inter-queue method
@@ -90,8 +93,8 @@ class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
     def load_local_extract_options(self):
         """ Sets the state options for local extract queue """
         with self.connection():
-            self.client.repeat = 1
-            self.client.single = 1
+            self.client.repeat(1)
+            self.client.single(1)
         self.clozing = False
         self.active_keys = self.extracting_keys
         self.queue = "local extract queue"
@@ -147,6 +150,8 @@ class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
                 topics = (session
                           .query(TopicFile)
                           .filter_by(deleted=False)
+                          # TODO is this what i want?
+                          .filter_by(archived=False)
                           .all())
                 topics = [
                             self.abs_to_rel_topic(topic.filepath)
@@ -154,6 +159,7 @@ class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
                          ]
                 if parent_rel_fp in topics:
                     topics.remove(parent_rel_fp)
+                    topics.insert(0, parent_rel_fp)
                 else:
                     topics.insert(0, parent_rel_fp)
                 self.load_playlist(topics)
@@ -195,8 +201,8 @@ class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
 
     def load_local_item_options(self):
         with self.connection():
-            self.client.repeat = 1
-            self.client.single = 1
+            self.client.repeat(1)
+            self.client.single(1)
         self.active_keys = self.item_keys
         self.queue = "local item queue"
         self.clozing = False

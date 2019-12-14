@@ -2,7 +2,7 @@ import os
 import mpd
 from config import EXTRACTFILES_DIR
 from MPD.MpdBase import Mpd
-from Models.models import ExtractFile, ItemFile, session
+from models import ExtractFile, ItemFile, session
 from .extract_funcs import cloze_processor
 from config import (KEY_X,
                     KEY_B,
@@ -49,8 +49,8 @@ class ExtractQueue(Mpd, object):
                 KEY_RIGHT:  self.stutter_forward,
                 KEY_LEFT:   self.stutter_backward,
                 KEY_UP:     self.get_extract_topic,
-                KEY_DOWN:   self.load_extract_items,
-                GAME_X:     self.archive_extracts
+                KEY_DOWN:   self.get_extract_items,
+                GAME_X:     self.archive_extract
         }
 
         self.clozing_keys = {
@@ -173,6 +173,10 @@ class ExtractQueue(Mpd, object):
                 print("Not currently clozing")
         else:
             print("Current queue is not an extract queue")
+    
+    # TODO
+    def archive_extract(self):
+        pass
 
 
 if __name__ == "__main__":

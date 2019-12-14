@@ -17,7 +17,7 @@ from config import (KEY_X,
                     GAME_X,
                     GAME_B)
 from MPD.MpdBase import Mpd
-from Models.models import TopicFile, ExtractFile, session
+from models import TopicFile, ExtractFile, session
 from Sounds.sounds import speak
 
 
@@ -47,8 +47,8 @@ class TopicQueue(Mpd, object):
         # Keys
         self.topic_keys = {
                 KEY_X:      self.toggle,
-                KEY_B:      self.play_previous,
-                KEY_Y:      self.play_next,
+                KEY_B:      self.prev_topic,
+                KEY_Y:      self.next_topic,
                 KEY_RIGHT:  self.seek_forward,
                 KEY_LEFT:   self.seek_backward,
                 # KEY_DOWN:   self.load_topic_extracts, <-- inter-queue
@@ -86,14 +86,13 @@ class TopicQueue(Mpd, object):
         with self.connection():
             self.client.repeat(1)
             self.client.single(0)
+        self.active_keys = {}
         self.active_keys = self.topic_keys
         self.current_playlist = "global topic queue"
         self.recording = False
         print("Topic options loaded")
         print("Keys:")
         print(self.active_keys)
-        print("Repeat:", self.repeat)
-        print("Single:", self.single)
         print("Playlist:", self.current_playlist)
 
     def load_recording_options(self):
@@ -106,8 +105,6 @@ class TopicQueue(Mpd, object):
         print("Recording options loaded")
         print("Keys:")
         print(self.active_keys)
-        print("Repeat:", self.repeat)
-        print("Single:", self.single)
         print("Playlist:", self.current_playlist)
 
     def get_global_topics(self):
