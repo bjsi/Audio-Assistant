@@ -8,7 +8,9 @@ from sqlalchemy import (Column, Integer,
                         Float, UniqueConstraint)
 import datetime
 from sqlalchemy.orm import sessionmaker
-from config import *
+# TODO Change this
+from config import DATABASE_URI
+# TODO Add more specific typing
 from typing import Optional
 
 
@@ -59,6 +61,21 @@ my_topicfile_tags = Table('my_topicfile_tags', Base.metadata,
                           UniqueConstraint('topic_id', 'mytag_id'))
 
 
+##############################
+# Topics, Extracts and Items #
+##############################
+
+def check_progress(context):
+    """ Runs on the archived Column each time the Topic table is updated
+    If progress > 90% set archived to True """
+    cur_timestamp = context.get_current_parameters()['cur_timestamp']
+    duration = context.get_current_parameters()['duration']
+    if (cur_timestamp / duration > 0.9):
+        return True
+    else:
+        return False
+
+
 class TopicFile(Base):
     """ Topics are full youtube audio files
     Evevry ExtractFile is a descendant of
@@ -69,6 +86,11 @@ class TopicFile(Base):
     id = Column(Integer, primary_key=True)
     filepath = Column(String, nullable=False, unique=True)
     downloaded = Column(Boolean, nullable=False)
+    # Can be set by the user at runtime
+    # Can be set automatically if completion > 90%
+    archived = Column(Boolean, default=False, onupdate=check_progress)
+    # If no outstanding extracts and archived is True,
+    # Topic will be deleted and deleted will be set to 1
     deleted = Column(Boolean, default=False)
     youtube_id = Column(String)
     title = Column(String)
@@ -90,8 +112,8 @@ class TopicFile(Base):
     extracts = relationship("ExtractFile",
                             back_populates="topic")
     # One to many File |-< Activity
-    activities = relationship("Activity",
-                              back_populates="topic")
+    events = relationship("TopicEvent",
+                          back_populates="topic")
     # Many to many File >-< Tag
     yttags = relationship('YoutubeTag',
                           secondary=yt_topicfile_tags,
@@ -133,6 +155,10 @@ class ExtractFile(Base):
     startstamp = Column(Float, nullable=False)  # Seconds.miliseconds
     endstamp = Column(Float)  # Seconds.miliseconds
     transcript = Column(Text, nullable=True)
+    # Can be set by the user during runtime
+    archived = Column(Boolean, default=False)
+    # Archived extracts are deleted if they have no outstanding child items
+    # Archived extracts with child items are deleted after export
     deleted = Column(Boolean, default=False)
 
     # One to one ExtractFile (child) |-| TopicFile (parent)
@@ -142,6 +168,10 @@ class ExtractFile(Base):
     # One to many ExtractFile |-< ItemFiles
     items = relationship("ItemFile",
                          back_populates="extract")
+
+    # One to many ExtractFile |-< ExtractEvent
+    events = relationship("ExtractEvent",
+                          back_populates="extract")
 
     @property
     def length(self) -> Optional[float]:
@@ -168,6 +198,7 @@ class ItemFile(Base):
     created_at = Column(DateTime, default=datetime.datetime.now())
     question_filepath = Column(String, unique=True)
     cloze_filepath = Column(String, unique=True)
+    # Set to True either during runtime or after export
     deleted = Column(Boolean, default=False)
     cloze_startstamp = Column(Float)  # seconds.miliseconds
     cloze_endstamp = Column(Float)  # seconds.miliseconds
@@ -175,6 +206,10 @@ class ItemFile(Base):
     # One to one ItemFile (child) |-| ExtractFile (parent)
     extract_id = Column(Integer, ForeignKey('extractfiles.id'))
     extract = relationship("ExtractFile", back_populates="items")
+
+    # One to many ItemFile |-< ItemEvent
+    events = relationship("ItemEvent",
+                          back_populates="item")
 
     @property
     def length(self) -> Optional[float]:
@@ -187,27 +222,76 @@ class ItemFile(Base):
         return '<ItemFile: question=%r cloze=%r>' % \
                 (self.question_filepath, self.cloze_filepath)
 
+###################
+# Activity Tables #
+###################
 
-class Activity(Base):
+
+class TopicEvent(Base):
     # The mpc_heartbeat script inserts into this table
 
-    __tablename__ = "activities"
+    __tablename__ = "topicevents"
 
     id = Column(Integer, primary_key=True)
-    activity = Column(String, nullable=False)  # play, pause
-    created_at = Column(DateTime, default=datetime.datetime.now())
-    duration = Column(Float, default=0)
+    event = Column(String, nullable=False)  # play/pause/stop (mpd status)
+    timestamp = Column(Float, nullable=False)  # seconds.miliseconds
+    created_at = Column(DateTime, default=datetime.datetime.utcnow())
+    duration = Column(Float, default=0)  # seconds.miliseconds
 
-    # Relationships
-    # Allow recording of item / extract activity as
-    # well as topics
+    # Many to One TopicEvent >-| TopicFile
     topic_id = Column(Integer, ForeignKey('topicfiles.id'))
     topic = relationship("TopicFile",
-                         back_populates="activities")
+                         back_populates="events")
 
     def __repr__(self):
-        return "<Activity: activity=%r timestamp=%r>" % \
-                (self.activity, self.timestamp)
+        return "<TopicEvent: event=%r created_at=%r duration=%r>" % \
+                (self.event, self.timestamp, self.duration)
+
+
+class ExtractEvent(Base):
+    # The mpc_heartbeat script inserts into this table
+
+    __tablename__ = "extractevents"
+
+    id = Column(Integer, primary_key=True)
+    event = Column(String, nullable=False)  # play, pause
+    timestamp = Column(Float, nullable=False)  # seconds.miliseconds
+    created_at = Column(DateTime, default=datetime.datetime.utcnow())
+    duration = Column(Float, default=0)  # seconds.miliseconds
+
+    # Many to one ExtractEvent >-| ExtractFile
+    extract_id = Column(Integer, ForeignKey('extractfiles.id'))
+    extract = relationship("ExtractFile",
+                           back_populates="events")
+
+    def __repr__(self):
+        return "<ExtractEvent: event=%r created_at=%r duration=%r>" % \
+                (self.event, self.timestamp, self.duration)
+
+
+class ItemEvent(Base):
+    # The mpc_heartbeat script inserts into this table
+
+    __tablename__ = "itemevents"
+
+    id = Column(Integer, primary_key=True)
+    event = Column(String, nullable=False)  # play/pause/stop (mpd state)
+    timestamp = Column(Float, nullable=False)  # seconds.miliseconds
+    created_at = Column(DateTime, default=datetime.datetime.utcnow())
+    duration = Column(Float, default=0)  # seconds.miliseconds
+
+    # Many to one ItemEvent >-| ItemFile
+    item_id = Column(Integer, ForeignKey('itemfiles.id'))
+    item = relationship("ItemFile",
+                        back_populates="events")
+
+    def __repr__(self):
+        return "<ItemEvent: event=%r created_at=%r duration=%r>" % \
+                (self.event, self.timestamp, self.duration)
+
+###########
+# Tagging #
+###########
 
 
 class YoutubeTag(Base):
@@ -243,6 +327,11 @@ class MyTag(Base):
 
     def __repr__(self):
         return '<MyTag: tag=%r>' % (self.tag)
+
+
+###########
+# Logging #
+###########
 
 
 class Log(Base):

@@ -139,40 +139,6 @@ class TopicQueue(Mpd, object):
         else:
             print("No outstanding topics")
 
-    def get_extract_topic(self):
-        """Query and load the parent topic of the current extract
-        Seeks to the current timestamp of the parent topic after loading
-        """
-        cur_song = self.current_song()
-        filepath = cur_song['absolute_fp']
-        extract = (session
-                   .query(ExtractFile)
-                   .filter_by(filepath=filepath)
-                   .one_or_none())
-        if extract:
-            parent = extract.topic
-            if parent.deleted is False:
-                parent_rel_fp = self.abs_to_rel_topic(parent.filepath)
-                topics = (session
-                          .query(TopicFile)
-                          .filter_by(deleted=False)
-                          .all())
-                topics = [
-                            self.abs_to_rel_topic(topic.filepath)
-                            for topic in topics
-                         ]
-                if parent_rel_fp in topics:
-                    topics.remove(parent_rel_fp)
-                else:
-                    topics.insert(0, parent_rel_fp)
-                self.load_global_topics(topics)
-                with self.connection():
-                    self.client.seekcur(parent.cur_timestamp)
-            else:
-                print("Parent is deleted!")
-        else:
-            print("Couldn't find extract in DB")
-
     def start_recording(self):
         cur_song = self.current_song()
         basename = os.path.basename(cur_song['absolute_fp'])

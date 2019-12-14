@@ -30,18 +30,22 @@ class ItemQueue(Mpd, object):
     def __init__(self):
 
         Mpd.__init__(self)
+
+        # State
         self.current_playlist = "local item queue"
         self.active_keys = {}
+        self.clozing = False
+        self.recording = False
+
+        # Keys
         self.item_keys = {
                 KEY_X:      self.toggle,
                 KEY_UP:     self.get_item_extract,
                 KEY_B:      self.previous,
                 KEY_Y:      self.next,
-                KEY_A:      self.load_global_topics,
+                # KEY_A:      self.load_global_topics,  # <---
                 GAME_X:     self.delete_item
         }
-        self.clozing = False
-        self.recording = False
 
         @staticmethod
         def rel_to_abs_item(filepath: str) -> str:
@@ -62,17 +66,17 @@ class ItemQueue(Mpd, object):
             rel_fp = os.path.join(directory, filename)
             return rel_fp
 
-        def load_local_items(self, items: Optional[List[str]]):
-            """ Load the item question files from the current extract """
+        def get_global_items(self):
+            """ Load outstanding items """
+            items = (session
+                     .query(ItemFile)
+                     .filter_by(deleted=False)
+                     .all())
             if items:
-                with self.connection():
-                    self.client.clear()
-                    for file in items:
-                        self.client.add(file)
+                self.load_playlist(items)
                 self.load_item_options()
-                print(items)
             else:
-                print("Error loading local item queue - No items")
+                print("Error loading global item queue - No items")
 
         def load_item_options(self):
             with self.connection():
@@ -88,23 +92,3 @@ class ItemQueue(Mpd, object):
             print("Playlist:", self.current_playlist)
             print("Clozing:", self.clozing)
             print("Recording:", self.recording)
-
-        def load_extract_items(self):
-            """ Load the child items of the current extract """
-            cur_song = self.current_song()
-            filepath = cur_song['absolute_fp']
-            extract = (session
-                       .query(ExtractFile)
-                       .filter_by(filepath=filepath)
-                       .one_or_none())
-            if extract:
-                items = extract.items
-                items = [
-                            self.abs_to_rel_item(item.question_filepath)
-                            for item in items
-                            if not item.deleted
-                        ]
-                print(items)
-                load_local_items(items)
-            else:
-                print("No extracts")

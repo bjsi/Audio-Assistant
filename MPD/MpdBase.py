@@ -1,7 +1,7 @@
 from mpd import MPDClient
 import time
 import os
-from typing import Dict
+from typing import Dict, List
 from config import HOST
 from config import PORT
 from config import AUDIOFILES_BASEDIR
@@ -41,6 +41,21 @@ class Mpd(object):
         finally:
             self.client.close()
             self.client.disconnect()
+
+    def load_playlist(self, playlist: List[str]):
+        """ Loads a playlist
+        :playlist: An iterable of audio files,
+        relative to the mpd base directory
+        """
+        if playlist:
+            with self.connection():
+                self.client.clear()
+                for file in playlist:
+                    self.client.add(file)
+            print("Playlist loaded:")
+            print(playlist)
+        else:
+            print("Error loading playlist - No files")
 
     def remove_stop_state(self):
         """MPD state can be play, pause or stop.
