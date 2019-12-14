@@ -29,29 +29,31 @@ class TopicQueue(Mpd, object):
 
     def __init__(self):
         """
-        :outstanding_topics: List. Topics less than 90% complete
-        :archived_topics: List. Archived topics
-        :current_playlist: String. Name of the current playlist
+        :queue: String. Name of the current playlist
         :active_keys: Dict[Keycode constants: method names]
+        :recording: Boolean. True if currently recording
+        :clozing: Boolean. True if currently clozing
         :topic_keys: Dict[Keycode constants: method names]
-        :repeat: Int 0/1. 1 repeat track / playlist
-        :single: Int 0/1. 1 play a single track
         """
+
         Mpd.__init__(self)
-        self.current_playlist = "global topic queue"
+
+        # State
+        self.queue = "global topic queue"
         self.active_keys = {}
         self.recording = False
         self.clozing = False
 
+        # Keys
         self.topic_keys = {
                 KEY_X:      self.toggle,
                 KEY_B:      self.play_previous,
                 KEY_Y:      self.play_next,
                 KEY_RIGHT:  self.seek_forward,
                 KEY_LEFT:   self.seek_backward,
-                KEY_DOWN:   self.load_topic_extracts,
+                # KEY_DOWN:   self.load_topic_extracts, <-- inter-queue
                 KEY_OK:     self.start_recording,
-                KEY_A:      self.load_global_extracts,
+                # KEY_A:      self.load_global_extracts, <-- inter-queue
                 GAME_X:     self.volume_up,
                 GAME_B:     self.volume_down,
                 # GAME_Y:     self.requires_video
@@ -79,17 +81,6 @@ class TopicQueue(Mpd, object):
         directory = os.path.basename(TOPICFILES_DIR)
         rel_fp = os.path.join(directory, filename)
         return rel_fp
-
-    def load_global_topics(self, topics: Optional[List[str]]):
-        if topics:
-            with self.connection():
-                self.client.clear()
-                for file in topics:
-                    self.client.add(file)
-            self.load_topic_options()
-            print(topics)
-        else:
-            print("Error loading global topic queue")
 
     def load_topic_options(self):
         with self.connection():
@@ -135,7 +126,8 @@ class TopicQueue(Mpd, object):
                         for topic in topics
                      ]
             print("Global topics:")
-            self.load_global_topics(topics)
+            self.load_playlist(topics)
+            self.load_topic_options()
         else:
             print("No outstanding topics")
 
@@ -176,11 +168,7 @@ class TopicQueue(Mpd, object):
         response = child.communicate()[0]
         if child.returncode == 0:
             speak("rec stop")
-            self.active_keys = {}
-            self.active_keys.update(self.topic_keys)
-            self.recording = False
-            with self.connection():
-                self.client.single(0)
+            self.load_topic_options()
             # Get the last inserted extract
             extract = (session
                        .query(ExtractFile)
@@ -205,6 +193,8 @@ class TopicQueue(Mpd, object):
         if topic:
             with self.connection():
                 self.client.seekcur(float(topic.cur_timestamp))
+        else:
+            print("Couldn't find ")
 
     def prev_topic(self):
         self.next()
@@ -233,3 +223,23 @@ class TopicQueue(Mpd, object):
             print("Deleted:", topic)
         else:
             print("Couldn't find topic in DB")
+
+
+if __name__ == "__main__":
+    """ When run as a top-level script, the
+    ExtractQueue can be tested in isolation
+    from TopicQueue and ItemQueue """
+
+    topic_queue = TopicQueue()
+    topic_queue.get_global_topics()
+
+    # Create the main loop
+    while True:
+        r, w, x = select(controller.devices, [], [])
+        for fd in r:
+            for event in controller.devices[fd].read():
+                if event.value == 1:
+                    if event.code in audio_assistant.active_keys:
+                        audio_assistant.active_keys[event.code]()
+
+    # TODO Catch Exceptions

@@ -1,28 +1,19 @@
 import os
-from typing import List, Optional
 import mpd
 from config import EXTRACTFILES_DIR
 from MPD.MpdBase import Mpd
-from Models.models import ExtractFile, TopicFile, ItemFile, session
+from Models.models import ExtractFile, ItemFile, session
 from .extract_funcs import cloze_processor
 from config import (KEY_X,
-                    KEY_A,
                     KEY_B,
                     KEY_Y,
-                    KEY_PWR,
-                    KEY_MENU,
                     KEY_UP,
                     KEY_RIGHT,
                     KEY_LEFT,
                     KEY_DOWN,
                     KEY_OK,
-                    GAME_X,
-                    GAME_A,
-                    GAME_B,
-                    GAME_Y,
-                    GAME_PWR,
-                    GAME_MENU,
-                    GAME_OK)
+                    GAME_X)
+from Sounds.sounds import negative
 
 
 class ExtractQueue(Mpd, object):
@@ -33,16 +24,18 @@ class ExtractQueue(Mpd, object):
 
     def __init__(self):
         """
-        :current_playlist: String. The current playlist
+        :queue: String. The current playlist
         :active_keys: Dict[Keycode constant: method names]
         :recording: Boolean. True if recording
         :clozing: Boolean. True if recording
+        :extracting_keys: Dict[Keycode constant: method names]
+        :clozing_keys: Dict[Keycode constant: method names]
         """
 
         Mpd.__init__(self)
 
         # State
-        self.current_playlist = "global extract queue"
+        self.queue = "global extract queue"
         self.active_keys = {}
         self.recording = False
         self.clozing = False
@@ -87,21 +80,23 @@ class ExtractQueue(Mpd, object):
                     .order_by(ExtractFile.created_at.desc())
                     .all())
         if extracts:
-            print(extracts)
-            extracts = [
-                         self.abs_to_rel_extract(extract.filepath)
-                         for extract in extracts
-                       ]
-            print("Extracts:")
-            print(extracts)
-            self.load_global_extracts(extracts)
+            playlist = []
+            for extract in extracts:
+                rel_fp = self.abs_to_rel_extract(extract.filepath)
+                if self.mpd_recognised(rel_fp):
+                    playlist.append(rel_fp)
+            if playlist:
+                self.load_playlist(playlist)
+                self.load_global_extract_options()
+            else:
+                print("No Items")
         else:
             print("No extracts in DB")
 
     def load_cloze_options(self):
         with self.connection():
-            self.client.repeat = 1
-            self.client.single = 1
+            self.client.repeat(1)
+            self.client.single(1)
         self.clozing = True
         self.recording = False
         self.active_keys = self.cloze_keys
@@ -113,33 +108,21 @@ class ExtractQueue(Mpd, object):
 
     def load_global_extract_options(self):
         with self.connection():
-            self.client.repeat = 1
-            self.client.single = 1
+            self.client.repeat(1)
+            self.client.single(1)
         self.clozing = False
         self.active_keys = self.extracting_keys
-        self.current_playlist = "global extract queue"
+        self.queue = "global extract queue"
         print("Load Global Extract Options:")
         print("Keys:")
         print(self.active_keys)
         print("Clozing:", self.clozing)
         print("Recording:", self.recording)
-        print("Playlist:", self.current_playlist)
-
-    def load_global_extracts(self, extracts: Optional[List[str]]):
-        if extracts:
-            with self.connection():
-                self.client.clear()
-                for file in extracts:
-                    self.client.add(file)
-            self.load_global_extract_options()
-            print(extracts)
-        else:
-            print("Error loading global extract queue - No extracts")
+        print("Playlist:", self.queue)
 
     def start_clozing(self):
         """ Start a cloze deletion on an extract """
-        if self.current_playlist in ["local extract queue",
-                                     "global extract queue"]:
+        if self.queue in ["local extract queue", "global extract queue"]:
             if not self.clozing:
                 cur_song = self.current_song()
                 cur_timestamp = cur_song['elapsed']
@@ -153,16 +136,13 @@ class ExtractQueue(Mpd, object):
                     session.commit()
                     self.load_cloze_options()
                 else:
-                    self.perror("Couldn't find extract {} in DB."
-                                .format(extract),
-                                "start_clozing")
+                    print("Couldn't find extract {} in DB.")
             else:
-                self.perror("Already clozing (self.clozing is True)")
+                print("Already clozing (self.clozing is True)")
 
     def stop_clozing(self):
         """ Stop the current cloze deletion on an extract """
-        if self.current_playlist in ["local extract queue",
-                                     "global extract queue"]:
+        if self.queue in ["local extract queue", "global extract queue"]:
             if self.clozing:
                 cur_song = self.current_song()
                 cur_timestamp = float(cur_song['elapsed'])
@@ -179,7 +159,7 @@ class ExtractQueue(Mpd, object):
                     if last_item.cloze_startstamp < cur_timestamp:
                         last_item.cloze_endstamp = cur_timestamp
                         session.commit()
-                        self.load_extract_keys()
+                        self.load_extracting_keys()
 
                         # Send to the extractor
                         question, cloze = cloze_processor(last_item)
@@ -188,15 +168,11 @@ class ExtractQueue(Mpd, object):
                             last_item.cloze_filepath = cloze
                             session.commit()
                 else:
-                    self.perror("Couldn't find extract {} in DB"
-                                .format(extract),
-                                "stop_clozing")
+                    print("Couldn't find extract {} in DB")
             else:
-                self.perror("Not currently clozing",
-                            "stop_clozing")
+                print("Not currently clozing")
         else:
-            self.perror("Current queue is not an extract queue",
-                        "stop_clozing")
+            print("Current queue is not an extract queue")
 
 
 if __name__ == "__main__":

@@ -1,3 +1,4 @@
+import mpd
 from mpd import MPDClient
 import time
 import os
@@ -41,6 +42,20 @@ class Mpd(object):
         finally:
             self.client.close()
             self.client.disconnect()
+
+    def mpd_recognised(self, filepath: str) -> bool:
+        """ Checks if mpd recognises the file
+        Necessary just after creating a new Extract
+        or Item """
+        with self.connection():
+            try:
+                recognised = self.client.find('file', filepath)
+                if recognised:
+                    return True
+            except mpd.base.CommandError:
+                print("Mpd doesn't recognise {}"
+                      .format(filepath))
+        return False
 
     def load_playlist(self, playlist: List[str]):
         """ Loads a playlist

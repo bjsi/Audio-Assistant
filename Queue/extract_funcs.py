@@ -20,16 +20,16 @@ def cloze_processor(item):
     filename, ext = os.path.splitext(filename)
 
     question_fp = os.path.join(QUESTIONFILES_DIR,
-                              (filename + "-" +
-                               "QUESTION" + "-" +
-                               str(item_id) +
-                               ext))
+                               (filename + "-" +
+                                "QUESTION" + "-" +
+                                str(item_id) +
+                                ext))
 
     cloze_fp = os.path.join(QUESTIONFILES_DIR,
-                           (filename + "-" +
-                            "CLOZE" + "-" +
-                            str(item_id) +
-                            ext))
+                            (filename + "-" +
+                             "CLOZE" + "-" +
+                             str(item_id) +
+                             ext))
 
     # Non-blocking
     subprocess.Popen([
