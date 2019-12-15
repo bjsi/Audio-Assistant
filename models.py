@@ -8,9 +8,7 @@ from sqlalchemy import (Column, Integer,
                         Float, UniqueConstraint)
 import datetime
 from sqlalchemy.orm import sessionmaker
-# TODO Change this
 from config import DATABASE_URI
-# TODO Add more specific typing
 from typing import Optional
 
 
@@ -21,19 +19,16 @@ Session = sessionmaker(bind=engine)
 
 # Many to many association table for youtube tags
 yt_topicfile_tags = Table('yt_topicfile_tags', Base.metadata,
-
                           Column('topic_id',
                                  Integer,
                                  ForeignKey('topicfiles.id'),
                                  primary_key=True,
                                  nullable=False),
-
                           Column('yttag_id',
                                  Integer,
                                  ForeignKey('yttags.id'),
                                  primary_key=True,
                                  nullable=False),
-
                           # Intention: Prevent adding same tag to the same file twice
                           # TODO not working... Might not matter, esp if youtube removes
                           # duplicates automatically
@@ -42,19 +37,16 @@ yt_topicfile_tags = Table('yt_topicfile_tags', Base.metadata,
 
 # Many to many association table for my own tags
 my_topicfile_tags = Table('my_topicfile_tags', Base.metadata,
-
                           Column('topic_id',
                                  Integer,
                                  ForeignKey('topicfiles.id'),
                                  primary_key=True,
                                  nullable=False),
-
                           Column('mytag_id',
                                  Integer,
                                  ForeignKey('mytags.id'),
                                  primary_key=True,
                                  nullable=False),
-
                           # TODO See above
                           # Might not matter if I do a term extraction and then remove duplicates
                           # myself...
@@ -90,7 +82,7 @@ class TopicFile(Base):
     # Can be set automatically if completion > 90%
     archived = Column(Boolean, default=False, onupdate=check_progress)
     # If no outstanding extracts and archived is True,
-    # Topic will be deleted and deleted will be set to 1
+    # Topic will be deleted by a script and deleted will be set to 1
     deleted = Column(Boolean, default=False)
     youtube_id = Column(String)
     title = Column(String)
@@ -123,6 +115,8 @@ class TopicFile(Base):
                           secondary=my_topicfile_tags,
                           back_populates='topics')
 
+    # TODO Should the following be properties?
+
     @property
     def progress(self) -> float:
         """" Returns percentage listened to """
@@ -139,7 +133,7 @@ class TopicFile(Base):
         return "https://youtube.com/channel/" + self.channel_id
 
     def __repr__(self) -> str:
-        return '<TopicFile: title=%r url=%r>' % (self.title, self.url)
+        return '<TopicFile: title=%r id=%r>' % (self.title, self.youtube_id)
 
 
 class ExtractFile(Base):
@@ -155,7 +149,7 @@ class ExtractFile(Base):
     startstamp = Column(Float, nullable=False)  # Seconds.miliseconds
     endstamp = Column(Float)  # Seconds.miliseconds
     transcript = Column(Text, nullable=True)
-    # Can be set by the user during runtime
+    # Set by the user
     archived = Column(Boolean, default=False)
     # Archived extracts are deleted if they have no outstanding child items
     # Archived extracts with child items are deleted after export
@@ -173,6 +167,7 @@ class ExtractFile(Base):
     events = relationship("ExtractEvent",
                           back_populates="extract")
 
+    # TODO Should this be a property
     @property
     def length(self) -> Optional[float]:
         """ Return the length of the extract or None """
@@ -198,7 +193,10 @@ class ItemFile(Base):
     created_at = Column(DateTime, default=datetime.datetime.now())
     question_filepath = Column(String, unique=True)
     cloze_filepath = Column(String, unique=True)
-    # Set to True either during runtime or after export
+    # Set by the user
+    archived = Column(Boolean, default=False)
+    # Archived files deleted by script
+    # Non-archived items archived and deleted after export
     deleted = Column(Boolean, default=False)
     cloze_startstamp = Column(Float)  # seconds.miliseconds
     cloze_endstamp = Column(Float)  # seconds.miliseconds
@@ -211,6 +209,7 @@ class ItemFile(Base):
     events = relationship("ItemEvent",
                           back_populates="item")
 
+    # TODO Should this be a property
     @property
     def length(self) -> Optional[float]:
         """ Return the length of the cloze or none"""

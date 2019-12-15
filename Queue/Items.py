@@ -104,8 +104,9 @@ class ItemQueue(Mpd, object):
 
     def archive_item(self):
         """ Archive the current item.
-        TODO What are the effects of archiving?
-        TODO When is an item deleted """
+        Archived items will be deleted by a script
+        Non-archived items are archived and deleted after export
+        """
         # TODO Log severe error
         assert self.queue in ["local item queue", "global item queue"]
 

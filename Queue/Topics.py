@@ -257,8 +257,9 @@ class TopicQueue(Mpd, object):
 
     def archive_topic(self):
         """ Archive the current topic.
-        TODO What are the effects of archiving?
-        TODO When is a topic deleted
+        Topics should be archived automatically when progress > 90%
+        Archived can also be set to True at runtime
+        Archived topics with no outstanding child extracts will be deleted by a script
         """
         # TODO Log severe error on break
         assert self.queue == "global topic queue"
@@ -275,6 +276,7 @@ class TopicQueue(Mpd, object):
 
         # Archive the Topic
         if topic:
+            # TODO add sound
             topic.archived = 1
             session.commit()
             print("Archived {}".format(topic))

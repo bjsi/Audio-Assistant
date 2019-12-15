@@ -50,7 +50,7 @@ class ExtractQueue(Mpd, object):
                 KEY_LEFT:   self.stutter_backward,
                 KEY_UP:     self.get_extract_topic,
                 KEY_DOWN:   self.get_extract_items,
-                GAME_X:     self.archive_extract
+                GAME_X:     self.archive_extract,
         }
 
         self.clozing_keys = {
@@ -208,8 +208,9 @@ class ExtractQueue(Mpd, object):
 
     def archive_extract(self):
         """ Archive the current extract.
-        TODO What are the effects of archiving
-        TODO When is an extract deleted?
+        Archived extracts will be deleted by a script (not at runtime)
+        if they have no outstanding child items.
+        Achived extracts with outstanding child items are deleted after export
         """
         # TODO Log severe error
         assert self.queue in ["local extract queue", "global extract queue"]
