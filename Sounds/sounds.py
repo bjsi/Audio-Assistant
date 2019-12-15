@@ -2,73 +2,48 @@ import simpleaudio as sa
 import subprocess
 
 
-def negative(func):
+def negative_beep(func):
+    """ Beeps to indicate command failure.
     """
-    Makes a negative sounding beep to indicate command failure
-    """
-    def wrapper(*args, **kwargs):
-        filename = '/home/pi/bin/lecture_assistant/menu-sounds/negative_2.wav'
-        wave_obj = sa.WaveObject.from_wave_file(filename)
-        play_obj = wave_obj.play()
-        func(*args, **kwargs)
-    return wrapper
+    filename = '/home/pi/bin/lecture_assistant/Sounds/negative_2.wav'
+    wave_obj = sa.WaveObject.from_wave_file(filename)
+    wave_obj.play()
 
 
-def click_two(func):
+def click_sound1(func):
+    """ Clicks as feedback when pressing buttons.
     """
-    Makes a click sound. Used for feedback when pressing
-    buttons on the controller
-    """
-    def wrapper(*args, **kwargs):
-        filename = '/home/pi/bin/lecture_assistant/menu-sounds/click_2.wav'
-        wave_obj = sa.WaveObject.from_wave_file(filename)
-        play_obj = wave_obj.play()
-        func(*args, **kwargs)
-    return wrapper
+    filename = '/home/pi/bin/lecture_assistant/Sounds/click_2.wav'
+    wave_obj = sa.WaveObject.from_wave_file(filename)
+    wave_obj.play()
 
 
-def click_one(func):
+def click_sound2(func):
+    """ Clicks as feedback when pressing buttons.
     """
-    Makes a click sound. Used for feedback when pressing
-    buttons on the controller
-    """
-    def wrapper(*args, **kwargs):
-        filename = '/home/pi/bin/lecture_assistant/menu-sounds/click.wav'
-        wave_obj = sa.WaveObject.from_wave_file(filename)
-        play_obj = wave_obj.play()
-        func(*args, **kwargs)
-    return wrapper
+    filename = '/home/pi/bin/lecture_assistant/Sounds/click.wav'
+    wave_obj = sa.WaveObject.from_wave_file(filename)
+    wave_obj.play()
 
 
-def positive(func):
+def positive_beep(func):
+    """ Beeps to indicate command success.
     """
-    Makes a positive sounding beep to indicate command success
-    """
-    def wrapper(*args, **kwargs):
-        filename = '/home/pi/bin/lecture_assistant/menu-sounds/positive.wav'
-        wave_obj = sa.WaveObject.from_wave_file(filename)
-        play_obj = wave_obj.play()
-        func(*args, **kwargs)
-    return wrapper
+    filename = '/home/pi/bin/lecture_assistant/Sounds/positive.wav'
+    wave_obj = sa.WaveObject.from_wave_file(filename)
+    wave_obj.play()
 
 
-def load(func):
+def load_beep(func):
+    """ Beeps to indicate archiving of topics, items and extracts
     """
-    Makes a bing sound. Used for deleting items and extracts
-    """
-    def wrapper(*args, **kwargs):
-        filename = '/home/pi/bin/lecture_assistant/menu-sounds/load.wav'
-        wave_obj = sa.WaveObject.from_wave_file(filename)
-        play_obj = wave_obj.play()
-        func(*args, **kwargs)
-    return wrapper
+    filename = '/home/pi/bin/lecture_assistant/Sounds/load.wav'
+    wave_obj = sa.WaveObject.from_wave_file(filename)
+    wave_obj.play()
 
 
 def espeak(words: str):
-    """
-    Uses the espeak program as text to speech to communicate
-    to the user
+    """ Text to speech communication with the user
     """
     if words:
-        subprocess.Popen(['espeak',
-                          words])
+        subprocess.Popen(['espeak', words])

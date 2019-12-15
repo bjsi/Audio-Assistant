@@ -7,7 +7,10 @@ from config import (TOPICFILES_DIR,
                     RECORDING_SINK)
 from MPD.MpdBase import Mpd
 from models import TopicFile, ExtractFile, session
-from Sounds.sounds import espeak
+from Sounds.sounds import (negative_beep,
+                           espeak,
+                           click_sound1,
+                           load_beep)
 from config import (KEY_X,
                     KEY_B,
                     KEY_Y,
@@ -124,12 +127,14 @@ class TopicQueue(Mpd, object):
             self.load_topic_options()
             espeak(self.queue)
         else:
-            # TODO add negative sound
+            negative_beep()
             print("No outstanding topics")
 
     def start_recording(self):
         """ Start recording a new extract from a topic.
         """
+        click_sound1()
+
         # Get filename of current topic
         cur_song = self.current_song()
         basename = os.path.basename(cur_song['absolute_fp'])
@@ -210,6 +215,8 @@ class TopicQueue(Mpd, object):
         assert self.queue == "global topic queue"
         self.next()
 
+        click_sound1()
+
         # Get information on the next file
         # TODO Do I need to remove stop state here?
         cur_song = self.current_song()
@@ -236,6 +243,8 @@ class TopicQueue(Mpd, object):
         # TODO Log severe error if this breaks
         assert self.queue == "global topic queue"
         self.previous()
+
+        click_sound1()
 
         # Get information on the previous file
         cur_song = self.current_song()
@@ -276,7 +285,7 @@ class TopicQueue(Mpd, object):
 
         # Archive the Topic
         if topic:
-            # TODO add sound
+            load_beep()
             topic.archived = 1
             session.commit()
             print("Archived {}".format(topic))

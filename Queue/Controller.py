@@ -1,8 +1,10 @@
 from .Topics import TopicQueue
 from models import session, TopicFile, ExtractFile, ItemFile
 from .Extracts import ExtractQueue
-from Sounds.sounds import espeak
 from .Items import ItemQueue
+from Sounds.sounds import (click_sound1,
+                           negative_beep,
+                           espeak)
 from config import (KEY_A,
                     KEY_UP,
                     KEY_DOWN)
@@ -96,6 +98,8 @@ class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
         # TODO Log severe error if this assert breaks
         assert self.queue == "global topic queue"
 
+        click_sound1()
+
         # Get filepath of current song
         cur_song = self.current_song()
         filepath = cur_song['absolute_fp']
@@ -119,7 +123,7 @@ class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
                 self.load_local_extract_options()
                 espeak(self.queue)
             else:
-                # TODO Add negative sound
+                negative_beep()
                 print("No non-archived extracts found for this topic")
         else:
             # TODO Log severe errors like this one
@@ -137,6 +141,8 @@ class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
         """
         # TODO Log severe error if assert breaks
         assert self.queue in ["local extract queue", "global extract queue"]
+
+        click_sound1()
 
         # Get filepath of current extract
         cur_song = self.current_song()
@@ -186,9 +192,9 @@ class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
                     self.remove_stop_state()
                     self.client.seekcur(extract.startstamp)
             else:
-                # TODO Add negative sound
                 # TODO Log critical error - topic should not be deleted if it
                 # has outstanding extracts
+                negative_beep()
                 print("ERROR: Parent of extract {} already deleted!"
                       .format(extract))
         else:
@@ -205,6 +211,8 @@ class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
         Load local extract queue """
         # TODO Log severe error if assert breaks
         assert self.queue in ["local extract queue", "global extract queue"]
+
+        click_sound1()
 
         # Get filepath of currently playing extract
         cur_song = self.current_song()
@@ -230,7 +238,7 @@ class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
                 self.load_local_item_options()
                 espeak(self.queue)
             else:
-                # TODO Add negative sound
+                negative_beep()
                 print("No child items found for extract {}"
                       .format(extract))
         else:
@@ -259,6 +267,10 @@ class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
         Get the topic parent of the extract
         Create a local extract queue
         Load global extract queue"""
+        # TODO Log severe error if broken
+        assert self.queue in ["local item queue", "global item queue"]
+
+        click_sound1()
 
         # get the filepath of the currently playing item
         cur_song = self.current_song()
@@ -292,6 +304,7 @@ class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
                 espeak(self.queue)
             else:
                 # TODO Log critical error
+                negative_beep()
                 print("ERROR: {} is an orphan. Extract already deleted"
                       .format(item))
         else:

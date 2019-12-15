@@ -4,7 +4,11 @@ from config import EXTRACTFILES_DIR
 from MPD.MpdBase import Mpd
 from models import ExtractFile, ItemFile, session
 from .extract_funcs import cloze_processor
-from Sounds.sounds import negative, espeak
+from Sounds.sounds import (negative_beep,
+                           espeak,
+                           click_sound1,
+                           click_sound2,
+                           load_beep)
 from config import (KEY_X,
                     KEY_B,
                     KEY_Y,
@@ -106,11 +110,12 @@ class ExtractQueue(Mpd, object):
                 self.load_global_extract_options()
                 espeak(self.queue)
             else:
-                # TODO Add negative sound
+                negative_beep()
                 print("No MPD recognised extracts")
         else:
-            # TODO Add negative sound
+            negative_beep()
             print("No extracts found in DB")
+            # TODO Should it switch to global extract queue?
 
     def load_cloze_options(self):
         """ Set the state options for when clozing """
@@ -141,6 +146,8 @@ class ExtractQueue(Mpd, object):
         assert self.queue in ["local extract queue", "global extract queue"]
         assert not self.clozing
 
+        click_sound1()
+
         # Get the currently playing extract
         cur_song = self.current_song()
         cur_timestamp = cur_song['elapsed']
@@ -159,7 +166,7 @@ class ExtractQueue(Mpd, object):
             self.load_cloze_options()
         else:
             # TODO Log severe error
-            # TODO add negative sound
+            negative_beep()
             print("ERROR: Couldn't find extract in DB.")
 
     def stop_clozing(self):
@@ -170,6 +177,8 @@ class ExtractQueue(Mpd, object):
         # TODO Log severe error if either of these asserts break
         assert self.queue in ["local extract queue", "global extract queue"]
         assert self.clozing
+
+        click_sound2()
 
         # Get filepath and timestamp of current extract
         cur_song = self.current_song()
@@ -183,6 +192,7 @@ class ExtractQueue(Mpd, object):
                    .one_or_none())
 
         # Get the last inserted itemfile
+        # TODO add more error else's for the if statements
         if extract:
             items = extract.items
             last_item = max(items, key=lambda item: item.created_at)
@@ -227,7 +237,7 @@ class ExtractQueue(Mpd, object):
 
         # Archive the extract
         if extract:
-            # TODO Add sound as feedback
+            load_beep()
             extract.archived = True
             session.commit()
         else:

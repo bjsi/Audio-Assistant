@@ -3,6 +3,8 @@ from config import QUESTIONFILES_DIR
 from Sounds.sounds import espeak
 from MPD.MpdBase import Mpd
 from models import ItemFile, session
+from Sounds.sounds import (negative_beep,
+                           load_beep)
 from config import (KEY_X,
                     KEY_B,
                     KEY_Y,
@@ -83,10 +85,10 @@ class ItemQueue(Mpd, object):
                 self.load_global_item_options()
                 espeak(self.queue)
             else:
-                # TODO Add negative sound
+                negative_beep()
                 print("No outstanding items in DB")
         else:
-            # TODO Add negative sound
+            negative_beep()
             print("No items in DB")
 
     def load_global_item_options(self):
@@ -121,7 +123,7 @@ class ItemQueue(Mpd, object):
                 .one_or_none())
         # Archive the item
         if item:
-            # TODO Add sound as feedback
+            load_beep()
             item.archived = True
             session.commmit()
         else:
