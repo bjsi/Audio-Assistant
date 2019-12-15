@@ -87,7 +87,7 @@ class TopicQueue(Mpd, object):
             self.client.single(0)
         # Set state information and keys
         self.active_keys = self.topic_keys
-        self.current_playlist = "global topic queue"
+        self.queue = "global topic queue"
         self.recording = False
         self.clozing = False
 
@@ -100,7 +100,7 @@ class TopicQueue(Mpd, object):
             self.client.single(1)
         # Set state information and keys
         self.active_keys = self.recording_keys
-        self.current_playlist = "global topic queue"
+        self.queue = "global topic queue"
         self.recording = True
         self.clozing = False
 

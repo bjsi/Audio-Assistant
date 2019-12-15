@@ -34,7 +34,7 @@ class ItemQueue(Mpd, object):
                 KEY_X:      self.toggle,
                 KEY_B:      self.previous,
                 KEY_Y:      self.next,
-                GAME_X:     self.delete_item
+                GAME_X:     self.archive_item
         }
 
     @staticmethod

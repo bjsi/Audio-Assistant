@@ -181,9 +181,10 @@ class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
                 self.load_playlist(topics)
                 self.load_topic_options()
                 espeak(self.queue)
+                # Seek to the startstamp of the child extract
                 with self.connection():
                     self.remove_stop_state()
-                    self.client.seekcur(parent.cur_timestamp)
+                    self.client.seekcur(extract.startstamp)
             else:
                 # TODO Add negative sound
                 # TODO Log critical error - topic should not be deleted if it
@@ -287,7 +288,7 @@ class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
                 extracts.remove(filepath)
                 extracts.insert(0, filepath)
                 self.load_playlist(extracts)
-                self.load_local_extract_options(extracts)
+                self.load_local_extract_options()
                 espeak(self.queue)
             else:
                 # TODO Log critical error

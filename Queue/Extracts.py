@@ -121,7 +121,7 @@ class ExtractQueue(Mpd, object):
         # Set state information and keys
         self.clozing = True
         self.recording = False
-        self.active_keys = self.cloze_keys
+        self.active_keys = self.clozing_keys
 
     def load_global_extract_options(self):
         """ Set the state options for "global extract queue" """
