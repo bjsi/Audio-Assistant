@@ -64,7 +64,6 @@ def cloze_processor(item):
             cloze_fp
     ], shell=False, stdout=DEVNULL)
 
-    # Use named tuple?
     return question_fp, cloze_fp
 
 

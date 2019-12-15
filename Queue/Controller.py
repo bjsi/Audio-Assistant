@@ -9,10 +9,9 @@ from config import (KEY_A,
 
 
 class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
+
     """ Combines TopicQueue, ExtractQueue, ItemQueue,
-    MpdBase and Device classes. Connects bluetooth, and
-    runs the menu loop and saves the state of the program.
-    Adds methods for moving between Queues from parent to child """
+    MpdBase and Device classes. """
 
     def __init__(self):
         """
@@ -59,14 +58,20 @@ class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
 
         # Extend the base class keys with the inter-queue keys
 
-        self.extracting_keys = {**self.extracting_keys,
-                                **self.extracting_inter_queue_keys}
+        self.extracting_keys = {
+                **self.extracting_keys,
+                **self.extracting_inter_queue_keys
+        }
 
-        self.topic_keys = {**self.topic_keys,
-                           **self.topic_inter_queue_keys}
+        self.topic_keys = {
+                **self.topic_keys,
+                **self.topic_inter_queue_keys
+        }
 
-        self.item_keys = {**self.item_keys,
-                          **self.item_inter_queue_keys}
+        self.item_keys = {
+                **self.item_keys,
+                **self.item_inter_queue_keys
+        }
 
     #####################################
     # Topic (parent) -> Extract (child) #
@@ -79,7 +84,6 @@ class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
         with self.connection():
             self.client.repeat(1)
             self.client.single(1)
-
         # Set state information and keys
         self.clozing = False
         self.recording = False
@@ -217,7 +221,7 @@ class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
             items = []
             for item in extract_items:
                 if item.question_filepath and not item.deleted:
-                    rel_fp = self.abs_to_rel_item(item.filepath)
+                    rel_fp = self.abs_to_rel_item(item.question_filepath)
                     if self.mpd_recognised(rel_fp):
                         items.append(rel_fp)
             if items:
@@ -239,7 +243,6 @@ class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
         with self.connection():
             self.client.repeat(1)
             self.client.single(1)
-
         # Set state information options
         self.active_keys = self.item_keys
         self.queue = "local item queue"

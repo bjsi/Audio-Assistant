@@ -1,5 +1,6 @@
 import os
 from config import QUESTIONFILES_DIR
+from Sounds.sounds import espeak
 from MPD.MpdBase import Mpd
 from models import ItemFile, session
 from config import (KEY_X,
@@ -31,10 +32,8 @@ class ItemQueue(Mpd, object):
         # Keys
         self.item_keys = {
                 KEY_X:      self.toggle,
-                # KEY_UP:     self.get_item_extract, # <-- inter-queue
                 KEY_B:      self.previous,
                 KEY_Y:      self.next,
-                # KEY_A:      self.load_global_topics,  # <-- inter-queue
                 GAME_X:     self.delete_item
         }
 
@@ -42,6 +41,8 @@ class ItemQueue(Mpd, object):
     def rel_to_abs_item(filepath: str) -> str:
         """ Convert a filepath relative to the mpd base dir to an
         absolute filepath
+        Relative: questionfiles/<item_filename>.wav
+        Absolute: /home/pi ... /questionfiles/<item_filename>.wav
         """
         filename = os.path.basename(filepath)
         abs_fp = os.path.join(QUESTIONFILES_DIR, filename)
@@ -51,6 +52,8 @@ class ItemQueue(Mpd, object):
     def abs_to_rel_item(filepath: str) -> str:
         """ Convert an absolute filepath to a filepath relative to
         the mpd base dir
+        Relative: questionfiles/<item_filename>.wav
+        Absolute: /home/pi ... /questionfiles/<item_filename>.wav
         """
         filename = os.path.basename(filepath)
         directory = os.path.basename(QUESTIONFILES_DIR)
@@ -58,43 +61,72 @@ class ItemQueue(Mpd, object):
         return rel_fp
 
     def get_global_items(self):
-        """ Load outstanding items """
+        """ Get outstanding items
+        Load global item queue"""
+
+        # Query DB for outstanding items
         items = (session
                  .query(ItemFile)
                  .filter_by(deleted=False)
+                 .filter(ItemFile.question_filepath != None)
                  .all())
+
+        # Add mpd-recognised items to the queue
         if items:
             playlist = []
             for item in items:
-                rel_fp = self.abs_to_rel_item(item.filepath)
+                rel_fp = self.abs_to_rel_item(item.question_filepath)
                 if self.mpd_recognised(rel_fp):
                     playlist.append(rel_fp)
             if playlist:
                 self.load_playlist(playlist)
                 self.load_global_item_options()
+                espeak(self.queue)
             else:
-                print("No items")
+                # TODO Add negative sound
+                print("No outstanding items in DB")
         else:
-            print("Error loading global item queue - No items")
+            # TODO Add negative sound
+            print("No items in DB")
 
     def load_global_item_options(self):
+        """ Set state options for "global item queue".
+        """
+        # Set playback options
         with self.connection():
-            self.client.repeat = 1
-            self.client.single = 1
+            self.client.repeat(1)
+            self.client.single(1)
+        # Set state information options
         self.active_keys = self.item_keys
         self.queue = "global item queue"
         self.clozing = False
         self.recording = False
-        print("Item options loaded")
-        print("Keys:")
-        print(self.active_keys)
-        print("Playlist:", self.queue)
-        print("Clozing:", self.clozing)
-        print("Recording:", self.recording)
-    
-    # TODO
-    def delete_item(self):
-        pass
+
+    def archive_item(self):
+        """ Archive the current item.
+        TODO What are the effects of archiving?
+        TODO When is an item deleted """
+        # TODO Log severe error
+        assert self.queue in ["local item queue", "global item queue"]
+
+        # Get the currently playing item
+        cur_song = self.current_song()
+        filepath = cur_song['absolute_fp']
+
+        # Find the item in DB
+        item = (session
+                .query(ItemFile)
+                .filter_by(question_filepath=filepath)
+                .one_or_none())
+        # Archive the item
+        if item:
+            # TODO Add sound as feedback
+            item.archived = True
+            session.commmit()
+        else:
+            # TODO Log severe error
+            print("ERROR: Currently playing item "
+                  "not found in the DB")
 
 
 if __name__ == "__main__":
