@@ -165,6 +165,7 @@ class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
                 self.load_playlist(topics)
                 self.load_topic_options()
                 with self.connection():
+                    self.remove_stop_state()
                     self.client.seekcur(parent.cur_timestamp)
             else:
                 print("Parent is deleted!")
