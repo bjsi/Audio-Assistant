@@ -1,18 +1,11 @@
 from .Topics import TopicQueue
 from models import session, TopicFile, ExtractFile, ItemFile
 from .Extracts import ExtractQueue
+from Sounds.sounds import espeak
 from .Items import ItemQueue
-from config import (KEY_X,
-                    KEY_A,
-                    KEY_B,
-                    KEY_Y,
+from config import (KEY_A,
                     KEY_UP,
-                    KEY_RIGHT,
-                    KEY_LEFT,
-                    KEY_DOWN,
-                    KEY_OK,
-                    GAME_X,
-                    GAME_B)
+                    KEY_DOWN)
 
 
 class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
@@ -42,148 +35,183 @@ class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
         self.recording = False
         self.active_keys = {}
 
-        # Keys
-        # TODO 
-        # extend the underlying dicts with
-        # inter-queue methods rather than writing them twice
-        self.extracting_keys = {
-                KEY_X:      self.toggle,
-                KEY_B:      self.previous,
-                KEY_Y:      self.next,
-                KEY_OK:     self.start_clozing,
-                KEY_RIGHT:  self.stutter_forward,
-                KEY_LEFT:   self.stutter_backward,
-                KEY_UP:     self.get_extract_topic,  # <-- inter-queue method
-                KEY_DOWN:   self.get_extract_items,  # <-- inter-queue method
-                KEY_A:      self.get_global_topics,  # <-- inter-queue method
-                GAME_X:     self.archive_extract
+        # inter-queue methods are for navigating between Topic, Extract
+        # and Item queues
+
+        # Return to the global topic queue (self.get_global_topics)
+        # from both the Extract Queue and the Item Queue
+
+        self.topic_inter_queue_keys = {
+                KEY_DOWN:   self.get_topic_extracts,  # local extract queue
+                KEY_A:      self.get_global_extracts,  # global extract queue
         }
 
-        self.topic_keys = {
-                KEY_X:      self.toggle,
-                KEY_B:      self.prev_topic,
-                KEY_Y:      self.next_topic,
-                KEY_RIGHT:  self.seek_forward,
-                KEY_LEFT:   self.seek_backward,
-                KEY_DOWN:   self.get_topic_extracts,  # <-- inter-queue method
-                KEY_OK:     self.start_recording,
-                KEY_A:      self.get_global_extracts,  # <- inter-queue method
-                GAME_X:     self.volume_up,
-                GAME_B:     self.volume_down
+        self.extracting_inter_queue_keys = {
+                KEY_UP:     self.get_extract_topic,  # global topic queue
+                KEY_DOWN:   self.get_extract_items,  # local extract queue
+                KEY_A:      self.get_global_topics,  # global topic queue
         }
 
-        self.item_keys = {
-                KEY_X:      self.toggle,
-                KEY_UP:     self.get_item_extract,  # <-- inter-queue method
-                KEY_B:      self.previous,
-                KEY_Y:      self.next,
-                KEY_A:      self.get_global_topics,  # <-- inter-queue method
-                GAME_X:     self.delete_item
+        self.item_inter_queue_keys = {
+                KEY_UP:     self.get_item_extract,   # local extract queue
+                KEY_A:      self.get_global_topics,  # global topic queue
         }
 
-    # Define methods for moving between queues
+        # Extend the base class keys with the inter-queue keys
 
-    # Return to the global topic queue - accessible
-    # from both the Extract Queue and the Item Queue
+        self.extracting_keys = {**self.extracting_keys,
+                                **self.extracting_inter_queue_keys}
+
+        self.topic_keys = {**self.topic_keys,
+                           **self.topic_inter_queue_keys}
+
+        self.item_keys = {**self.item_keys,
+                          **self.item_inter_queue_keys}
 
     #####################################
     # Topic (parent) -> Extract (child) #
     #####################################
 
     def load_local_extract_options(self):
-        """ Sets the state options for local extract queue """
+        """ Set the state options for "local extract queue".
+        """
+        # Set playback options
         with self.connection():
             self.client.repeat(1)
             self.client.single(1)
+
+        # Set state information and keys
         self.clozing = False
+        self.recording = False
         self.active_keys = self.extracting_keys
         self.queue = "local extract queue"
-        print("Load Extract Options:")
-        print("Keys:")
-        print(self.active_keys)
-        print("Clozing:", self.clozing)
-        print("Recording:", self.recording)
-        print("Playlist:", self.queue)
 
     def get_topic_extracts(self):
-        """ Gets the extract children of the current topic """
+        """ Get child extracts of the current topic.
+        """
+        # TODO Log severe error if this assert breaks
+        assert self.queue == "global topic queue"
+
+        # Get filepath of current song
         cur_song = self.current_song()
         filepath = cur_song['absolute_fp']
+
+        # Find currently playing topic
         topic = (session
                  .query(TopicFile)
                  .filter_by(filepath=filepath)
                  .one_or_none())
+
+        # Create list of mpd-recognised child extracts
         if topic and topic.extracts:
             extracts = []
             for extract in topic.extracts:
-                if not extract.deleted:
-                    # Check if mpd recognises each extract
+                if not extract.archived:
                     rel_fp = self.abs_to_rel_extract(extract.filepath)
                     if self.mpd_recognised(rel_fp):
                         extracts.append(rel_fp)
             if extracts:
                 self.load_playlist(extracts)
                 self.load_local_extract_options()
+                espeak(self.queue)
             else:
-                print("No extracts")
+                # TODO Add negative sound
+                print("No non-archived extracts found for this topic")
         else:
-            print("Error querying topic's extracts")
+            # TODO Log severe errors like this one
+            print("ERROR: Currently playing Topic "
+                  "not found in the database")
 
     #####################################
     # Extract (child) -> Topic (parent) #
     #####################################
 
     def get_extract_topic(self):
-        """Query and load the parent topic of the current extract
-        Seeks to the current timestamp of the parent topic after loading
+        """ Get the parent topic of the currently playing extract
+        Places the parent topic first in the global topic queue
+        Loads the global topic queue
         """
+        # TODO Log severe error if assert breaks
+        assert self.queue in ["local extract queue", "global extract queue"]
+
+        # Get filepath of current extract
         cur_song = self.current_song()
         filepath = cur_song['absolute_fp']
+
+        # Find extract in DB
+        # TODO Filter extracts with an endstamp / filepath
         extract = (session
                    .query(ExtractFile)
                    .filter_by(filepath=filepath)
                    .one_or_none())
+
+        # Get extract's parent topic
         if extract:
             parent = extract.topic
             if parent.deleted is False:
                 parent_rel_fp = self.abs_to_rel_topic(parent.filepath)
+
+                # Get outstanding topics
                 topics = (session
                           .query(TopicFile)
                           .filter_by(deleted=False)
-                          # TODO is this what i want?
                           .filter_by(archived=False)
                           .all())
                 topics = [
                             self.abs_to_rel_topic(topic.filepath)
                             for topic in topics
                          ]
+
+                # If extract's parent topic is outstanding
+                # move it to the beginning of the topic queue
                 if parent_rel_fp in topics:
                     topics.remove(parent_rel_fp)
                     topics.insert(0, parent_rel_fp)
+
+                # If extract's parent is archived and not in outstanding queue
+                # Add it to the beginning of the queue
                 else:
                     topics.insert(0, parent_rel_fp)
+
+                # Load global topic queue
                 self.load_playlist(topics)
                 self.load_topic_options()
+                espeak(self.queue)
                 with self.connection():
                     self.remove_stop_state()
                     self.client.seekcur(parent.cur_timestamp)
             else:
-                print("Parent is deleted!")
+                # TODO Add negative sound
+                # TODO Log critical error - topic should not be deleted if it
+                # has outstanding extracts
+                print("ERROR: Parent of extract {} already deleted!"
+                      .format(extract))
         else:
-            print("Couldn't find extract in DB")
+            # TODO Log severe error
+            print("Extract {} could not be found in the DB"
+                  .format(extract.filepath))
 
-    #####################################
+    ####################################
     # Extract (parent) -> Item (child) #
-    #####################################
+    ####################################
 
     def get_extract_items(self):
-        """ Load the child items of the current extract """
+        """ Get child items of the current parent extract
+        Load local extract queue """
+        # TODO Log severe error if assert breaks
+        assert self.queue in ["local extract queue", "global extract queue"]
+
+        # Get filepath of currently playing extract
         cur_song = self.current_song()
         filepath = cur_song['absolute_fp']
+
+        # Find extract in DB
         extract = (session
                    .query(ExtractFile)
                    .filter_by(filepath=filepath)
                    .one_or_none())
+
+        # Find extract's outstanding child items
         if extract:
             extract_items = extract.items
             items = []
@@ -195,56 +223,73 @@ class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
             if items:
                 self.load_playlist(items)
                 self.load_local_item_options()
+                espeak(self.queue)
             else:
-                print("No items")
+                # TODO Add negative sound
+                print("No child items found for extract {}"
+                      .format(extract))
         else:
-            print("No extracts")
+            # TODO Log severe error
+            print("ERROR: Extract not found in DB")
 
     def load_local_item_options(self):
+        """ Set state options for "local item queue".
+        """
+        # Set playback options
         with self.connection():
             self.client.repeat(1)
             self.client.single(1)
+
+        # Set state information options
         self.active_keys = self.item_keys
         self.queue = "local item queue"
         self.clozing = False
         self.recording = False
-        print("Item options loaded")
-        print("Keys:")
-        print(self.active_keys)
-        print("Playlist:", self.queue)
-        print("Clozing:", self.clozing)
-        print("Recording:", self.recording)
 
     ####################################
     # Item (child) -> Extract (parent) #
     ####################################
 
     def get_item_extract(self):
+        """ Get the extract parent of the currently playing Item
+        Get the topic parent of the extract
+        Create a local extract queue
+        Load global extract queue"""
+
+        # get the filepath of the currently playing item
         cur_song = self.current_song()
         filepath = cur_song['absolute_fp']
+
+        # Find item in the DB
         item = (session
                 .query(ItemFile)
                 .filter_by(question_filepath=filepath)
                 .one_or_none())
+
+        # Get the item's parent extract
         if item:
             extract = item.extract
             if not extract.deleted:
+                # Get the extract's parent topic
                 topic = extract.topic
-                if not topic.deleted:
-                    local_extracts = topic.extracts
-                    filepath = self.abs_to_rel_extract(extract.filepath)
-                    extracts = [
-                                self.abs_to_rel_extract(extract.filepath)
-                                for extract in local_extracts
-                                if not extract.deleted
-                               ]
-                    extracts.remove(filepath)
-                    extracts.insert(0, filepath)
-                    self.load_playlist(extracts)
-                    self.load_local_extract_options(extracts)
-                else:
-                    print("Error loading local extract queue")
+                local_extracts = topic.extracts
+                filepath = self.abs_to_rel_extract(extract.filepath)
+                extracts = [
+                            self.abs_to_rel_extract(extract.filepath)
+                            for extract in local_extracts
+                            if not extract.deleted
+                           ]
+
+                # Move parent extract to the front and load playlist
+                extracts.remove(filepath)
+                extracts.insert(0, filepath)
+                self.load_playlist(extracts)
+                self.load_local_extract_options(extracts)
+                espeak(self.queue)
             else:
-                print("Orphan Item: Parent extract deleted.")
+                # TODO Log critical error
+                print("ERROR: {} is an orphan. Extract already deleted"
+                      .format(item))
         else:
-            print("Item not found.")
+            # TODO Log severe error
+            print("ERROR: Item not found in DB.")

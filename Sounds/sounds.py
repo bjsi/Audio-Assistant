@@ -64,7 +64,7 @@ def load(func):
     return wrapper
 
 
-def speak(words: str):
+def espeak(words: str):
     """
     Uses the espeak program as text to speech to communicate
     to the user
