@@ -142,7 +142,7 @@ class TopicFile(Base):
     @property
     def channel(self) -> str:
         """ Returns the url of the uploader's youtube channel """
-        return "https://youtube.com/channel/" + self.channel_id
+        return "https://youtube.com/channel/" + self.uploader_id
 
     def __repr__(self) -> str:
         return '<TopicFile: title=%r youtube_id=%r>' % \

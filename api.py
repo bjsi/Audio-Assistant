@@ -48,33 +48,16 @@ event_ns = api.namespace('events',
                                      "ItemFiles")
 
 ################
-# Event Models #
+# Event Model #
 ################
 
-topic_event_model = api.model('Topic Event', {
+event_model = api.model('Event', {
     'id':           fields.Integer,
     'created_at':   fields.DateTime,
     'event':        fields.String,
     'timestamp':    fields.Float,
     'topic_id':     fields.Integer,
     })
-
-extract_event_model = api.model('Extract Event', {
-    'id':           fields.Integer,
-    'created_at':   fields.DateTime,
-    'event':        fields.String,
-    'timestamp':    fields.Float,
-    'extract_id':   fields.Integer,
-    })
-
-item_event_model = api.model('Item Event', {
-    'id':           fields.Integer,
-    'created_at':   fields.DateTime,
-    'event':        fields.String,
-    'timestamp':    fields.Float,
-    'extract_id':   fields.Integer,
-    })
-
 
 ###########################################
 # TopicFile, ExtractFile, ItemFile models #
@@ -85,11 +68,12 @@ item_model = api.model('Item File', {
     'created_at':           fields.DateTime,
     'question_filepath':    fields.String,
     'cloze_filepath':       fields.String,
+    'archived':             fields.Boolean,
     'deleted':              fields.Boolean,
     'cloze_startstamp':     fields.Float,
     'cloze_endstamp':       fields.Float,
     'extract_id':           fields.Integer,
-    'activities':           fields.List(fields.Nested(item_event_model))
+    'events':               fields.List(fields.Nested(event_model))
     })
 
 extract_model = api.model('Extract File', {
@@ -98,26 +82,30 @@ extract_model = api.model('Extract File', {
     'created_at':   fields.DateTime,
     'startstamp':   fields.Float,
     'endstamp':     fields.Float,
+    'archived':     fields.Boolean,
     'transcript':   fields.String,
     'deleted':      fields.Boolean,
     'items':        fields.List(fields.Nested(item_model)),
     'topic_id':     fields.Integer,
-    'activities':   fields.List(fields.Nested(extract_event_model))  # TODO
+    'events':       fields.List(fields.Nested(event_model))
     })
 
 topic_model = api.model('Topic File', {
     'id':               fields.Integer,
-    'youtube_id':       fields.String,
     'filepath':         fields.String,
     'downloaded':       fields.Boolean,
+    'archived':         fields.Boolean,
     'deleted':          fields.Boolean,
+    'youtube_id':       fields.String,
     'title':            fields.String,
     'duration':         fields.Integer,
+    'uploader_id':      fields.String,
     'uploader':         fields.String,
     'upload_date':      fields.String,
     'thumbnail_url':    fields.String,
     'view_count':       fields.Integer,
     'like_count':       fields.Integer,
+    'dislike_count':    fields.Integer,
     'average_rating':   fields.Float,
     'cur_timestamp':    fields.Float,
     'created_at':       fields.DateTime,
@@ -126,11 +114,8 @@ topic_model = api.model('Topic File', {
     'yttags':           fields.List(fields.String),
     'mytags':           fields.List(fields.String),
     'rendered':         fields.String,  # rendered html using topic.html
-    'progress':         fields.Float,
-    'url':              fields.String,
-    'channel':          fields.String,
     'playback_rate':    fields.Float,
-    'activities':       fields.List(fields.Nested(topic_event_model))  # TODO
+    'events':           fields.List(fields.Nested(event_model))
     })
 
 archive_model = api.model('Youtube Archive File', {
@@ -157,7 +142,7 @@ archive_model = api.model('Youtube Archive File', {
 
 @event_ns.route('/topics/')
 class TopicEvents(Resource):
-    @api.marshal_with(topic_event_model, as_list=True)
+    @api.marshal_with(event_model, as_list=True)
     @api.response(200, 'Successfully read topic events')
     def get(self):
         """ Get all topic events """
@@ -176,14 +161,11 @@ class TopicEvents(Resource):
                     }
                     for event in events
                     ]
-        else:
-            # TODO return no topic events in the DB
-            pass
 
 
 @event_ns.route('/events/')
 class ExtractEvents(Resource):
-    @api.marshal_with(extract_event_model, as_list=True)
+    @api.marshal_with(event_model, as_list=True)
     @api.response(200, 'Successfully read topic events')
     def get(self):
         """ Get all extract events """
@@ -202,14 +184,11 @@ class ExtractEvents(Resource):
                     }
                     for event in events
                     ]
-        else:
-            # TODO return no topic events in the DB
-            pass
 
 
 @event_ns.route('/items/')
 class ItemEvents(Resource):
-    @api.marshal_with(item_event_model, as_list=True)
+    @api.marshal_with(event_model, as_list=True)
     @api.response(200, 'Successfully read item events')
     def get(self):
         """ Get all item events """
@@ -308,69 +287,66 @@ class Topics(Resource):
                       .all())
         if topics:
             topics = [
-                        {
-                            'id': topic.id,
-                            'youtube_id': topic.youtube_id,
-                            'thumbnail_url': topic.thumbnail_url,
-                            'filepath': topic.filepath,
-                            'downloaded': topic.downloaded,
-                            'deleted': topic.deleted,
-                            'title': topic.title,
-                            'duration': topic.duration,
-                            'uploader': topic.uploader,
-                            'upload_date': topic.upload_date,
-                            'view_count': topic.view_count,
-                            'like_count': topic.like_count,
-                            'average_rating': topic.average_rating,
-                            'cur_timestamp': topic.cur_timestamp,
-                            'created_at': topic.created_at,
-                            'url': topic.url,
-                            'channel': topic.channel,
-                            'progress': topic.progress,
-                            'transcript': topic.transcript,
-                            'extracts': [
+                      {
+                       'id':             topic.id,
+                       'filepath':       topic.filepath,
+                       'downloaded':     topic.downloaded,
+                       'archived':       topic.archived,
+                       'deleted':        topic.deleted,
+                       'youtube_id':     topic.youtube_id,
+                       'title':          topic.title,
+                       'duration':       topic.duration,
+                       'uploader':       topic.uploader,
+                       'upload_date':    topic.upload_date,
+                       'thumbnail_url':  topic.thumbnail_url,
+                       'view_count':     topic.view_count,
+                       'like_count':     topic.like_count,
+                       'average_rating': topic.average_rating,
+                       'cur_timestamp':  topic.cur_timestamp,
+                       'created_at':     topic.created_at,
+                       'url':            topic.url,
+                       'channel':        topic.channel,
+                       'progress':       topic.progress,
+                       'transcript':     topic.transcript,
+                       'extracts': [
+                                    {
+                                      "id":         extract.id,
+                                      "filepath":   extract.filepath,
+                                      "created_at": extract.created_at,
+                                      "startstamp": extract.startstamp,
+                                      "endstamp":   extract.endstamp,
+                                      "deleted":    extract.deleted,
+                                      "items": [
                                                 {
-                                                  "id": extract.id,
-                                                  "extract_filepath": extract.filepath,
-                                                  "created_at": extract.created_at,
-                                                  "topicfile_startstamp": extract.startstamp,
-                                                  "topicfile_endstamp": extract.endstamp,
-                                                  "deleted": extract.deleted,
-                                                  "items": [
-                                                                {
-                                                                    'id': item.id,
-                                                                    'created_at': item.created_at,
-                                                                    'question_filepath': item.question_filepath,
-                                                                    'cloze_filepath': item.cloze_filepath,
-                                                                    'deleted': item.deleted,
-                                                                    'cloze_startstamp': item.cloze_startstamp,
-                                                                    'cloze_stopstamp': item.cloze_endstamp,
-                                                                    'extract': item.extractfile.id
-                                                                }
-                                                                for item in extract.itemfiles
-                                                               ],
-                                                  "topic": topic.id
+                                                 'id':                item.id,
+                                                 'created_at':        item.created_at,
+                                                 'question_filepath': item.question_filepath,
+                                                 'cloze_filepath':    item.cloze_filepath,
+                                                 'deleted':           item.deleted,
+                                                 'cloze_startstamp':  item.cloze_startstamp,
+                                                 'cloze_stopstamp':   item.cloze_endstamp,
+                                                 'extract':           item.extractfile.id
                                                 }
-                                                for extract in topic.extracts
-                                                # Not working?
-                                                if extract.endstamp is not None
-                                            ],
-
-                            'yttags': [
-                                        tag.tag
-                                        for tag in topic.yttags
-                                      ],
-
-                            'mytags': [
-                                        tag.tag
-                                        for tag in topic.mytags
-                                      ],
-
-                            'rendered': render_template("topic.html", topic=topic)
-                        }
-                        for topic in topics
-                    ]
-
+                                                for item in extract.itemfiles
+                                               ],
+                                      "topic": topic.id
+                                    }
+                                    for extract in topic.extracts
+                                    # Not working?
+                                    if extract.endstamp
+                                   ],
+                       'yttags': [
+                                  tag.tag
+                                  for tag in topic.yttags
+                                 ],
+                       'mytags': [
+                                  tag.tag
+                                  for tag in topic.mytags
+                                 ],
+                       'rendered': render_template("topic.html", topic=topic)
+                      }
+                      for topic in topics
+                     ]
             return topics
 
 
@@ -392,17 +368,17 @@ class TopicExtracts(Resource):
             if extracts:
                 extracts = [
                             {
-                              "id": extract.id,
-                              "filepath": extract.extract_filepath,
-                              "created_at": extract.created_at,
-                              "startstamp": extract.topicfile_startstamp,
-                              "endstamp": extract.topicfile_endstamp,
-                              "deleted": extract.deleted,
-                              "items": [
-                                            item.id
-                                            for item in extract.items
-                                       ],
-                              "topic": topic.id
+                             "id":         extract.id,
+                             "filepath":   extract.extract_filepath,
+                             "created_at": extract.created_at,
+                             "startstamp": extract.topicfile_startstamp,
+                             "endstamp":   extract.topicfile_endstamp,
+                             "deleted":    extract.deleted,
+                             "topic":      topic.id,
+                             "items": [
+                                       item.id
+                                       for item in extract.items
+                                      ]
                             }
                             for extract in extracts
                            ]
@@ -423,40 +399,37 @@ class Topic(Resource):
                  .one_or_none())
         if topic:
             topic = {
-                        'id': topic.id,
-                        'youtube_id': topic.youtube_id,
-                        'filepath': topic.filepath,
-                        'downloaded': topic.downloaded,
-                        'deleted': topic.deleted,
-                        'title': topic.title,
-                        'duration': topic.duration,
-                        'uploader': topic.uploader,
-                        'upload_date': topic.upload_date,
-                        'view_count': topic.view_count,
-                        'like_count': topic.like_count,
-                        'average_rating': topic.average_rating,
-                        'cur_timestamp': topic.cur_timestamp,
-                        'created_at': topic.created_at,
-                        'progress': topic.progress,
-                        'url': topic.url,
-                        'channel': topic.channel,
-                        'transcript': topic.transcript,
-                        'extractfiles': [
-                                           extract.id
-                                           for extract in topic.extracts
-                                        ],
-
-                        'yttags': [
-                                    tag.tag
-                                    for tag in topic.yttags
-                                  ],
-
-                        'mytags': [
-                                    tag.tag
-                                    for tag in topic.mytags
-                                  ]
+                     'id':             topic.id,
+                     'youtube_id':     topic.youtube_id,
+                     'filepath':       topic.filepath,
+                     'downloaded':     topic.downloaded,
+                     'deleted':        topic.deleted,
+                     'title':          topic.title,
+                     'duration':       topic.duration,
+                     'uploader':       topic.uploader,
+                     'upload_date':    topic.upload_date,
+                     'view_count':     topic.view_count,
+                     'like_count':     topic.like_count,
+                     'average_rating': topic.average_rating,
+                     'cur_timestamp':  topic.cur_timestamp,
+                     'created_at':     topic.created_at,
+                     'progress':       topic.progress,
+                     'url':            topic.url,
+                     'channel':        topic.channel,
+                     'transcript':     topic.transcript,
+                     'extractfiles': [
+                                      extract.id
+                                      for extract in topic.extracts
+                                     ],
+                     'yttags': [
+                                tag.tag
+                                for tag in topic.yttags
+                               ],
+                     'mytags': [
+                                tag.tag
+                                for tag in topic.mytags
+                               ]
                     }
-
             return topic
 
 
@@ -489,18 +462,18 @@ class Extracts(Resource):
         if extracts:
             extracts = [
                         {
-                          "id": extract.id,
-                          "extract_filepath": extract.filepath,
-                          "created_at": extract.created_at,
-                          "startstamp": extract.startstamp,
-                          "endstamp": extract.endstamp,
-                          "deleted": extract.deleted,
+                          "id":                 extract.id,
+                          "extract_filepath":   extract.filepath,
+                          "created_at":         extract.created_at,
+                          "startstamp":         extract.startstamp,
+                          "endstamp":           extract.endstamp,
+                          "deleted":            extract.deleted,
+                          "topic": extract.topic.id,
                           "items": [
-                                        item.id
-                                        for item in extract.items
-                                       ],
-                          "topic": extract.topic.id
-                          }
+                                    item.id
+                                    for item in extract.items
+                                   ]
+                        }
                         for extract in extracts
                        ]
             return extracts
@@ -520,17 +493,17 @@ class Extract(Resource):
                    .one_or_none())
         if extract:
             extract = {
-                          "id": extract.id,
-                          "filepath": extract.filepath,
-                          "created_at": extract.created_at,
-                          "startstamp": extract.startstamp,
-                          "endstamp": extract.endstamp,
-                          "deleted": extract.deleted,
-                          "items": [
-                                        item.id
-                                        for item in extract.items
-                                   ],
-                          "topic": extract.topic.id
+                       "id":         extract.id,
+                       "filepath":   extract.filepath,
+                       "created_at": extract.created_at,
+                       "startstamp": extract.startstamp,
+                       "endstamp":   extract.endstamp,
+                       "deleted":    extract.deleted,
+                       "topic": extract.topic.id,
+                       "items": [
+                                 item.id
+                                 for item in extract.items
+                                ]
                       }
             return extract
 
@@ -551,39 +524,37 @@ class ExtractParent(Resource):
             topic = extract.topicfile
             if topic:
                 topic = {
+                         'id':             topic.id,
+                         'youtube_id':     topic.youtube_id,
+                         'filepath':       topic.filepath,
+                         'downloaded':     topic.downloaded,
+                         'deleted':        topic.deleted,
+                         'title':          topic.title,
+                         'duration':       topic.duration,
+                         'uploader':       topic.uploader,
+                         'upload_date':    topic.upload_date,
+                         'view_count':     topic.view_count,
+                         'like_count':     topic.like_count,
+                         'average_rating': topic.average_rating,
+                         'cur_timestamp':  topic.cur_timestamp,
+                         'created_at':     topic.created_at,
+                         'progress':       topic.progress,
+                         'url':            topic.url,
+                         'channel':        topic.channel,
+                         'transcript':     topic.transcript,
+                         'extracts': [
+                                      extract.id
+                                      for extract in topic.extracts
+                                     ],
+                         'yttags': [
+                                    tag.tag
+                                    for tag in topic.yttags
+                                   ],
 
-                            'id': topic.id,
-                            'youtube_id': topic.youtube_id,
-                            'filepath': topic.filepath,
-                            'downloaded': topic.downloaded,
-                            'deleted': topic.deleted,
-                            'title': topic.title,
-                            'duration': topic.duration,
-                            'uploader': topic.uploader,
-                            'upload_date': topic.upload_date,
-                            'view_count': topic.view_count,
-                            'like_count': topic.like_count,
-                            'average_rating': topic.average_rating,
-                            'cur_timestamp': topic.cur_timestamp,
-                            'created_at': topic.created_at,
-                            'progress': topic.progress,
-                            'url': topic.url,
-                            'channel': topic.channel,
-                            'transcript': topic.transcript,
-                            'extracts': [
-                                               extract.id
-                                               for extract in topic.extracts
-                                            ],
-
-                            'yttags': [
-                                        tag.tag
-                                        for tag in topic.yttags
-                                      ],
-
-                            'mytags': [
-                                        tag.tag
-                                        for tag in topic.mytags
-                                      ]
+                         'mytags': [
+                                    tag.tag
+                                    for tag in topic.mytags
+                                   ]
                         }
                 return topic
 
@@ -608,17 +579,16 @@ class Item(Resource):
                  .all())
         if items:
             items = [
-                        {
-                            'id': item.id,
-                            'created_at': item.question_filepath,
-                            'cloze_filepath': item.cloze_filepath,
-                            'deleted': item.deleted,
-                            'cloze_startstamp': item.cloze_startstamp,
-                            'cloze_stopstamp': item.cloze_endstamp,
-                            'extract': item.extract.id
-                        }
-
-                        for item in items
+                     {
+                      'id':               item.id,
+                      'created_at':       item.question_filepath,
+                      'cloze_filepath':   item.cloze_filepath,
+                      'deleted':          item.deleted,
+                      'cloze_startstamp': item.cloze_startstamp,
+                      'cloze_stopstamp':  item.cloze_endstamp,
+                      'extract':          item.extract.id
+                     }
+                     for item in items
                     ]
             return items
 
@@ -640,21 +610,20 @@ class ItemParent(Resource):
         if item:
             extract = item.extract
             extract = {
-                          "id": extract.id,
-                          "extract_filepath": extract.filepath,
-                          "created_at": extract.created_at,
-                          "startstamp": extract.startstamp,
-                          "endstamp": extract.endstamp,
-                          "deleted": extract.deleted,
-                          "items": [
-                                        item.id
-                                        for item in extract.items
-                                       ],
-                          "topic": extract.topic.id
+                       "id":            extract.id,
+                       "filepath":      extract.filepath,
+                       "created_at":    extract.created_at,
+                       "startstamp":    extract.startstamp,
+                       "endstamp":      extract.endstamp,
+                       "deleted":       extract.deleted,
+                       "topic":         extract.topic.id,
+                       "items": [
+                                 item.id
+                                 for item in extract.items
+                                ],
                       }
             return extract
 
 
 if __name__ == "__main__":
-    # How to run network-wide
     app.run(debug=True)
