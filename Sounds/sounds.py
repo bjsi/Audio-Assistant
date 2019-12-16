@@ -2,7 +2,7 @@ import simpleaudio as sa
 import subprocess
 
 
-def negative_beep(func):
+def negative_beep():
     """ Beeps to indicate command failure.
     """
     filename = '/home/pi/bin/lecture_assistant/Sounds/negative_2.wav'
@@ -10,7 +10,7 @@ def negative_beep(func):
     wave_obj.play()
 
 
-def click_sound1(func):
+def click_sound1():
     """ Clicks as feedback when pressing buttons.
     """
     filename = '/home/pi/bin/lecture_assistant/Sounds/click_2.wav'
@@ -18,7 +18,7 @@ def click_sound1(func):
     wave_obj.play()
 
 
-def click_sound2(func):
+def click_sound2():
     """ Clicks as feedback when pressing buttons.
     """
     filename = '/home/pi/bin/lecture_assistant/Sounds/click.wav'
@@ -26,7 +26,7 @@ def click_sound2(func):
     wave_obj.play()
 
 
-def positive_beep(func):
+def positive_beep():
     """ Beeps to indicate command success.
     """
     filename = '/home/pi/bin/lecture_assistant/Sounds/positive.wav'
@@ -34,7 +34,7 @@ def positive_beep(func):
     wave_obj.play()
 
 
-def load_beep(func):
+def load_beep():
     """ Beeps to indicate archiving of topics, items and extracts
     """
     filename = '/home/pi/bin/lecture_assistant/Sounds/load.wav'

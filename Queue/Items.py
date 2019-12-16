@@ -8,6 +8,7 @@ from Sounds.sounds import (negative_beep,
 from config import (KEY_X,
                     KEY_B,
                     KEY_Y,
+                    KEY_MENU,
                     GAME_X)
 
 
@@ -36,7 +37,7 @@ class ItemQueue(Mpd, object):
                 KEY_X:      self.toggle,
                 KEY_B:      self.previous,
                 KEY_Y:      self.next,
-                GAME_X:     self.archive_item
+                KEY_MENU:   self.archive_item
         }
 
     @staticmethod

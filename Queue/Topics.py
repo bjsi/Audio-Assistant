@@ -18,7 +18,8 @@ from config import (KEY_X,
                     KEY_LEFT,
                     KEY_OK,
                     GAME_X,
-                    GAME_B)
+                    GAME_B,
+                    KEY_MENU)
 
 
 class TopicQueue(Mpd, object):
@@ -54,6 +55,7 @@ class TopicQueue(Mpd, object):
                 KEY_OK:     self.start_recording,
                 GAME_X:     self.volume_up,
                 GAME_B:     self.volume_down,
+                KEY_MENU:   self.archive_topic
         }
 
         self.recording_keys = {

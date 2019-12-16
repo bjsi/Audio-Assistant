@@ -17,6 +17,7 @@ from config import (KEY_X,
                     KEY_LEFT,
                     KEY_DOWN,
                     KEY_OK,
+                    KEY_MENU,
                     GAME_X)
 
 
@@ -54,7 +55,7 @@ class ExtractQueue(Mpd, object):
                 KEY_LEFT:   self.stutter_backward,
                 KEY_UP:     self.get_extract_topic,
                 KEY_DOWN:   self.get_extract_items,
-                GAME_X:     self.archive_extract,
+                KEY_MENU:   self.archive_extract
         }
 
         self.clozing_keys = {
