@@ -100,7 +100,7 @@ class TopicFile(Base):
     average_rating = Column(Float)  # 0 to 5 float
     playback_rate = Column(Float, default=1.0)  # eg. 1, 1.25, 1.5
     cur_timestamp = Column(Float, default=0)  # seconds.miliseconds
-    created_at = Column(DateTime, default=datetime.datetime.now())
+    created_at = Column(DateTime, default=datetime.datetime.utcnow())
     transcript = Column(Text)
 
     # One to many File |-< Extract
@@ -149,7 +149,7 @@ class ExtractFile(Base):
 
     id = Column(Integer, primary_key=True)
     filepath = Column(String, nullable=False, unique=True)
-    created_at = Column(DateTime, default=datetime.datetime.now())
+    created_at = Column(DateTime, default=datetime.datetime.utcnow())
     startstamp = Column(Float, nullable=False)  # Seconds.miliseconds
     endstamp = Column(Float)  # Seconds.miliseconds
     transcript = Column(Text, nullable=True)
@@ -194,7 +194,7 @@ class ItemFile(Base):
     __tablename__ = "itemfiles"
 
     id = Column(Integer, primary_key=True)
-    created_at = Column(DateTime, default=datetime.datetime.now())
+    created_at = Column(DateTime, default=datetime.datetime.utcnow())
     question_filepath = Column(String, unique=True)
     cloze_filepath = Column(String, unique=True)
     # Set by the user
@@ -349,7 +349,7 @@ class Log(Base):
     level = Column(String)
     trace = Column(String)
     msg = Column(String)
-    created_at = Column(DateTime, default=datetime.datetime.now())
+    created_at = Column(DateTime, default=datetime.datetime.utcnow())
 
     def __repr__(self):
         return "<Log: %s - %s>" % (self.created_at.strftime("%Y-%m-%d %H:%M:%S"), self.msg[:50])
