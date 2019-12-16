@@ -118,6 +118,15 @@ class TopicFile(Base):
                           secondary=my_topicfile_tags,
                           back_populates='topics')
 
+    def add_event(self, event: str, timestamp: float, duration: float):
+        """ Add an event to the current TopicFile """
+        # TODO data validation of parameters
+        event = TopicEvent(event=event,
+                           timestamp=timestamp,
+                           duration=duration)
+        self.append(event)
+        session.commit()
+
     # TODO Should the following be properties?
 
     @property
@@ -171,6 +180,15 @@ class ExtractFile(Base):
     events = relationship("ExtractEvent",
                           back_populates="extract")
 
+    def add_event(self, event: str, timestamp: float, duration: float):
+        """ Add an event to the current TopicFile """
+        # TODO data validation of parameters
+        event = ExtractEvent(event=event,
+                             timestamp=timestamp,
+                             duration=duration)
+        self.append(event)
+        session.commit()
+
     # TODO Should this be a property
     @property
     def length(self) -> Optional[float]:
@@ -212,6 +230,15 @@ class ItemFile(Base):
     # One to many ItemFile |-< ItemEvent
     events = relationship("ItemEvent",
                           back_populates="item")
+
+    def add_event(self, event: str, timestamp: float, duration: float):
+        """ Add an event to the current TopicFile """
+        # TODO data validation of parameters
+        event = ItemEvent(event=event,
+                          timestamp=timestamp,
+                          duration=duration)
+        self.append(event)
+        session.commit()
 
     # TODO Should this be a property
     @property
