@@ -17,6 +17,9 @@ Base = declarative_base()
 Session = sessionmaker(bind=engine)
 
 
+# TODO Change all datetimes to datetime.datetime.utcnow()
+
+
 # Many to many association table for youtube tags
 yt_topicfile_tags = Table('yt_topicfile_tags', Base.metadata,
                           Column('topic_id',
@@ -133,7 +136,8 @@ class TopicFile(Base):
         return "https://youtube.com/channel/" + self.channel_id
 
     def __repr__(self) -> str:
-        return '<TopicFile: title=%r id=%r>' % (self.title, self.youtube_id)
+        return '<TopicFile: title=%r youtube_id=%r>' % \
+                (self.title, self.youtube_id)
 
 
 class ExtractFile(Base):
@@ -232,9 +236,9 @@ class TopicEvent(Base):
     __tablename__ = "topicevents"
 
     id = Column(Integer, primary_key=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow())
     event = Column(String, nullable=False)  # play/pause/stop (mpd status)
     timestamp = Column(Float, nullable=False)  # seconds.miliseconds
-    created_at = Column(DateTime, default=datetime.datetime.utcnow())
     duration = Column(Float, default=0)  # seconds.miliseconds
 
     # Many to One TopicEvent >-| TopicFile

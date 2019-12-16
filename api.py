@@ -2,7 +2,13 @@ from flask_restplus import Resource, Api
 import os
 from flask import Blueprint, request, Flask, render_template
 from flask_restplus import fields
-from models import session, TopicFile, ExtractFile, ItemFile
+from models import (session,
+                    TopicFile,
+                    ExtractFile,
+                    ItemFile,
+                    TopicEvent,
+                    ExtractEvent,
+                    ItemEvent)
 from flask_restplus import reqparse
 from flask_cors import CORS
 
@@ -25,7 +31,8 @@ topic_ns = api.namespace('topics',
                          description="Operations for retrieving Topic-related "
                                      "information from the database")
 extract_ns = api.namespace('extracts',
-                           description="Operations for retrieving Extract-related "
+                           description="Operations for retrieving "
+                                       "Extract-related "
                                        "information from the database")
 item_ns = api.namespace('items',
                         description="Operations for retrieving Item-related "
@@ -34,69 +41,101 @@ activity_ns = api.namespace('activities',
                             description="Operations for retrieving "
                                         "Activity-related information from "
                                         "the database")
+event_ns = api.namespace('events',
+                         description="Operations for retrieving "
+                                     "Event information for "
+                                     "TopicFiles, ExtractFiles and "
+                                     "ItemFiles")
 
-# TODO
-activity_model = api.model('Activity', {
-    'id': fields.Integer,
-    'created_at': fields.DateTime,
-    'activity': fields.String,
-    'duration': fields.Float,
+################
+# Event Models #
+################
+
+topic_event_model = api.model('Topic Event', {
+    'id':           fields.Integer,
+    'created_at':   fields.DateTime,
+    'event':        fields.String,
+    'timestamp':    fields.Float,
+    'topic_id':     fields.Integer,
     })
 
+extract_event_model = api.model('Extract Event', {
+    'id':           fields.Integer,
+    'created_at':   fields.DateTime,
+    'event':        fields.String,
+    'timestamp':    fields.Float,
+    'extract_id':   fields.Integer,
+    })
+
+item_event_model = api.model('Item Event', {
+    'id':           fields.Integer,
+    'created_at':   fields.DateTime,
+    'event':        fields.String,
+    'timestamp':    fields.Float,
+    'extract_id':   fields.Integer,
+    })
+
+
+###########################################
+# TopicFile, ExtractFile, ItemFile models #
+###########################################
+
 item_model = api.model('Item', {
-    'id': fields.Integer,
-    'created_at': fields.DateTime,
-    'question_filepath': fields.String,
-    'cloze_filepath': fields.String,
-    'deleted': fields.Boolean,
-    'cloze_startstamp': fields.Float,
-    'cloze_endstamp': fields.Float,
-    'extract_id': fields.Integer,
+    'id':                   fields.Integer,
+    'created_at':           fields.DateTime,
+    'question_filepath':    fields.String,
+    'cloze_filepath':       fields.String,
+    'deleted':              fields.Boolean,
+    'cloze_startstamp':     fields.Float,
+    'cloze_endstamp':       fields.Float,
+    'extract_id':           fields.Integer,
+    'activities':           fields.List(fields.Nested(item_event_model))
     })
 
 extract_model = api.model('Extract', {
-    'id': fields.Integer,
-    'filepath': fields.String,
-    'created_at': fields.DateTime,
-    'startstamp': fields.Float,
-    'endstamp': fields.Float,
-    'transcript': fields.String,
-    'deleted': fields.Boolean,
-    'items': fields.List(fields.Nested(item_model)),
-    'topic_id': fields.Integer,
+    'id':           fields.Integer,
+    'filepath':     fields.String,
+    'created_at':   fields.DateTime,
+    'startstamp':   fields.Float,
+    'endstamp':     fields.Float,
+    'transcript':   fields.String,
+    'deleted':      fields.Boolean,
+    'items':        fields.List(fields.Nested(item_model)),
+    'topic_id':     fields.Integer,
+    'activities':   fields.List(fields.Nested(extract_event_model))  # TODO
     })
 
 topic_model = api.model('Topic', {
-    'id': fields.Integer,
-    'youtube_id': fields.String,
-    'filepath': fields.String,
-    'downloaded': fields.Boolean,
-    'deleted': fields.Boolean,
-    'title': fields.String,
-    'duration': fields.Integer,
-    'uploader': fields.String,
-    'upload_date': fields.String,
-    'thumbnail_url': fields.String,
-    'view_count': fields.Integer,
-    'like_count': fields.Integer,
-    'average_rating': fields.Float,
-    'cur_timestamp': fields.Float,
-    'created_at': fields.DateTime,
-    'transcript': fields.String,
-    'extracts': fields.List(fields.Nested(extract_model)),
-    'yttags': fields.List(fields.String),
-    'mytags': fields.List(fields.String),
-    'rendered': fields.String,  # rendered html using topic.html
-    'progress': fields.Float,
-    'url': fields.String,
-    'channel': fields.String,
-    'playback_rate': fields.Float
-    # TODO activities: a list of events like activity watch
+    'id':               fields.Integer,
+    'youtube_id':       fields.String,
+    'filepath':         fields.String,
+    'downloaded':       fields.Boolean,
+    'deleted':          fields.Boolean,
+    'title':            fields.String,
+    'duration':         fields.Integer,
+    'uploader':         fields.String,
+    'upload_date':      fields.String,
+    'thumbnail_url':    fields.String,
+    'view_count':       fields.Integer,
+    'like_count':       fields.Integer,
+    'average_rating':   fields.Float,
+    'cur_timestamp':    fields.Float,
+    'created_at':       fields.DateTime,
+    'transcript':       fields.String,
+    'extracts':         fields.List(fields.Nested(extract_model)),
+    'yttags':           fields.List(fields.String),
+    'mytags':           fields.List(fields.String),
+    'rendered':         fields.String,  # rendered html using topic.html
+    'progress':         fields.Float,
+    'url':              fields.String,
+    'channel':          fields.String,
+    'playback_rate':    fields.Float,
+    'activities':       fields.List(fields.Nested(topic_event_model))  # TODO
     })
 
 archive_model = api.model('Archive', {
-    'source': fields.String,
-    'id': fields.String
+    'source':   fields.String,
+    'id':       fields.String
     })
 
 # add a datetime / timestamp filter to these
@@ -107,6 +146,91 @@ archive_model = api.model('Archive', {
 # topicfile endstamp or not
 # Add a way to get logs
 # Add a way to start downloads from the API
+# Add a way to record Events from the API
+# Add logging
+# Learn how to write proper APIs
+
+##########
+# Events #
+##########
+
+
+@event_ns.route('/topics/')
+class TopicEvents(Resource):
+    @api.marshal_with(topic_event_model, as_list=True)
+    @api.response(200, 'Successfully read topic events')
+    def get(self):
+        """ Get all topic events """
+        events = (session
+                  .query(TopicEvent)
+                  .all())
+        if events:
+            return [
+                    {
+                        'id':           event.id,
+                        'created_at':   event.created_at,
+                        'event':        event.event,
+                        'timestamp':    event.timestamp,
+                        'duration':     event.duration,
+                        'topic_id':     event.topic_id,
+                    }
+                    for event in events
+                    ]
+        else:
+            # TODO return no topic events in the DB
+            pass
+
+
+@event_ns.route('/events/')
+class ExtractEvents(Resource):
+    @api.marshal_with(extract_event_model, as_list=True)
+    @api.response(200, 'Successfully read topic events')
+    def get(self):
+        """ Get all extract events """
+        events = (session
+                  .query(ExtractEvent)
+                  .all())
+        if events:
+            return [
+                    {
+                        'id':           event.id,
+                        'created_at':   event.created_at,
+                        'event':        event.event,
+                        'timestamp':    event.timestamp,
+                        'duration':     event.duration,
+                        'extract_id':   event.extract_id,
+                    }
+                    for event in events
+                    ]
+        else:
+            # TODO return no topic events in the DB
+            pass
+
+
+@event_ns.route('/items/')
+class ItemEvents(Resource):
+    @api.marshal_with(item_event_model, as_list=True)
+    @api.response(200, 'Successfully read item events')
+    def get(self):
+        """ Get all item events """
+        events = (session
+                  .query(ItemEvent)
+                  .all())
+        if events:
+            return [
+                    {
+                        'id':           event.id,
+                        'created_at':   event.created_at,
+                        'event':        event.event,
+                        'timestamp':    event.timestamp,
+                        'duration':     event.duration,
+                        'item_id':      event.extract_id,
+                    }
+                    for event in events
+                    ]
+        else:
+            # TODO return no topic events in the DB
+            pass
 
 
 #############
