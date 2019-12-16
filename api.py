@@ -80,7 +80,7 @@ item_event_model = api.model('Item Event', {
 # TopicFile, ExtractFile, ItemFile models #
 ###########################################
 
-item_model = api.model('Item', {
+item_model = api.model('Item File', {
     'id':                   fields.Integer,
     'created_at':           fields.DateTime,
     'question_filepath':    fields.String,
@@ -92,7 +92,7 @@ item_model = api.model('Item', {
     'activities':           fields.List(fields.Nested(item_event_model))
     })
 
-extract_model = api.model('Extract', {
+extract_model = api.model('Extract File', {
     'id':           fields.Integer,
     'filepath':     fields.String,
     'created_at':   fields.DateTime,
@@ -105,7 +105,7 @@ extract_model = api.model('Extract', {
     'activities':   fields.List(fields.Nested(extract_event_model))  # TODO
     })
 
-topic_model = api.model('Topic', {
+topic_model = api.model('Topic File', {
     'id':               fields.Integer,
     'youtube_id':       fields.String,
     'filepath':         fields.String,
@@ -133,7 +133,7 @@ topic_model = api.model('Topic', {
     'activities':       fields.List(fields.Nested(topic_event_model))  # TODO
     })
 
-archive_model = api.model('Archive', {
+archive_model = api.model('Youtube Archive File', {
     'source':   fields.String,
     'id':       fields.String
     })
