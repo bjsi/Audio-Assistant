@@ -109,6 +109,8 @@ class TopicFile(PaginatedAPIMixin, db.Model):
                                     str(self.id) + '/extracts',
                         'events': 'http://audiopi:5000/topics/' + \
                                   str(self.id) + '/events',
+                        'topic': 'http://audiopi:5000/topics/' + \
+                                 str(self.topic_id)
                         'yttags': 'http://audiopi:5000/topics/' + \
                                   str(self.id) + '/yttags',
                         'mytags': 'http://audiopi:5000/topics/' + \
@@ -145,8 +147,7 @@ topic_model = api.model('Topic File', {
     'transcript':       fields.String,
     '_links': {
         'self':     fields.String,
-        'topic':    fields.String,
-        'items':    fields.String,
+        'extracts': fields.String,
         'events':   fields.String
         }
     })
@@ -467,9 +468,9 @@ class Topics(Resource):
 #         """ Get a topic's extracts
 #         Allows the user to read a list of child
 #         extracts from the parent topic"""
-# 
+#
 #         # TODO
-# 
+#
 #         pass
 
 
@@ -536,9 +537,9 @@ class Extract(Resource):
 #         """ Get extract topic
 #         Allows the user to read the parent topic of an extract
 #         according to the extract id"""
-# 
+#
 #         # TODO
-# 
+#
 #         pass
 
 
@@ -584,9 +585,9 @@ class Item(Resource):
 #         """ Get item extract
 #         Allows the user to get the parent extract of the item
 #         according to the item id"""
-# 
+#
 #         # TODO
-# 
+#
 #         pass
 
 
