@@ -34,7 +34,7 @@ class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
         self.queue = "global topic queue"
         self.clozing = False
         self.recording = False
-        self.active_keys = {}
+        self.active_keys = self.topic_keys
 
         # inter-queue methods are for navigating between Topic, Extract
         # and Item queues
@@ -229,7 +229,7 @@ class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
             extract_items = extract.items
             items = []
             for item in extract_items:
-                if item.question_filepath and not item.deleted:
+                if item.question_filepath and not item.archived:
                     rel_fp = self.abs_to_rel_item(item.question_filepath)
                     if self.mpd_recognised(rel_fp):
                         items.append(rel_fp)

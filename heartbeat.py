@@ -1,13 +1,22 @@
-from config import *
-from models import *
-import datetime
+from config import (HOST,
+                    PORT)
+from models import (TopicFile,
+                    ExtractFile,
+                    ItemFile,
+                    session)
 import time
 import mpd
+from contextlib import contextmanager
+from sqlalchemy import or_
+
+# TODO Maybe use my own Mpd class
 
 client = mpd.MPDClient()
 
-@connection
+
+@contextmanager
 def connection():
+    """ Connect to mpd client to execute command """
     try:
         client.connect(HOST, PORT)
         yield
@@ -15,33 +24,45 @@ def connection():
         client.close()
         client.disconnect()
 
+
 while True:
+    cur_time = time.time()
+
     with connection():
-        state = client.status()['state']
+        # Ignore stop state
+        status = client.status()
+        event = status['state']
+        if event == "stop":
+            continue
+
+        # Get current file info
+        timestamp = status['elapsed']
         filepath = client.currentsong()['file']
 
-    cur_time = time.time()
-    cur_activity = (session
-                   .query(Activity)
-                   .order_by(Activity.timestamp)
-                   .first())
+    # Find the current file in DB
+    file = (session
+            .query(TopicFile, ItemFile, ExtractFile)
+            .filter(or_(TopicFile.filepath == filepath,
+                        ExtractFile.filepath == filepath,
+                        ItemFile.question_filepath == filepath))
+            .one_or_none())
 
-    if not cur_activity or cur_activity.topicfiles.filepath != filepath:
-        file = (session
-               .query(TopicFile,ExtractFile)
-               .filter(TopicFile.filepath=filepath)
-               .filter(ExtractFile.extract_filepath=filepath)
-               .one_or_none())
-        if file:
-            file.activities.append(Activity(activity=state))
-            session.commit()
+    if file:
+        events = file.events
+        if events:
+            last_event = max(events, key=lambda event: event.created_at)
+            # Check if same event
+            if last_event.event == event:
+                # Update duration
+                duration = cur_time - last_event.created_at.timestamp()
+                last_event.duration = duration
+                last_event.timestamp = timestamp
+                session.commit()
+                continue
+        # Create a new event
+        file.add_event(event=event, timestamp=timestamp)
+    else:
+        # TODO Log severe error
+        print("ERROR: Currently playing file not found in DB")
 
-    elif cur_activity.topicfiles.filepath == filepath or \
-            cur_activity.extractfiles.extract_filepath == filepath:
-        if cur_activity.activity == state:
-            # .timestamp() converts datetime objects to epoch time
-            created_at = cur_activity.created_at.timestamp()
-            duration = cur_time - created_at
-            cur_activity.timestamp = duration
-            session.commit()
     time.sleep(4)

@@ -1,22 +1,28 @@
-#!/usr/bin/env python3
 import time
+import os
 from contextlib import contextmanager
 import mpd
-from config import *
-from models import *
+from config import (HOST,
+                    PORT,
+                    TOPICFILES_DIR)
+from models import (session,
+                    TopicFile)
 
-# Should be working now!
 
 client = mpd.MPDClient()
 
+
 @contextmanager
 def connection():
+    """ Connects to the mpd server to execute a command.
+    """
     try:
-        client.connect(HOST,PORT)
+        client.connect(HOST, PORT)
         yield
     finally:
         client.close()
         client.disconnect()
+
 
 while True:
     with connection():

@@ -4,7 +4,8 @@ import logging
 import logging.config
 import yaml
 from models import TopicFile, session, YoutubeTag
-from config import TOPICFILES_DIR, ARCHIVE_FILE
+from config import (TOPICFILES_DIR,
+                    ARCHIVE_FILE)
 from transcript_funcs import vtt_to_text
 
 
@@ -15,85 +16,95 @@ from transcript_funcs import vtt_to_text
 # logger = logging.getLogger('ydl')
 
 
-def finished_hook(target):
-    if target['status'] == 'finished':
+class Downloader(object):
 
-        filepath = target['filename']
-        vid_id = os.path.splitext(os.path.basename(filepath))[0]
+    """
+    Downloads audio from youtube videos
+    Saves to the TopicFiles directory
+    Playback rate can be set
+    Saves metadata about the video to the DB
+    """
 
-        with youtube_dl.YoutubeDL({}) as ydl:
-            info = ydl.extract_info(vid_id, download=False)
+    def __init__(self, youtube_id: str, playback_rate: float):
+        """
+        :youtube_id: String. ID of the youtube video.
+        :playback_rate: Float. Desired playback rate for the track
+        """
+        self.youtube_id = youtube_id
+        self.playback_rate = playback_rate
 
-        title = info['title']
-        youtube_id = info['id']
-        duration = info['duration']
-        uploader = info['uploader']
-        uploader_id = info['uploader_id']
-        thumbnail_url = info['thumbnail']
-        upload_date = info['upload_date']
-        view_count = info['view_count']
-        like_count = info['like_count']
-        dislike_count = info['dislike_count']
-        average_rating = info['average_rating']
+        # TODO Allow this to be set through API
+        self. ydl_opts = {
+                'format':           'worstaudio/worst',  # worst quality audio
+                # 'logger': logger(),
+                'progress_hooks': [self.finished_hook],
+                'download_archive': ARCHIVE_FILE,
+                'writesubtitles': True,
+                'writeautomaticsub': True,
+                'sub-lang': ['en'],
+                # TODO explicitly add that the subs should be en.vtt format
+                'writeinfojson': True,
+                'ignoreerrors': True,
+                'outtmpl': os.path.join(TOPICFILES_DIR, '%(id)s.%(ext)s'),
+                'max_downloads': 1,
+        }
 
-        file = TopicFile(filepath=filepath,
-                         title=title,
-                         youtube_id=youtube_id,
-                         duration=duration,
-                         uploader=uploader,
-                         uploader_id=uploader_id,
-                         thumbnail_url=thumbnail_url,
-                         upload_date=upload_date,
-                         view_count=view_count,
-                         like_count=like_count,
-                         dislike_count=dislike_count,
-                         average_rating=average_rating,
-                         downloaded=True)
+    def download(self):
+        """ Download the  """
+        with youtube_dl.YoutubeDL(self.ydl_options) as ydl:
+            ydl.download([self.youtube_id])
 
-        tags = info['tags'] + info['categories']
-        for tag in tags:
-            file.yttags.append(YoutubeTag(tag))
+    def finished_hook(target):
+        """ Runs after each successful download """
 
-        # Find subtitle file if exists, convert to plain text and add to DB
-        subs_file = os.path.splitext(filepath)[0] + ".en.vtt"
-        if os.path.exists(subs_file):
-            transcript = vtt_to_text(subs_file)
-            file.transcript = transcript
+        if target['status'] == 'finished':
 
-        # TODO Term extraction and add to my_tags
-        # Basically:
-        # terms = term_extract(subsfile)
-        # file.mytags.extend(terms)
+            filepath = target['filename']
+            vid_id = os.path.splitext(os.path.basename(filepath))[0]
 
-        session.add(file)
-        session.commit()
+            with youtube_dl.YoutubeDL({}) as ydl:
+                info = ydl.extract_info(vid_id, download=False)
 
-        return
+            title = info['title']
+            youtube_id = info['id']
+            duration = info['duration']
+            uploader = info['uploader']
+            uploader_id = info['uploader_id']
+            thumbnail_url = info['thumbnail']
+            upload_date = info['upload_date']
+            view_count = info['view_count']
+            like_count = info['like_count']
+            dislike_count = info['dislike_count']
+            average_rating = info['average_rating']
 
+            file = TopicFile(filepath=filepath,
+                             title=title,
+                             youtube_id=youtube_id,
+                             duration=duration,
+                             uploader=uploader,
+                             uploader_id=uploader_id,
+                             thumbnail_url=thumbnail_url,
+                             upload_date=upload_date,
+                             view_count=view_count,
+                             like_count=like_count,
+                             dislike_count=dislike_count,
+                             average_rating=average_rating,
+                             downloaded=True)
 
-ydl_opts = {
-        'format': 'worstaudio/worst',
-        #'logger': logger(),
-        'progress_hooks': [finished_hook],
-        'download_archive': ARCHIVE_FILE,
-        # if no batch file option
-        # with open(BATCH_FILE) as f:
-        #     urls = f.readlines() # remember to strip comments
-        # then pass to the download call below (accepts [lists])
-        # 'batch_file':
-        'writesubtitles': True,
-        'writeautomaticsub': True,
-        'sub-lang': ['en'],
-        # explicitly add that the subs should be en.vtt format
-        'writeinfojson': True,
-        'ignoreerrors': True,
-        # output format
-        # u'%(playlist_index)s-%(title)s.%(ext)s'
-        'outtmpl': os.path.join(TOPICFILES_DIR, '%(id)s.%(ext)s'),
-        # --add-metadata
-        'max_downloads': 1,
-}
+            tags = info['tags'] + info['categories']
+            for tag in tags:
+                file.yttags.append(YoutubeTag(tag))
 
+            # Find subtitle file if exists, convert to plain text and add to DB
+            subs_file = os.path.splitext(filepath)[0] + ".en.vtt"
+            if os.path.exists(subs_file):
+                transcript = vtt_to_text(subs_file)
+                file.transcript = transcript
 
-with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-    ydl.download(["https://www.youtube.com/playlist?list=PLwmPBqRou8APdG6K-Ks0lV2yL0yqCFHOu"])
+            # TODO Term extraction and add to my_tags
+            # Basically:
+            # terms = term_extract(subsfile)
+            # file.mytags.extend(terms)
+
+            session.add(file)
+            session.commit()

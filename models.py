@@ -100,7 +100,7 @@ class TopicFile(Base):
     average_rating = Column(Float)  # 0 to 5 float
     playback_rate = Column(Float, default=1.0)  # eg. 1, 1.25, 1.5
     cur_timestamp = Column(Float, default=0)  # seconds.miliseconds
-    created_at = Column(DateTime, default=datetime.datetime.now())
+    created_at = Column(DateTime, default=datetime.datetime.utcnow())
     transcript = Column(Text)
 
     # One to many File |-< Extract
@@ -118,6 +118,15 @@ class TopicFile(Base):
                           secondary=my_topicfile_tags,
                           back_populates='topics')
 
+    def add_event(self, event: str, timestamp: float, duration: float):
+        """ Add an event to the current TopicFile """
+        # TODO data validation of parameters
+        event = TopicEvent(event=event,
+                           timestamp=timestamp,
+                           duration=duration)
+        self.append(event)
+        session.commit()
+
     # TODO Should the following be properties?
 
     @property
@@ -133,7 +142,7 @@ class TopicFile(Base):
     @property
     def channel(self) -> str:
         """ Returns the url of the uploader's youtube channel """
-        return "https://youtube.com/channel/" + self.channel_id
+        return "https://youtube.com/channel/" + self.uploader_id
 
     def __repr__(self) -> str:
         return '<TopicFile: title=%r youtube_id=%r>' % \
@@ -149,7 +158,7 @@ class ExtractFile(Base):
 
     id = Column(Integer, primary_key=True)
     filepath = Column(String, nullable=False, unique=True)
-    created_at = Column(DateTime, default=datetime.datetime.now())
+    created_at = Column(DateTime, default=datetime.datetime.utcnow())
     startstamp = Column(Float, nullable=False)  # Seconds.miliseconds
     endstamp = Column(Float)  # Seconds.miliseconds
     transcript = Column(Text, nullable=True)
@@ -170,6 +179,15 @@ class ExtractFile(Base):
     # One to many ExtractFile |-< ExtractEvent
     events = relationship("ExtractEvent",
                           back_populates="extract")
+
+    def add_event(self, event: str, timestamp: float, duration: float):
+        """ Add an event to the current TopicFile """
+        # TODO data validation of parameters
+        event = ExtractEvent(event=event,
+                             timestamp=timestamp,
+                             duration=duration)
+        self.append(event)
+        session.commit()
 
     # TODO Should this be a property
     @property
@@ -194,7 +212,7 @@ class ItemFile(Base):
     __tablename__ = "itemfiles"
 
     id = Column(Integer, primary_key=True)
-    created_at = Column(DateTime, default=datetime.datetime.now())
+    created_at = Column(DateTime, default=datetime.datetime.utcnow())
     question_filepath = Column(String, unique=True)
     cloze_filepath = Column(String, unique=True)
     # Set by the user
@@ -212,6 +230,15 @@ class ItemFile(Base):
     # One to many ItemFile |-< ItemEvent
     events = relationship("ItemEvent",
                           back_populates="item")
+
+    def add_event(self, event: str, timestamp: float, duration: float):
+        """ Add an event to the current TopicFile """
+        # TODO data validation of parameters
+        event = ItemEvent(event=event,
+                          timestamp=timestamp,
+                          duration=duration)
+        self.append(event)
+        session.commit()
 
     # TODO Should this be a property
     @property
@@ -349,7 +376,7 @@ class Log(Base):
     level = Column(String)
     trace = Column(String)
     msg = Column(String)
-    created_at = Column(DateTime, default=datetime.datetime.now())
+    created_at = Column(DateTime, default=datetime.datetime.utcnow())
 
     def __repr__(self):
         return "<Log: %s - %s>" % (self.created_at.strftime("%Y-%m-%d %H:%M:%S"), self.msg[:50])
