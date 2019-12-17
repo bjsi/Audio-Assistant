@@ -1,8 +1,8 @@
 from flask_restplus import Resource, Api
 import os
-from flask import Blueprint, request, Flask, render_template
+from flask import Blueprint, request, Flask, render_template, url_for
 from flask_restplus import fields
-from flask_sqlalchemy import SQLAlchemy
+from flask_sqlalchemy import SQLAlchemy  # flask-sqlalchemy has easy pagination
 from config import DATABASE_URI
 from flask_restplus import reqparse
 from flask_cors import CORS
@@ -15,54 +15,17 @@ db = SQLAlchemy(app)
 db.metadata.reflect(db.engine)
 CORS(app)
 
-# Setting up existing db tables with flask-sqlalchemy
-
-
-
-class TopicFile(db.Model):
-    
-    """ TODO """
-    
-    __table__ = db.Model.metadata.tables['topicfiles']
-
-    def to_dict(self):
-        data = {
-        }
-    
-
-
-class ExtractFile(db.Model):
-    __table__ = db.Model.metadata.tables['extractfiles']
-
-
-class ItemFile(db.Model):
-    __table__ = db.Model.metadata.tables['itemfiles']
-
-
-class TopicEvent(db.Model):
-    __table__ = db.Model.metadata.tables['topicevents']
-
-    
-class ExtractEvent(db.Model):
-    __table__ = db.Model.metadata.tables['extractevents']
-
-
-class ItemEvent(db.Model):
-    __table__ = db.Model.metadata.tables['itemevents']
-
-
-# create the api object
-
+# API object
 api = Api(app,
           title="Audio Assistant",
           version="0.1",
-          description="API documentation for Audio Assistant")
+          description="API documentation for Audio Assistant",
+          doc='/docs')
 
-# Split Topics, Extracts and Items into separate namespaces
-
+# API Namespaces
 assistant_ns = api.namespace('assistant',
-                             decription="Operations for controlling "
-                                        "Audio Assistant via the API")
+                             description="Operations for controlling "
+                                         "Audio Assistant via the API")
 topic_ns = api.namespace('topics',
                          description="Operations for retrieving Topic-related "
                                      "information from the database")
@@ -73,58 +36,92 @@ extract_ns = api.namespace('extracts',
 item_ns = api.namespace('items',
                         description="Operations for retrieving Item-related "
                                     "information from the database")
-activity_ns = api.namespace('activities',
-                            description="Operations for retrieving "
-                                        "Activity-related information from "
-                                        "the database")
-event_ns = api.namespace('events',
-                         description="Operations for retrieving "
-                                     "Event information for "
-                                     "TopicFiles, ExtractFiles and "
-                                     "ItemFiles")
 
-################
-# Event Model #
-################
 
-event_model = api.model('Event', {
-    'id':           fields.Integer,
-    'created_at':   fields.DateTime,
-    'event':        fields.String,
-    'timestamp':    fields.Float,
-    'topic_id':     fields.Integer,
-    })
+##########################
+# Pagination Mixin Class #
+##########################
 
-###########################################
-# TopicFile, ExtractFile, ItemFile models #
-###########################################
+class PaginatedAPIMixin(object):
+    @staticmethod
+    def to_collection_dict(query, page, per_page, endpoint, **kwargs):
+        resources = query.paginate(page, per_page, False)
+        data = {
+                "data": [
+                            item.to_dict()
+                            for item in resources.items
+                         ],
+                "_meta": {
+                            "page": page,
+                            "per_page": per_page,
+                            "total_pages": resources.pages,
+                            "total_items": resources.total
+                         },
+                "_links": {
+                            "self": url_for(endpoint, page=page,
+                                            per_page=per_page,
+                                            **kwargs),
+                            "next": url_for(endpoint, page=page + 1,
+                                            per_page=per_page,
+                                            **kwargs) if resources.has_next else None,
+                            "prev": url_for(endpoint, page=page - 1,
+                                            per_page=per_page,
+                                            **kwargs) if resources.has_next else None
+                          }
+               }
+        return data
 
-item_model = api.model('Item File', {
-    'id':                   fields.Integer,
-    'created_at':           fields.DateTime,
-    'question_filepath':    fields.String,
-    'cloze_filepath':       fields.String,
-    'archived':             fields.Boolean,
-    'deleted':              fields.Boolean,
-    'cloze_startstamp':     fields.Float,
-    'cloze_endstamp':       fields.Float,
-    'extract_id':           fields.Integer,
-    'events':               fields.List(fields.Nested(event_model))
-    })
 
-extract_model = api.model('Extract File', {
-    'id':           fields.Integer,
-    'filepath':     fields.String,
-    'created_at':   fields.DateTime,
-    'startstamp':   fields.Float,
-    'endstamp':     fields.Float,
-    'archived':     fields.Boolean,
-    'transcript':   fields.String,
-    'deleted':      fields.Boolean,
-    'items':        fields.List(fields.Nested(item_model)),
-    'topic_id':     fields.Integer,
-    'events':       fields.List(fields.Nested(event_model))
-    })
+####################################
+# TopicFile DB table and API Model #
+####################################
+
+class TopicFile(PaginatedAPIMixin, db.Model):
+    """ TODO """
+    __table__ = db.Model.metadata.tables['topicfiles']
+
+    def to_dict(self):
+        data = {
+                'id':             self.id,
+                'filepath':       self.filepath,
+                'downloaded':     self.downloaded,
+                'archived':       self.archived,
+                'deleted':        self.deleted,
+                'youtube_id':     self.youtube_id,
+                'title':          self.title,
+                'duration':       self.duration,
+                'uploader':       self.uploader,
+                'upload_date':    self.upload_date,
+                'thumbnail_url':  self.thumbnail_url,
+                'view_count':     self.view_count,
+                'like_count':     self.like_count,
+                'dislike_count':  self.dislike_count,
+                'average_rating': self.average_rating,
+                'playback_rate':  self.playback_rate,
+                'cur_timestamp':  self.cur_timestamp,
+                'created_at':     self.created_at,
+                'transcript':     self.transcript,
+                'rendered':       render_template("topic.html", topic=self),
+                # TODO Change to url_for
+                '_links': {
+                        'self': 'http://audiopi:5000/topics/' + \
+                                self.id,
+                        'extracts': 'http://audiopi:5000/topics/' + \
+                                    self.id + '/extracts',
+                        'events': 'http://audiopi:5000/topics/' + \
+                                  self.id + '/events',
+                        'yttags': 'http://audiopi:5000/topics/' + \
+                                  self.id + '/yttags',
+                        'mytags': 'http://audiopi:5000/topics/' + \
+                                  self.id + '/mytags',
+                        'youtube_url': 'http://www.youtube.com/watch?v=' + \
+                                       self.youtube_id,
+                        'channel_url': 'httmp://www.youtube.com/channel/' + \
+                                       self.uploader_id
+                }
+               }
+        return data
+
 
 topic_model = api.model('Topic File', {
     'id':               fields.Integer,
@@ -143,24 +140,278 @@ topic_model = api.model('Topic File', {
     'like_count':       fields.Integer,
     'dislike_count':    fields.Integer,
     'average_rating':   fields.Float,
+    'playback_rate':    fields.Float,
     'cur_timestamp':    fields.Float,
     'created_at':       fields.DateTime,
     'transcript':       fields.String,
-    'extracts':         fields.List(fields.Nested(extract_model)),
-    'yttags':           fields.List(fields.String),
-    'mytags':           fields.List(fields.String),
-    'rendered':         fields.String,  # rendered html using topic.html
-    'playback_rate':    fields.Float,
-    'events':           fields.List(fields.Nested(event_model))
+    '_links': {
+        'self':     fields.String,
+        'topic':    fields.String,
+        'items':    fields.String,
+        'events':   fields.String
+        }
     })
 
-archive_model = api.model('Youtube Archive File', {
-    'source':   fields.String,
-    'id':       fields.String
+paginated_topics_model = api.model('Paginated Topic Files', {
+    "data":       fields.List(fields.Nested(topic_model)),
+    "_meta": {
+              "page":         fields.Integer,
+              "per_page":     fields.Integer,
+              "total_pages":  fields.Integer,
+              "total_items":  fields.Integer
+             },
+    "_links": {
+               "self":      fields.String,
+               "next":      fields.String,
+               "prev":      fields.String,
+              }
     })
+
+
+######################################
+# ExtractFile DB table and API Model #
+######################################
+
+class ExtractFile(PaginatedAPIMixin, db.Model):
+    """ TODO """
+    __table__ = db.Model.metadata.tables['extractfiles']
+
+    def to_dict(self):
+        data = {
+                "id":           self.id,
+                "filepath":     self.filepath,
+                "created_at":   self.created_at,
+                "startstamp":   self.startstamp,
+                "endstamp":     self.endstamp,
+                "transcript":   self.transcript,
+                'archived':     self.archived,
+                "deleted":      self.deleted,
+                'links': {
+                    # TODO change to url_for
+                    'self': 'http://audiopi:5000/extracts/' +
+                            self.id,
+                    'topic': 'http://audiopi:5000/topics/' +
+                             self.topic_id,
+                    'items': 'http://audiopi:5000/extracts/' +
+                             self.id + '/items',
+                    'events': 'http://audiopi:5000/extracts/' +
+                              self.id + '/events'
+                    }
+               }
+        return data
+
+
+extract_model = api.model('Item File', {
+    'id':                   fields.Integer,
+    'created_at':           fields.DateTime,
+    'cloze_filepath':       fields.String,
+    'question_filepath':    fields.String,
+    'deleted':              fields.Boolean,
+    'archived':             fields.Boolean,
+    'cloze_startstamp':     fields.Float,
+    'cloze_endstamp':       fields.Float,
+    '_links': {
+        'self': fields.String,
+        'topic': fields.String,
+        'items': fields.String,
+        'events': fields.String
+        }
+    })
+
+paginated_extracts_model = api.model('Paginated Extract Files', {
+    "data":       fields.List(fields.Nested(extract_model)),
+    "_meta": {
+              "page":         fields.Integer,
+              "per_page":     fields.Integer,
+              "total_pages":  fields.Integer,
+              "total_items":  fields.Integer
+             },
+    "_links": {
+               "self":      fields.String,
+               "next":      fields.String,
+               "prev":      fields.String,
+              }
+    })
+
+
+###############################
+# ItemFile DB Model and Table #
+###############################
+
+class ItemFile(PaginatedAPIMixin, db.Model):
+    """ TODO """
+    __table__ = db.Model.metadata.tables['itemfiles']
+
+    def to_dict(self):
+        data = {
+                'id':                self.id,
+                'created_at':        self.question_filepath,
+                'question_filepath': self.question_filepath,
+                'cloze_filepath':    self.cloze_filepath,
+                'archived':          self.archived,
+                'deleted':           self.deleted,
+                'cloze_startstamp':  self.cloze_startstamp,
+                'cloze_stopstamp':   self.cloze_endstamp,
+                # TODO Change to url_for
+                '_links': {
+                    'self': 'http://audiopi:5000/items/' + self.id,
+                    'extract': 'http://audiopi:5000/items/' + \
+                               self.id + '/extract',
+                    'events': 'http://audiopi:5000/items/' + \
+                              self.id + '/events'
+                    }
+               }
+        return data
+
+
+item_model = api.model('Item File', {
+    'id':                   fields.Integer,
+    'created_at':           fields.DateTime,
+    'question_filepath':    fields.String,
+    'cloze_filepath':       fields.String,
+    'archived':             fields.Boolean,
+    'deleted':              fields.Boolean,
+    'cloze_startstamp':     fields.Float,
+    'cloze_endstamp':       fields.Float,
+    '_links': {
+        'self': fields.String,
+        'extract': fields.String,
+        'events': fields.String,
+        }
+    })
+
+paginated_items_model = api.model('Paginated Item Files', {
+    "data":       fields.List(fields.Nested(item_model)),
+    "_meta": {
+              "page":         fields.Integer,
+              "per_page":     fields.Integer,
+              "total_pages":  fields.Integer,
+              "total_items":  fields.Integer
+             },
+    "_links": {
+               "self":      fields.String,
+               "next":      fields.String,
+               "prev":      fields.String,
+              }
+    })
+
+#######################################
+# Topic Event DB tables and API Model #
+#######################################
+
+class TopicEvent(db.Model):
+    """ TODO """
+    __table__ = db.Model.metadata.tables['topicevents']
+
+    def to_dict(self):
+        data = {
+                'id':           self.id,
+                'created_at':   self.created_at,
+                'event':        self.event,
+                'timestamp':    self.timestamp,
+                'duration':     self.duration,
+                '_links': {
+                    # TODO Change to url_for
+                    'self': 'http://audiopi:5000/topics/' + \
+                            self.topic_id + '/events/' + self.id,
+                    'topic': 'http://audiopi:5000/topics/' + self.topic_id
+                    }
+               }
+        return data
+
+
+topic_event_model = api.model('Topic Event', {
+    'id':           fields.Integer,
+    'created_at':   fields.DateTime,
+    'event':        fields.String,
+    'timestamp':    fields.Float,
+    'duration':     fields.Float,
+    '_links': {
+        'self':     fields.String,
+        'topic':    fields.String
+        }
+    })
+
+
+#########################################
+# Extract Event DB tables and API Model #
+#########################################
+
+class ExtractEvent(db.Model):
+    """ TODO """
+    __table__ = db.Model.metadata.tables['extractevents']
+
+    def to_dict(self):
+        data = {
+                'id':           self.id,
+                'created_at':   self.created_at,
+                'event':        self.event,
+                'timestamp':    self.timestamp,
+                'duration':     self.duration,
+                '_links': {
+                    # TODO Change to url_for
+                    'self': 'http://audiopi:5000/extracts/' + \
+                            self.extract_id + '/events/' + self.id,
+                    'extract': 'http://audiopi:5000/extracts/' + \
+                               self.extract_id
+                    }
+               }
+        return data
+
+
+extract_event_model = api.model('Topic Event', {
+    'id':           fields.Integer,
+    'created_at':   fields.DateTime,
+    'event':        fields.String,
+    'timestamp':    fields.Float,
+    'duration':     fields.Float,
+    '_links': {
+        'self':     fields.String,
+        'extract':  fields.String
+        }
+    })
+
+
+######################################
+# Item Event DB tables and API Model #
+######################################
+
+class ItemEvent(db.Model):
+    """ TODO """
+    __table__ = db.Model.metadata.tables['itemevents']
+
+    def to_dict(self):
+        data = {
+                'id':           self.id,
+                'created_at':   self.created_at,
+                'self':         self.event,
+                'timestamp':    self.timestamp,
+                'duration':     self.duration,
+                '_links': {
+                    # TODO Change to url_for
+                    'self': 'http://audiopi:5000/items/' + \
+                            self.item_id + '/events/' + self.id,
+                    'item': 'http://audiopi:5000/items/' + self.item_id,
+                }
+               }
+        return data
+
+
+item_event_model = api.model('Event', {
+    'id':           fields.Integer,
+    'created_at':   fields.DateTime,
+    'event':        fields.String,
+    'timestamp':    fields.Float,
+    'duration':     fields.Float,
+    '_links': {
+        'self':     fields.String,
+        'item':     fields.String
+        }
+    })
+
 
 # add a datetime / timestamp filter to these
-# Add a way to filter by tags
+# Add a way to filter by tags both AND and OR
 # TODO Get items by tag
 # TODO Get items by transcript?
 # Filter extracts and items by deleted and whether they have a cloze_endstamp /
@@ -170,111 +421,7 @@ archive_model = api.model('Youtube Archive File', {
 # Add a way to record Events from the API
 # Add logging
 # Learn how to write proper APIs
-
-##########
-# Events #
-##########
-
-
-@event_ns.route('/topics/')
-class TopicEvents(Resource):
-    @api.marshal_with(event_model, as_list=True)
-    @api.response(200, 'Successfully read topic events')
-    def get(self):
-        """ Get all topic events """
-        events = (db.session
-                  .query(TopicEvent)
-                  .all())
-        if events:
-            return [
-                    {
-                        'id':           event.id,
-                        'created_at':   event.created_at,
-                        'event':        event.event,
-                        'timestamp':    event.timestamp,
-                        'duration':     event.duration,
-                        'topic_id':     event.topic_id,
-                    }
-                    for event in events
-                    ]
-
-
-@event_ns.route('/events/')
-class ExtractEvents(Resource):
-    @api.marshal_with(event_model, as_list=True)
-    @api.response(200, 'Successfully read topic events')
-    def get(self):
-        """ Get all extract events """
-        events = (db.session
-                  .query(ExtractEvent)
-                  .all())
-        if events:
-            return [
-                    {
-                        'id':           event.id,
-                        'created_at':   event.created_at,
-                        'event':        event.event,
-                        'timestamp':    event.timestamp,
-                        'duration':     event.duration,
-                        'extract_id':   event.extract_id,
-                    }
-                    for event in events
-                    ]
-
-
-@event_ns.route('/items/')
-class ItemEvents(Resource):
-    @api.marshal_with(event_model, as_list=True)
-    @api.response(200, 'Successfully read item events')
-    def get(self):
-        """ Get all item events """
-        events = (db.session
-                  .query(ItemEvent)
-                  .all())
-        if events:
-            return [
-                    {
-                        'id':           event.id,
-                        'created_at':   event.created_at,
-                        'event':        event.event,
-                        'timestamp':    event.timestamp,
-                        'duration':     event.duration,
-                        'item_id':      event.extract_id,
-                    }
-                    for event in events
-                    ]
-        else:
-            # TODO return no topic events in the DB
-            pass
-
-
-#############
-# Assistant #
-#############
-
-@assistant_ns.route('/youtube/archive/')
-class Assistant(Resource):
-    @api.marshal_with(archive_model, as_list=True)
-    @api.response(200, 'Successfully read the archive file')
-    def get(self):
-        """ Get all items in the youtube archive
-        Allows the user to read a list of all previously
-        downloaded items which will be skipped by youtube-dl
-        in the future"""
-        if os.path.isfile('youtube_archive'):
-            with open('youtube_archive', 'r') as f:
-                lines = f.readlines()
-                if lines:
-                    archive_list = [
-                                    {
-                                        'source': line.split(" ")[0].strip(),
-                                        'id': line.split(" ")[1].strip()
-                                    }
-                                    for line in lines
-                                   ]
-
-                    return archive_list
-
+# Add archived, deleted, datetime filters to the query string
 
 ##########
 # Topics #
@@ -282,146 +429,52 @@ class Assistant(Resource):
 
 # By default arguments are not required
 # Arguments default to None
-
 # Deleted filter didn't work
-parser = reqparse.RequestParser()
-parser.add_argument('start',
-                    type=str,
-                    help='Find Topics after this time',
-                    location='list')
-parser.add_argument('end',
-                    type=str,
-                    help='Find topics before this time',
-                    location='list')
+
+# parser = reqparse.RequestParser()
+# parser.add_argument('start',
+#                     type=str,
+#                     help='Find Topics after this time',
+#                     location='list')
+# parser.add_argument('end',
+#                     type=str,
+#                     help='Find topics before this time',
+#                     location='list')
 
 
 @topic_ns.route('/')
 class Topics(Resource):
-    @api.marshal_with(topic_model, as_list=True)
-    @api.response(200, 'Successfully read all outstanding topics')
-    @api.expect(parser)
+    @api.marshal_with(paginated_topics_model)
+    @api.response(200, 'Successfully read topics')
+    # @api.expect(parser)
     def post(self):
-        """ Get outstanding Topics
+        """ Get all Topics
         Allows the user to read a list of all topic files
-        in the database that have not been deleted"""
+        in the database that have not been deleted """
 
-        # including extracts in the topics model
-
-        args = parser.parse_args()
-
-        if args['start'] and args['end']:
-            topics = (db.session
-                      .query(TopicFile)
-                      .filter(TopicFile.created_at > args['start'])
-                      .filter(TopicFile.created_at < args['end'])
-                      .all())
-
-        else:
-            topics = (db.session
-                      .query(TopicFile)
-                      .order_by(TopicFile.created_at.desc())
-                      .all())
-        if topics:
-            topics = [
-                      {
-                       'id':             topic.id,
-                       'filepath':       topic.filepath,
-                       'downloaded':     topic.downloaded,
-                       'archived':       topic.archived,
-                       'deleted':        topic.deleted,
-                       'youtube_id':     topic.youtube_id,
-                       'title':          topic.title,
-                       'duration':       topic.duration,
-                       'uploader':       topic.uploader,
-                       'upload_date':    topic.upload_date,
-                       'thumbnail_url':  topic.thumbnail_url,
-                       'view_count':     topic.view_count,
-                       'like_count':     topic.like_count,
-                       'average_rating': topic.average_rating,
-                       'cur_timestamp':  topic.cur_timestamp,
-                       'created_at':     topic.created_at,
-                       'url':            topic.url,
-                       'channel':        topic.channel,
-                       'progress':       topic.progress,
-                       'transcript':     topic.transcript,
-                       'extracts': [
-                                    {
-                                      "id":         extract.id,
-                                      "filepath":   extract.filepath,
-                                      "created_at": extract.created_at,
-                                      "startstamp": extract.startstamp,
-                                      "endstamp":   extract.endstamp,
-                                      "deleted":    extract.deleted,
-                                      "items": [
-                                                {
-                                                 'id':                item.id,
-                                                 'created_at':        item.created_at,
-                                                 'question_filepath': item.question_filepath,
-                                                 'cloze_filepath':    item.cloze_filepath,
-                                                 'deleted':           item.deleted,
-                                                 'cloze_startstamp':  item.cloze_startstamp,
-                                                 'cloze_stopstamp':   item.cloze_endstamp,
-                                                 'extract':           item.extractfile.id
-                                                }
-                                                for item in extract.itemfiles
-                                               ],
-                                      "topic": topic.id
-                                    }
-                                    for extract in topic.extracts
-                                    # Not working?
-                                    if extract.endstamp
-                                   ],
-                       'yttags': [
-                                  tag.tag
-                                  for tag in topic.yttags
-                                 ],
-                       'mytags': [
-                                  tag.tag
-                                  for tag in topic.mytags
-                                 ],
-                       'rendered': render_template("topic.html", topic=topic)
-                      }
-                      for topic in topics
-                     ]
-            return topics
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 10, type=int), 100)
+        data = TopicFile.to_collection_dict(db.session.query(TopicFile),
+                                            page, per_page,
+                                            'http://audiopi:5000/topics')
+        return data
 
 
-@topic_ns.route('/extracts/<int:topic_id>')
+@topic_ns.route('/<int:topic_id>/extracts')
 class TopicExtracts(Resource):
-    @api.marshal_with(extract_model, as_list=True)
-    @api.response(200, "Successfully read child "
-                       "extracts")
+    @api.marshal_with(paginated_extracts_model)
+    @api.response(200, "Successfully read child extracts")
     def get(self, topic_id):
-        """ Get topic extracts
+        """ Get a topic's extracts
         Allows the user to read a list of child
         extracts from the parent topic"""
-        topic = (db.session
-                 .query(TopicFile)
-                 .filter_by(id=topic_id)
-                 .one_or_none())
-        if topic:
-            extracts = topic.extracts
-            if extracts:
-                extracts = [
-                            {
-                             "id":         extract.id,
-                             "filepath":   extract.extract_filepath,
-                             "created_at": extract.created_at,
-                             "startstamp": extract.topicfile_startstamp,
-                             "endstamp":   extract.topicfile_endstamp,
-                             "deleted":    extract.deleted,
-                             "topic":      topic.id,
-                             "items": [
-                                       item.id
-                                       for item in extract.items
-                                      ]
-                            }
-                            for extract in extracts
-                           ]
-                return extracts
+
+        # TODO
+
+        pass
 
 
-@topic_ns.route('/topic/<int:topic_id>')
+@topic_ns.route('/<int:topic_id>')
 class Topic(Resource):
     @api.marshal_with(topic_model)
     @api.response(200, "Successfully read topic")
@@ -429,44 +482,9 @@ class Topic(Resource):
         """ Get a single topic
         Allows the user to get a single topic according
         to the topic id"""
-        topic = (db.session
-                 .query(TopicFile)
-                 .filter_by(id=topic_id)
-                 .one_or_none())
-        if topic:
-            topic = {
-                     'id':             topic.id,
-                     'youtube_id':     topic.youtube_id,
-                     'filepath':       topic.filepath,
-                     'downloaded':     topic.downloaded,
-                     'deleted':        topic.deleted,
-                     'title':          topic.title,
-                     'duration':       topic.duration,
-                     'uploader':       topic.uploader,
-                     'upload_date':    topic.upload_date,
-                     'view_count':     topic.view_count,
-                     'like_count':     topic.like_count,
-                     'average_rating': topic.average_rating,
-                     'cur_timestamp':  topic.cur_timestamp,
-                     'created_at':     topic.created_at,
-                     'progress':       topic.progress,
-                     'url':            topic.url,
-                     'channel':        topic.channel,
-                     'transcript':     topic.transcript,
-                     'extractfiles': [
-                                      extract.id
-                                      for extract in topic.extracts
-                                     ],
-                     'yttags': [
-                                tag.tag
-                                for tag in topic.yttags
-                               ],
-                     'mytags': [
-                                tag.tag
-                                for tag in topic.mytags
-                               ]
-                    }
-            return topic
+
+        topic = db.session.query(TopicFile).get_or_404(topic_id)
+        return topic.to_dict()
 
 
 @topic_ns.route('/yttags/')
@@ -485,37 +503,21 @@ class TopicTags(Resource):
 
 @extract_ns.route('/')
 class Extracts(Resource):
-    @api.marshal_with(extract_model, as_list=True)
-    @api.response(200, 'Successfully read all outstanding extracts')
+    @api.marshal_with(paginated_extracts_model)
+    @api.response(200, 'Successfully read extracts')
     def get(self):
         """ Get outstanding extracts
         Allows the user to read a list of all outstanding extract
         files in the database that have not been archived or deleted"""
-        extracts = (db.session
-                    .query(ExtractFile)
-                    .filter_by(deleted=False)
-                    .all())
-        if extracts:
-            extracts = [
-                        {
-                          "id":                 extract.id,
-                          "extract_filepath":   extract.filepath,
-                          "created_at":         extract.created_at,
-                          "startstamp":         extract.startstamp,
-                          "endstamp":           extract.endstamp,
-                          "deleted":            extract.deleted,
-                          "topic": extract.topic.id,
-                          "items": [
-                                    item.id
-                                    for item in extract.items
-                                   ]
-                        }
-                        for extract in extracts
-                       ]
-            return extracts
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 10, type=int), 100)
+        data = ExtractFile.to_collection_dict(db.session.query(ExtractFile),
+                                              page, per_page,
+                                              'http://audiopi:5000/extracts')
+        return data
 
 
-@extract_ns.route('/extract/<int:extract_id>')
+@extract_ns.route('/<int:extract_id>')
 class Extract(Resource):
     @api.marshal_with(extract_model)
     @api.response(200, "Successfully read a single extract")
@@ -523,113 +525,59 @@ class Extract(Resource):
         """ Get a single extract
         Allows the user to read a single extract according to
         the extract id"""
-        extract = (db.session
-                   .query(ExtractFile)
-                   .filter_by(id=extract_id)
-                   .one_or_none())
-        if extract:
-            extract = {
-                       "id":         extract.id,
-                       "filepath":   extract.filepath,
-                       "created_at": extract.created_at,
-                       "startstamp": extract.startstamp,
-                       "endstamp":   extract.endstamp,
-                       "deleted":    extract.deleted,
-                       "topic": extract.topic.id,
-                       "items": [
-                                 item.id
-                                 for item in extract.items
-                                ]
-                      }
-            return extract
+        extract = db.session.query(ExtractFile).get_or_404()
+        return extract.to_dict()
 
 
-@extract_ns.route('/topic/<int:extract_id>')
+@extract_ns.route('/<int:extract_id>/topic')
 class ExtractParent(Resource):
     @api.marshal_with(topic_model)
-    @api.response(200, "Successfully read the parent topic of extract")
+    @api.response(200, "Successfully read parent topic of extract")
     def get(self, extract_id):
         """ Get extract topic
         Allows the user to read the parent topic of an extract
         according to the extract id"""
-        extract = (db.session
-                   .query(ExtractFile)
-                   .filter_by(id=extract_id)
-                   .one_or_none())
-        if extract:
-            topic = extract.topicfile
-            if topic:
-                topic = {
-                         'id':             topic.id,
-                         'youtube_id':     topic.youtube_id,
-                         'filepath':       topic.filepath,
-                         'downloaded':     topic.downloaded,
-                         'deleted':        topic.deleted,
-                         'title':          topic.title,
-                         'duration':       topic.duration,
-                         'uploader':       topic.uploader,
-                         'upload_date':    topic.upload_date,
-                         'view_count':     topic.view_count,
-                         'like_count':     topic.like_count,
-                         'average_rating': topic.average_rating,
-                         'cur_timestamp':  topic.cur_timestamp,
-                         'created_at':     topic.created_at,
-                         'progress':       topic.progress,
-                         'url':            topic.url,
-                         'channel':        topic.channel,
-                         'transcript':     topic.transcript,
-                         'extracts': [
-                                      extract.id
-                                      for extract in topic.extracts
-                                     ],
-                         'yttags': [
-                                    tag.tag
-                                    for tag in topic.yttags
-                                   ],
 
-                         'mytags': [
-                                    tag.tag
-                                    for tag in topic.mytags
-                                   ]
-                        }
-                return topic
+        # TODO
+
+        pass
 
 
 #########
 # Items #
 #########
 
-
 @item_ns.route('/')
-class Item(Resource):
-    @api.marshal_with(item_model, as_list=True)
+class Items(Resource):
+    @api.marshal_with(paginated_items_model)
     @api.response(200, "Successfully read the parent of extract")
     def get(self):
         """ Get outstanding items
         Allows the user to get a list of outstanding
         items that haven't been deleted or archived"""
 
-        items = (db.session
-                 .query(ItemFile)
-                 .filter_by(deleted=False)
-                 .all())
-        if items:
-            items = [
-                     {
-                      'id':               item.id,
-                      'created_at':       item.question_filepath,
-                      'cloze_filepath':   item.cloze_filepath,
-                      'deleted':          item.deleted,
-                      'cloze_startstamp': item.cloze_startstamp,
-                      'cloze_stopstamp':  item.cloze_endstamp,
-                      'extract':          item.extract.id
-                     }
-                     for item in items
-                    ]
-            return items
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 10, type=int), 100)
+        data = ItemFile.to_collection_dict(db.session.query(ItemFile),
+                                           page, per_page,
+                                           'http://audiopi:5000/items')
+        return data
 
 
-@item_ns.route('/extract/<int:item_id>')
+@item_ns.route('/<int:item_id>')
+class Item(Resource):
+    @api.marshal_with(extract_model)
+    @api.response(200, "Successfully read the parent extract of item")
+    def get(self, item_id):
+        """ Get item extract
+        Allows the user to get the parent extract of the item
+        according to the item id"""
+
+        item = db.session.query(ItemFile).get_or_404(item_id)
+        return item.to_dict()
+
+
+@item_ns.route('/<int:item_id>/extract')
 class ItemParent(Resource):
     @api.marshal_with(extract_model)
     @api.response(200, "Successfully read the parent extract of item")
@@ -638,27 +586,10 @@ class ItemParent(Resource):
         Allows the user to get the parent extract of the item
         according to the item id"""
 
-        item = (db.session
-                .query(ItemFile)
-                .filter_by(id=item_id)
-                .one_or_none())
+        # TODO
 
-        if item:
-            extract = item.extract
-            extract = {
-                       "id":            extract.id,
-                       "filepath":      extract.filepath,
-                       "created_at":    extract.created_at,
-                       "startstamp":    extract.startstamp,
-                       "endstamp":      extract.endstamp,
-                       "deleted":       extract.deleted,
-                       "topic":         extract.topic.id,
-                       "items": [
-                                 item.id
-                                 for item in extract.items
-                                ],
-                      }
-            return extract
+        pass
+
 
 
 if __name__ == "__main__":

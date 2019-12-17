@@ -127,22 +127,12 @@ class TopicFile(Base):
         self.append(event)
         session.commit()
 
-    # TODO Should the following be properties?
+    # TODO Should this be a property?
 
     @property
     def progress(self) -> float:
         """" Returns percentage listened to """
         return (self.cur_timestamp / self.duration) * 100
-
-    @property
-    def url(self) -> str:
-        """ Returns the youtube url of the video """
-        return "https://youtube.com/watch?v=" + self.youtube_id
-
-    @property
-    def channel(self) -> str:
-        """ Returns the url of the uploader's youtube channel """
-        return "https://youtube.com/channel/" + self.uploader_id
 
     def __repr__(self) -> str:
         return '<TopicFile: title=%r youtube_id=%r>' % \
