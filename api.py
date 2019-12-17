@@ -2,20 +2,56 @@ from flask_restplus import Resource, Api
 import os
 from flask import Blueprint, request, Flask, render_template
 from flask_restplus import fields
-from models import (session,
-                    TopicFile,
-                    ExtractFile,
-                    ItemFile,
-                    TopicEvent,
-                    ExtractEvent,
-                    ItemEvent)
+from flask_sqlalchemy import SQLAlchemy
+from config import DATABASE_URI
 from flask_restplus import reqparse
 from flask_cors import CORS
 
 # blueprint = Blueprint('api', __name__)
 
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URI
+db = SQLAlchemy(app)
+db.metadata.reflect(db.engine)
 CORS(app)
+
+# Setting up existing db tables with flask-sqlalchemy
+
+
+
+class TopicFile(db.Model):
+    
+    """ TODO """
+    
+    __table__ = db.Model.metadata.tables['topicfiles']
+
+    def to_dict(self):
+        data = {
+        }
+    
+
+
+class ExtractFile(db.Model):
+    __table__ = db.Model.metadata.tables['extractfiles']
+
+
+class ItemFile(db.Model):
+    __table__ = db.Model.metadata.tables['itemfiles']
+
+
+class TopicEvent(db.Model):
+    __table__ = db.Model.metadata.tables['topicevents']
+
+    
+class ExtractEvent(db.Model):
+    __table__ = db.Model.metadata.tables['extractevents']
+
+
+class ItemEvent(db.Model):
+    __table__ = db.Model.metadata.tables['itemevents']
+
+
+# create the api object
 
 api = Api(app,
           title="Audio Assistant",
@@ -102,7 +138,7 @@ extract_model = api.model('Extract File', {
     'deleted':      fields.Boolean,
     'items':        fields.List(fields.Nested(item_model)),
     'topic_id':     fields.Integer,
-    'activities':   fields.List(fields.Nested(extract_event_model))  # TODO
+    'activities':   fields.List(fields.Nested(extract_event_model))
     })
 
 topic_model = api.model('Topic File', {
@@ -130,7 +166,7 @@ topic_model = api.model('Topic File', {
     'url':              fields.String,
     'channel':          fields.String,
     'playback_rate':    fields.Float,
-    'activities':       fields.List(fields.Nested(topic_event_model))  # TODO
+    'activities':       fields.List(fields.Nested(topic_event_model))
     })
 
 archive_model = api.model('Youtube Archive File', {
@@ -161,7 +197,7 @@ class TopicEvents(Resource):
     @api.response(200, 'Successfully read topic events')
     def get(self):
         """ Get all topic events """
-        events = (session
+        events = (db.session
                   .query(TopicEvent)
                   .all())
         if events:
@@ -187,7 +223,7 @@ class ExtractEvents(Resource):
     @api.response(200, 'Successfully read topic events')
     def get(self):
         """ Get all extract events """
-        events = (session
+        events = (db.session
                   .query(ExtractEvent)
                   .all())
         if events:
@@ -213,7 +249,7 @@ class ItemEvents(Resource):
     @api.response(200, 'Successfully read item events')
     def get(self):
         """ Get all item events """
-        events = (session
+        events = (db.session
                   .query(ItemEvent)
                   .all())
         if events:
@@ -295,14 +331,14 @@ class Topics(Resource):
         args = parser.parse_args()
 
         if args['start'] and args['end']:
-            topics = (session
+            topics = (db.session
                       .query(TopicFile)
                       .filter(TopicFile.created_at > args['start'])
                       .filter(TopicFile.created_at < args['end'])
                       .all())
 
         else:
-            topics = (session
+            topics = (db.session
                       .query(TopicFile)
                       .order_by(TopicFile.created_at.desc())
                       .all())
@@ -383,7 +419,7 @@ class TopicExtracts(Resource):
         """ Get topic extracts
         Allows the user to read a list of child
         extracts from the parent topic"""
-        topic = (session
+        topic = (db.session
                  .query(TopicFile)
                  .filter_by(id=topic_id)
                  .one_or_none())
@@ -417,7 +453,7 @@ class Topic(Resource):
         """ Get a single topic
         Allows the user to get a single topic according
         to the topic id"""
-        topic = (session
+        topic = (db.session
                  .query(TopicFile)
                  .filter_by(id=topic_id)
                  .one_or_none())
@@ -482,7 +518,7 @@ class Extracts(Resource):
         """ Get outstanding extracts
         Allows the user to read a list of all outstanding extract
         files in the database that have not been archived or deleted"""
-        extracts = (session
+        extracts = (db.session
                     .query(ExtractFile)
                     .filter_by(deleted=False)
                     .all())
@@ -514,7 +550,7 @@ class Extract(Resource):
         """ Get a single extract
         Allows the user to read a single extract according to
         the extract id"""
-        extract = (session
+        extract = (db.session
                    .query(ExtractFile)
                    .filter_by(id=extract_id)
                    .one_or_none())
@@ -543,7 +579,7 @@ class ExtractParent(Resource):
         """ Get extract topic
         Allows the user to read the parent topic of an extract
         according to the extract id"""
-        extract = (session
+        extract = (db.session
                    .query(ExtractFile)
                    .filter_by(id=extract_id)
                    .one_or_none())
@@ -602,7 +638,7 @@ class Item(Resource):
         Allows the user to get a list of outstanding
         items that haven't been deleted or archived"""
 
-        items = (session
+        items = (db.session
                  .query(ItemFile)
                  .filter_by(deleted=False)
                  .all())
@@ -632,7 +668,7 @@ class ItemParent(Resource):
         Allows the user to get the parent extract of the item
         according to the item id"""
 
-        item = (session
+        item = (db.session
                 .query(ItemFile)
                 .filter_by(id=item_id)
                 .one_or_none())
