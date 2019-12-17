@@ -19,8 +19,7 @@ CORS(app)
 api = Api(app,
           title="Audio Assistant",
           version="0.1",
-          description="API documentation for Audio Assistant",
-          doc='/docs')
+          description="API documentation for Audio Assistant")
 
 # API Namespaces
 assistant_ns = api.namespace('assistant',
@@ -105,15 +104,15 @@ class TopicFile(PaginatedAPIMixin, db.Model):
                 # TODO Change to url_for
                 '_links': {
                         'self': 'http://audiopi:5000/topics/' + \
-                                self.id,
+                                str(self.id),
                         'extracts': 'http://audiopi:5000/topics/' + \
-                                    self.id + '/extracts',
+                                    str(self.id) + '/extracts',
                         'events': 'http://audiopi:5000/topics/' + \
-                                  self.id + '/events',
+                                  str(self.id) + '/events',
                         'yttags': 'http://audiopi:5000/topics/' + \
-                                  self.id + '/yttags',
+                                  str(self.id) + '/yttags',
                         'mytags': 'http://audiopi:5000/topics/' + \
-                                  self.id + '/mytags',
+                                  str(self.id) + '/mytags',
                         'youtube_url': 'http://www.youtube.com/watch?v=' + \
                                        self.youtube_id,
                         'channel_url': 'httmp://www.youtube.com/channel/' + \
@@ -189,19 +188,19 @@ class ExtractFile(PaginatedAPIMixin, db.Model):
                 'links': {
                     # TODO change to url_for
                     'self': 'http://audiopi:5000/extracts/' +
-                            self.id,
+                            str(self.id),
                     'topic': 'http://audiopi:5000/topics/' +
-                             self.topic_id,
+                             str(self.topic_id),
                     'items': 'http://audiopi:5000/extracts/' +
-                             self.id + '/items',
+                             str(self.id) + '/items',
                     'events': 'http://audiopi:5000/extracts/' +
-                              self.id + '/events'
+                              str(self.id) + '/events'
                     }
                }
         return data
 
 
-extract_model = api.model('Item File', {
+extract_model = api.model('Extract File', {
     'id':                   fields.Integer,
     'created_at':           fields.DateTime,
     'cloze_filepath':       fields.String,
@@ -359,7 +358,7 @@ class ExtractEvent(db.Model):
         return data
 
 
-extract_event_model = api.model('Topic Event', {
+extract_event_model = api.model('Extract Event', {
     'id':           fields.Integer,
     'created_at':   fields.DateTime,
     'event':        fields.String,
@@ -397,7 +396,7 @@ class ItemEvent(db.Model):
         return data
 
 
-item_event_model = api.model('Event', {
+item_event_model = api.model('Item Event', {
     'id':           fields.Integer,
     'created_at':   fields.DateTime,
     'event':        fields.String,
@@ -447,7 +446,7 @@ class Topics(Resource):
     @api.marshal_with(paginated_topics_model)
     @api.response(200, 'Successfully read topics')
     # @api.expect(parser)
-    def post(self):
+    def get(self):
         """ Get all Topics
         Allows the user to read a list of all topic files
         in the database that have not been deleted """
@@ -460,18 +459,18 @@ class Topics(Resource):
         return data
 
 
-@topic_ns.route('/<int:topic_id>/extracts')
-class TopicExtracts(Resource):
-    @api.marshal_with(paginated_extracts_model)
-    @api.response(200, "Successfully read child extracts")
-    def get(self, topic_id):
-        """ Get a topic's extracts
-        Allows the user to read a list of child
-        extracts from the parent topic"""
-
-        # TODO
-
-        pass
+# @topic_ns.route('/<int:topic_id>/extracts')
+# class TopicExtracts(Resource):
+#     @api.marshal_with(paginated_extracts_model)
+#     @api.response(200, "Successfully read child extracts")
+#     def get(self, topic_id):
+#         """ Get a topic's extracts
+#         Allows the user to read a list of child
+#         extracts from the parent topic"""
+# 
+#         # TODO
+# 
+#         pass
 
 
 @topic_ns.route('/<int:topic_id>')
@@ -487,13 +486,13 @@ class Topic(Resource):
         return topic.to_dict()
 
 
-@topic_ns.route('/yttags/')
-class TopicTags(Resource):
-    @api.marshal_with(topic_model, as_list=True)
-    @api.response(200, "Successfully filtered topics by tags")
-    # TODO add an expect decorator
-    def post(self):
-        pass
+# @topic_ns.route('/yttags/')
+# class TopicTags(Resource):
+#     @api.marshal_with(topic_model, as_list=True)
+#     @api.response(200, "Successfully filtered topics by tags")
+#     # TODO add an expect decorator
+#     def post(self):
+#         pass
 
 
 ############
@@ -529,18 +528,18 @@ class Extract(Resource):
         return extract.to_dict()
 
 
-@extract_ns.route('/<int:extract_id>/topic')
-class ExtractParent(Resource):
-    @api.marshal_with(topic_model)
-    @api.response(200, "Successfully read parent topic of extract")
-    def get(self, extract_id):
-        """ Get extract topic
-        Allows the user to read the parent topic of an extract
-        according to the extract id"""
-
-        # TODO
-
-        pass
+# @extract_ns.route('/<int:extract_id>/topic')
+# class ExtractTopic(Resource):
+#     @api.marshal_with(topic_model)
+#     @api.response(200, "Successfully read parent topic of extract")
+#     def get(self, extract_id):
+#         """ Get extract topic
+#         Allows the user to read the parent topic of an extract
+#         according to the extract id"""
+# 
+#         # TODO
+# 
+#         pass
 
 
 #########
@@ -577,18 +576,18 @@ class Item(Resource):
         return item.to_dict()
 
 
-@item_ns.route('/<int:item_id>/extract')
-class ItemParent(Resource):
-    @api.marshal_with(extract_model)
-    @api.response(200, "Successfully read the parent extract of item")
-    def get(self, item_id):
-        """ Get item extract
-        Allows the user to get the parent extract of the item
-        according to the item id"""
-
-        # TODO
-
-        pass
+# @item_ns.route('/<int:item_id>/extract')
+# class ItemParent(Resource):
+#     @api.marshal_with(extract_model)
+#     @api.response(200, "Successfully read the parent extract of item")
+#     def get(self, item_id):
+#         """ Get item extract
+#         Allows the user to get the parent extract of the item
+#         according to the item id"""
+# 
+#         # TODO
+# 
+#         pass
 
 
 
