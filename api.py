@@ -124,6 +124,12 @@ class TopicFile(PaginatedAPIMixin, db.Model):
         return data
 
 
+topic_links = api.model('Topic File Links', {
+        'self':     fields.String,
+        'extracts': fields.String,
+        'events':   fields.String
+    })
+
 topic_model = api.model('Topic File', {
     'id':               fields.Integer,
     'filepath':         fields.String,
@@ -145,11 +151,13 @@ topic_model = api.model('Topic File', {
     'cur_timestamp':    fields.Float,
     'created_at':       fields.DateTime,
     'transcript':       fields.String,
-    '_links': fields.Nested('Topic Links', {
-        'self':     fields.String,
-        'extracts': fields.String,
-        'events':   fields.String
-        })
+    '_links':           fields.Nested(topic_links)
+    })
+
+paginated_topics_links = api.model("Paginated Topics Links", {
+   "self":      fields.String,
+   "next":      fields.String,
+   "prev":      fields.String,
     })
 
 paginated_topics_model = api.model('Paginated Topic Files', {
@@ -160,11 +168,7 @@ paginated_topics_model = api.model('Paginated Topic Files', {
               "total_pages":  fields.Integer,
               "total_items":  fields.Integer
              },
-    "_links": fields.Nested('Paginated Topics Links', {
-               "self":      fields.String,
-               "next":      fields.String,
-               "prev":      fields.String,
-              })
+    "_links": fields.Nested(paginated_topics_links)
     })
 
 
@@ -201,6 +205,13 @@ class ExtractFile(PaginatedAPIMixin, db.Model):
         return data
 
 
+extract_links = api.model('Extract Links', {
+    'self': fields.String,
+    'topic': fields.String,
+    'items': fields.String,
+    'events': fields.String
+    })
+
 extract_model = api.model('Extract File', {
     'id':                   fields.Integer,
     'created_at':           fields.DateTime,
@@ -210,12 +221,13 @@ extract_model = api.model('Extract File', {
     'archived':             fields.Boolean,
     'cloze_startstamp':     fields.Float,
     'cloze_endstamp':       fields.Float,
-    '_links': fields.Nested('Extract Links', {
-        'self': fields.String,
-        'topic': fields.String,
-        'items': fields.String,
-        'events': fields.String
-        })
+    '_links': fields.Nested(extract_links)
+    })
+
+paginated_extracts_links = api.model('Paginated Extracts Links', {
+   "self":      fields.String,
+   "next":      fields.String,
+   "prev":      fields.String,
     })
 
 paginated_extracts_model = api.model('Paginated Extract Files', {
@@ -226,11 +238,7 @@ paginated_extracts_model = api.model('Paginated Extract Files', {
               "total_pages":  fields.Integer,
               "total_items":  fields.Integer
              },
-    "_links": fields.Nested('Paginated Extracts Links', {
-               "self":      fields.String,
-               "next":      fields.String,
-               "prev":      fields.String,
-              })
+    "_links": fields.Nested(paginated_extracts_links)
     })
 
 
@@ -264,6 +272,12 @@ class ItemFile(PaginatedAPIMixin, db.Model):
         return data
 
 
+item_links = api.model('Item Links', {
+    'self': fields.String,
+    'extract': fields.String,
+    'events': fields.String,
+    })
+
 item_model = api.model('Item File', {
     'id':                   fields.Integer,
     'created_at':           fields.DateTime,
@@ -273,11 +287,13 @@ item_model = api.model('Item File', {
     'deleted':              fields.Boolean,
     'cloze_startstamp':     fields.Float,
     'cloze_endstamp':       fields.Float,
-    '_links': fields.Nested('Item Links', {
-        'self': fields.String,
-        'extract': fields.String,
-        'events': fields.String,
-        })
+    '_links': fields.Nested(item_links)
+    })
+
+paginated_items_links = api.model('Paginated Items Links', {
+   "self":      fields.String,
+   "next":      fields.String,
+   "prev":      fields.String,
     })
 
 paginated_items_model = api.model('Paginated Item Files', {
@@ -288,12 +304,9 @@ paginated_items_model = api.model('Paginated Item Files', {
               "total_pages":  fields.Integer,
               "total_items":  fields.Integer
              },
-    "_links": fields.Nested('Paginated Items Links', {
-               "self":      fields.String,
-               "next":      fields.String,
-               "prev":      fields.String,
-              })
+    "_links": fields.Nested(paginated_items_links)
     })
+
 
 #######################################
 # Topic Event DB tables and API Model #
@@ -320,16 +333,18 @@ class TopicEvent(db.Model):
         return data
 
 
+topic_event_links = api.model('Topic Links', {
+    'self':     fields.String,
+    'topic':    fields.String
+    })
+
 topic_event_model = api.model('Topic Event', {
     'id':           fields.Integer,
     'created_at':   fields.DateTime,
     'event':        fields.String,
     'timestamp':    fields.Float,
     'duration':     fields.Float,
-    '_links': fields.Nested('Topic Event Links', {
-        'self':     fields.String,
-        'topic':    fields.String
-        })
+    '_links': fields.Nested(topic_event_links)
     })
 
 
@@ -359,16 +374,18 @@ class ExtractEvent(db.Model):
         return data
 
 
+extract_event_links = api.model('Extract Event Links', {
+    'self':     fields.String,
+    'extract':  fields.String
+    })
+
 extract_event_model = api.model('Extract Event', {
     'id':           fields.Integer,
     'created_at':   fields.DateTime,
     'event':        fields.String,
     'timestamp':    fields.Float,
     'duration':     fields.Float,
-    '_links': fields.Nested('Extract Event Links', {
-        'self':     fields.String,
-        'extract':  fields.String
-        })
+    '_links': fields.Nested(extract_event_links)
     })
 
 
@@ -397,16 +414,18 @@ class ItemEvent(db.Model):
         return data
 
 
+item_event_links = api.model('Item Event Links', {
+    'self':     fields.String,
+    'item':     fields.String
+    })
+
 item_event_model = api.model('Item Event', {
     'id':           fields.Integer,
     'created_at':   fields.DateTime,
     'event':        fields.String,
     'timestamp':    fields.Float,
     'duration':     fields.Float,
-    '_links': fields.Nested('Item Event Links', {
-        'self':     fields.String,
-        'item':     fields.String
-        })
+    '_links': fields.Nested(item_event_links)
     })
 
 
