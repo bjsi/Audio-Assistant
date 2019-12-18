@@ -35,6 +35,9 @@ extract_ns = api.namespace('extracts',
 item_ns = api.namespace('items',
                         description="Operations for retrieving Item-related "
                                     "information from the database")
+event_ns = api.namespace('events',
+                         description="Operations for retrieving Topic, Extract and "
+                                     "Item events")
 
 
 ##########################
@@ -104,14 +107,10 @@ class TopicFile(PaginatedAPIMixin, db.Model):
                 # TODO Change to url_for
                 '_links': {
                         'self': url_for('topics_topic', id=self.id),
-                        'extracts': 'http://audiopi:5000/topics/' + \
-                                    str(self.id) + '/extracts',
-                        'events': 'http://audiopi:5000/topics/' + \
-                                  str(self.id) + '/events',
-                        'yttags': 'http://audiopi:5000/topics/' + \
-                                  str(self.id) + '/yttags',
-                        'mytags': 'http://audiopi:5000/topics/' + \
-                                  str(self.id) + '/mytags',
+                        'extracts': url_for('topics_topic_extracts', id=self.id),
+                        'events': url_for('topics_topic_events', id=self.id),
+                        'yttags': url_for('topics_topic_yttags', id=self.id),
+                        'mytags': url_for('topics_topic_mytags', id=self.id)
                 }
                }
         return data
@@ -180,23 +179,19 @@ class ExtractFile(PaginatedAPIMixin, db.Model):
 
     def to_dict(self):
         data = {
-                "id":           self.id,
-                "filepath":     self.filepath,
-                "created_at":   self.created_at,
-                "startstamp":   self.startstamp,
-                "endstamp":     self.endstamp,
-                "transcript":   self.transcript,
-                'archived':     self.archived,
-                "deleted":      self.deleted,
+                "id":         self.id,
+                "filepath":   self.filepath,
+                "created_at": self.created_at,
+                "startstamp": self.startstamp,
+                "endstamp":   self.endstamp,
+                "transcript": self.transcript,
+                'archived':   self.archived,
+                "deleted":    self.deleted,
                 'links': {
-                    # TODO change to url_for
                     'self': url_for('extracts_extract', id=self.id),
-                    'topic': 'http://audiopi:5000/extracts/' + self.id + \
-                             '/topic/',
-                    'items': 'http://audiopi:5000/extracts/' +
-                             str(self.id) + '/items',
-                    'events': 'http://audiopi:5000/extracts/' +
-                              str(self.id) + '/events'
+                    'topic': url_for('extracts_extract_topic', id=self.id),
+                    'items': url_for('extracts_extract_items', id=self.id),
+                    'events': url_for('extracts_extract_events', id=self.id)
                     }
                }
         return data
@@ -259,13 +254,10 @@ class ItemFile(PaginatedAPIMixin, db.Model):
                 'deleted':           self.deleted,
                 'cloze_startstamp':  self.cloze_startstamp,
                 'cloze_stopstamp':   self.cloze_endstamp,
-                # TODO Change to url_for
                 '_links': {
                     'self': url_for('items_item', id=self.id),
-                    'extract': 'http://audiopi:5000/items/' + \
-                               self.id + '/extract',
-                    'events': 'http://audiopi:5000/items/' + \
-                              self.id + '/events'
+                    'extract': url_for('items_item_extract', id=self.id),
+                    'events': url_for('items_item_events', id=self.id)
                     }
                }
         return data
@@ -313,7 +305,7 @@ paginated_items_model = api.model('Paginated Item Files', {
 # Topic Event DB tables and API Model #
 #######################################
 
-class TopicEvent(db.Model):
+class TopicEvent(PaginatedAPIMixin, db.Model):
     """ TODO """
     __table__ = db.Model.metadata.tables['topicevents']
 
@@ -325,10 +317,8 @@ class TopicEvent(db.Model):
                 'timestamp':    self.timestamp,
                 'duration':     self.duration,
                 '_links': {
-                    # TODO Change to url_for
-                    'self': 'http://audiopi:5000/topics/' + \
-                            self.topic_id + '/events/' + self.id,
-                    'topic': url_for('topics_topic', id=self.topic_id)
+                    'self': url_for('events_event', id=self.id),
+                    'topic': url_for('events_event_topic', id=self.id)
                     }
                }
         return data
@@ -348,12 +338,31 @@ topic_event_model = api.model('Topic Event', {
     '_links': fields.Nested(topic_event_links)
     })
 
+paginated_topic_events_meta = api.model('Paginated Topic Events Meta', {
+    "page":         fields.Integer,
+    "per_page":     fields.Integer,
+    "total_pages":  fields.Integer,
+    "total_items":  fields.Integer
+    })
+
+paginated_topic_events_links = api.model('Paginated Topic Events Links', {
+   "self":   fields.String,
+   "next":   fields.String,
+   "prev":   fields.String,
+    })
+
+paginated_topic_events_model = api.model('Paginated Topic Events', {
+    "data":     fields.List(fields.Nested(topic_event_model)),
+    "_meta":    fields.Nested(paginated_topic_events_meta),
+    "_links":   fields.Nested(paginated_topic_events_links)
+    })
+
 
 #########################################
 # Extract Event DB tables and API Model #
 #########################################
 
-class ExtractEvent(db.Model):
+class ExtractEvent(PaginatedAPIMixin, db.Model):
     """ TODO """
     __table__ = db.Model.metadata.tables['extractevents']
 
@@ -365,10 +374,9 @@ class ExtractEvent(db.Model):
                 'timestamp':    self.timestamp,
                 'duration':     self.duration,
                 '_links': {
-                    # TODO Change to url_for
-                    'self': 'http://audiopi:5000/extracts/' + \
-                            self.extract_id + '/events/' + self.id,
-                    'extract': url_for('extracts_extract', id=self.extract_id)
+                    # TODO fix this
+                    'self': url_for('events_event', id=self.id),
+                    'extract': url_for('events_event_extract', id=self.id)
                     }
                }
         return data
@@ -388,12 +396,31 @@ extract_event_model = api.model('Extract Event', {
     '_links': fields.Nested(extract_event_links)
     })
 
+paginated_extract_events_meta = api.model('Paginated Extract Events Meta', {
+    "page":         fields.Integer,
+    "per_page":     fields.Integer,
+    "total_pages":  fields.Integer,
+    "total_items":  fields.Integer
+    })
+
+paginated_extract_events_links = api.model('Paginated Extract Events Links', {
+   "self":   fields.String,
+   "next":   fields.String,
+   "prev":   fields.String,
+    })
+
+paginated_extract_events_model = api.model('Paginated Extract Events', {
+    "data":     fields.List(fields.Nested(extract_event_model)),
+    "_meta":    fields.Nested(paginated_extract_events_meta),
+    "_links":   fields.Nested(paginated_extract_events_links)
+    })
+
 
 ######################################
 # Item Event DB tables and API Model #
 ######################################
 
-class ItemEvent(db.Model):
+class ItemEvent(PaginatedAPIMixin, db.Model):
     """ TODO """
     __table__ = db.Model.metadata.tables['itemevents']
 
@@ -405,10 +432,9 @@ class ItemEvent(db.Model):
                 'timestamp':    self.timestamp,
                 'duration':     self.duration,
                 '_links': {
-                    # TODO Change to url_for
-                    'self': 'http://audiopi:5000/items/' + \
-                            self.item_id + '/events/' + self.id,
-                    'item': url_for('items_item', id=self.item_id),
+                    # TODO Fix this
+                    'self': url_for('events_event', id=self.id),
+                    'item': url_for('events_event_item', id=self.id),
                 }
                }
         return data
@@ -428,6 +454,24 @@ item_event_model = api.model('Item Event', {
     '_links': fields.Nested(item_event_links)
     })
 
+paginated_item_events_meta = api.model('Paginated Item Events Meta', {
+    "page":         fields.Integer,
+    "per_page":     fields.Integer,
+    "total_pages":  fields.Integer,
+    "total_items":  fields.Integer
+    })
+
+paginated_item_events_links = api.model('Paginated Item Events Links', {
+   "self":   fields.String,
+   "next":   fields.String,
+   "prev":   fields.String,
+    })
+
+paginated_item_events_model = api.model('Paginated Item Events', {
+    "data":     fields.List(fields.Nested(item_event_model)),
+    "_meta":    fields.Nested(paginated_item_events_meta),
+    "_links":   fields.Nested(paginated_item_events_links)
+    })
 
 # add a datetime / timestamp filter to these
 # Add a way to filter by tags both AND and OR
@@ -479,21 +523,24 @@ class Topics(Resource):
         return data
 
 
-@topic_ns.route('/<int:topic_id>/extracts')
+@topic_ns.route('/<int:id>/extracts')
 class TopicExtracts(Resource):
     @api.marshal_with(paginated_extracts_model)
     @api.response(200, "Successfully read child extracts")
-    def get(self, topic_id):
+    def get(self, id):
         """ Get a topic's extracts
         Allows the user to read a list of child
         extracts from the parent topic"""
 
-        # TODO
+        topic = db.session.query(TopicFile).get_or_404(id)
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 10, type=int), 100)
+        data = TopicFile.to_collection_dict(topic.extracts, page, per_page,
+                                            'topics_topic_extracts', id=id)
+        return data
 
-        pass
 
-
-@topic_ns.route('/<int:topic_id>')
+@topic_ns.route('/<int:id>')
 class Topic(Resource):
     @api.marshal_with(topic_model)
     @api.response(200, "Successfully read topic")
@@ -515,10 +562,60 @@ class Topic(Resource):
 #         pass
 
 
+##########
+# Events #
+##########
+
+@event_ns.route('/topics')
+class TopicsEvents(Resource):
+    @api.marshal_with(paginated_topic_events_model)
+    @api.response(200, 'Successfully read topic events')
+    def get(self):
+        """ Get all topic events
+        Allows the user to read a list of all events """
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 10, type=int), 100)
+        data = TopicEvent.to_collection_dict(db.session.query(TopicEvent),
+                                             page, per_page,
+                                             'events_topics')
+        return data
+
+
+@event_ns.route('/extracts')
+class ExtractsEvents(Resource):
+    @api.marshal_with(paginated_extract_events_model)
+    @api.response(200, 'Successfully read extract events')
+    def get(self):
+        """ Get all extract events
+        Allows the user to read a list of all extract events """
+
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 10, type=int), 100)
+        data = ExtractEvent.to_collection_dict(db.session.query(ExtractEvent),
+                                               page, per_page,
+                                               'events_extracts')
+        return data
+
+
+@event_ns.route('/items')
+class ItemsEvents(Resource):
+    @api.marshal_with(paginated_item_events_model)
+    @api.response(200, 'Successfully read item events')
+    def get(self):
+        """ Get all item events
+        Allows the user to read a list of all item events """
+
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 10, type=int), 100)
+        data = ItemEvent.to_collection_dict(db.session.query(ItemEvent),
+                                            page, per_page,
+                                            'events_extracts')
+        return data
+
+
 ############
 # Extracts #
 ############
-
 
 @extract_ns.route('/')
 class Extracts(Resource):
@@ -536,7 +633,7 @@ class Extracts(Resource):
         return data
 
 
-@extract_ns.route('/<int:extract_id>')
+@extract_ns.route('/<int:id>')
 class Extract(Resource):
     @api.marshal_with(extract_model)
     @api.response(200, "Successfully read a single extract")
@@ -548,18 +645,32 @@ class Extract(Resource):
         return extract.to_dict()
 
 
-@extract_ns.route('/<int:extract_id>/topic')
+@extract_ns.route('/<int:id>/topic')
 class ExtractTopic(Resource):
     @api.marshal_with(topic_model)
     @api.response(200, "Successfully read parent topic of extract")
-    def get(self, extract_id):
+    def get(self, id):
         """ Get extract topic
         Allows the user to read the parent topic of an extract
         according to the extract id"""
+        extract = db.session.query(ExtractFile).get_or_404(id)
+        return extract.topic.to_dict()
 
-        # TODO
 
-        pass
+@extract_ns.route('/<int:id>/events')
+class ExtractEvents(Resource):
+    @api.marshal_with(topic_model)
+    @api.response(200, "Successfully read extract's events")
+    def get(self, id):
+        """ Get extract's events
+        Allows the user to read the events of the extract """
+        extract = db.session.query(ExtractFile).get_or_404(id)
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 10, type=int), 100)
+        data = ExtractEvents.to_collection_dict(extract.events,
+                                                page, per_page,
+                                                'http://audiopi:5000/items')
+        return data
 
 
 #########
@@ -583,7 +694,7 @@ class Items(Resource):
         return data
 
 
-@item_ns.route('/<int:item_id>')
+@item_ns.route('/<int:id>')
 class Item(Resource):
     @api.marshal_with(extract_model)
     @api.response(200, "Successfully read the parent extract of item")
@@ -596,18 +707,35 @@ class Item(Resource):
         return item.to_dict()
 
 
-@item_ns.route('/<int:item_id>/extract')
+@item_ns.route('/<int:id>/extract')
 class ItemParent(Resource):
     @api.marshal_with(extract_model)
     @api.response(200, "Successfully read the parent extract of item")
-    def get(self, item_id):
+    def get(self, id):
         """ Get item extract
         Allows the user to get the parent extract of the item
         according to the item id"""
 
-        # TODO
+        item = db.session.query(ItemFile).get_or_404(id)
+        return item.extract.to_dict()
 
-        pass
+
+@item_ns.route('/<int:id>/events')
+class ItemEvents(Resource):
+    @api.marshal_with(paginated_item_events_model)
+    @api.response(200, "Successfully read the events of item")
+    def get(self, id):
+        """ Get item's events
+        Allows the user to get the events of the item
+        according to the item id"""
+
+        item = db.session.query(ItemFile).get_or_404(id)
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 10, type=int), 100)
+        data = ItemEvent.to_collection_dict(item.events,
+                                            page, per_page,
+                                            'items_item_events')
+        return data
 
 
 if __name__ == "__main__":
