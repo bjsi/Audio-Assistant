@@ -110,7 +110,7 @@ class TopicFile(PaginatedAPIMixin, db.Model):
                         'events': 'http://audiopi:5000/topics/' + \
                                   str(self.id) + '/events',
                         'topic': 'http://audiopi:5000/topics/' + \
-                                 str(self.topic_id)
+                                 str(self.topic_id),
                         'yttags': 'http://audiopi:5000/topics/' + \
                                   str(self.id) + '/yttags',
                         'mytags': 'http://audiopi:5000/topics/' + \
@@ -145,11 +145,11 @@ topic_model = api.model('Topic File', {
     'cur_timestamp':    fields.Float,
     'created_at':       fields.DateTime,
     'transcript':       fields.String,
-    '_links': {
+    '_links': fields.Nested('Topic Links', {
         'self':     fields.String,
         'extracts': fields.String,
         'events':   fields.String
-        }
+        })
     })
 
 paginated_topics_model = api.model('Paginated Topic Files', {
@@ -160,11 +160,11 @@ paginated_topics_model = api.model('Paginated Topic Files', {
               "total_pages":  fields.Integer,
               "total_items":  fields.Integer
              },
-    "_links": {
+    "_links": fields.Nested('Paginated Topics Links', {
                "self":      fields.String,
                "next":      fields.String,
                "prev":      fields.String,
-              }
+              })
     })
 
 
@@ -210,12 +210,12 @@ extract_model = api.model('Extract File', {
     'archived':             fields.Boolean,
     'cloze_startstamp':     fields.Float,
     'cloze_endstamp':       fields.Float,
-    '_links': {
+    '_links': fields.Nested('Extract Links', {
         'self': fields.String,
         'topic': fields.String,
         'items': fields.String,
         'events': fields.String
-        }
+        })
     })
 
 paginated_extracts_model = api.model('Paginated Extract Files', {
@@ -226,11 +226,11 @@ paginated_extracts_model = api.model('Paginated Extract Files', {
               "total_pages":  fields.Integer,
               "total_items":  fields.Integer
              },
-    "_links": {
+    "_links": fields.Nested('Paginated Extracts Links', {
                "self":      fields.String,
                "next":      fields.String,
                "prev":      fields.String,
-              }
+              })
     })
 
 
@@ -273,11 +273,11 @@ item_model = api.model('Item File', {
     'deleted':              fields.Boolean,
     'cloze_startstamp':     fields.Float,
     'cloze_endstamp':       fields.Float,
-    '_links': {
+    '_links': fields.Nested('Item Links', {
         'self': fields.String,
         'extract': fields.String,
         'events': fields.String,
-        }
+        })
     })
 
 paginated_items_model = api.model('Paginated Item Files', {
@@ -288,11 +288,11 @@ paginated_items_model = api.model('Paginated Item Files', {
               "total_pages":  fields.Integer,
               "total_items":  fields.Integer
              },
-    "_links": {
+    "_links": fields.Nested('Paginated Items Links', {
                "self":      fields.String,
                "next":      fields.String,
                "prev":      fields.String,
-              }
+              })
     })
 
 #######################################
@@ -326,10 +326,10 @@ topic_event_model = api.model('Topic Event', {
     'event':        fields.String,
     'timestamp':    fields.Float,
     'duration':     fields.Float,
-    '_links': {
+    '_links': fields.Nested('Topic Event Links', {
         'self':     fields.String,
         'topic':    fields.String
-        }
+        })
     })
 
 
@@ -365,10 +365,10 @@ extract_event_model = api.model('Extract Event', {
     'event':        fields.String,
     'timestamp':    fields.Float,
     'duration':     fields.Float,
-    '_links': {
+    '_links': fields.Nested('Extract Event Links', {
         'self':     fields.String,
         'extract':  fields.String
-        }
+        })
     })
 
 
@@ -403,10 +403,10 @@ item_event_model = api.model('Item Event', {
     'event':        fields.String,
     'timestamp':    fields.Float,
     'duration':     fields.Float,
-    '_links': {
+    '_links': fields.Nested('Item Event Links', {
         'self':     fields.String,
         'item':     fields.String
-        }
+        })
     })
 
 
