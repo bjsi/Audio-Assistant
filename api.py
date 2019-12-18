@@ -67,7 +67,7 @@ class PaginatedAPIMixin(object):
                                            **kwargs) if resources.has_next else None,
                            "prev": url_for(endpoint, page=page - 1,
                                            per_page=per_page,
-                                           **kwargs) if resources.has_next else None
+                                           **kwargs) if resources.has_prev else None
                           }
                }
         return data
@@ -291,7 +291,7 @@ class ItemFile(PaginatedAPIMixin, db.Model):
                 'archived':          self.archived,
                 'deleted':           self.deleted,
                 'cloze_startstamp':  self.cloze_startstamp,
-                'cloze_stopstamp':   self.cloze_endstamp,
+                'cloze_endstamp':    self.cloze_endstamp,
                 '_links': {
                     'self': url_for('items_item', id=self.id),
                     'extract': url_for('items_item_extract', id=self.id),
@@ -356,7 +356,6 @@ class TopicEvent(PaginatedAPIMixin, db.Model):
                 'timestamp':    self.timestamp,
                 'duration':     self.duration,
                 '_links': {
-                    # TODO Fix these
                     'self': url_for('events_event', id=self.id),
                     'topic': url_for('events_event_topic', id=self.id)
                     }
@@ -415,7 +414,6 @@ class ExtractEvent(PaginatedAPIMixin, db.Model):
                 'timestamp':    self.timestamp,
                 'duration':     self.duration,
                 '_links': {
-                    # TODO fix this
                     'self': url_for('events_event', id=self.id),
                     'extract': url_for('events_event_extract', id=self.id)
                     }
@@ -474,7 +472,6 @@ class ItemEvent(PaginatedAPIMixin, db.Model):
                 'timestamp':    self.timestamp,
                 'duration':     self.duration,
                 '_links': {
-                    # TODO Fix this
                     'self': url_for('events_event', id=self.id),
                     'item': url_for('events_event_item', id=self.id),
                 }
