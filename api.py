@@ -169,6 +169,7 @@ topic_model = api.model('Topic File', {
     'cur_timestamp':    fields.Float,
     'created_at':       fields.DateTime,
     'transcript':       fields.String,
+    'rendered':         fields.String,
     'yttags':           fields.List(fields.String),
     'mytags':           fields.List(fields.String),
     '_links':           fields.Nested(topic_links)
@@ -239,14 +240,14 @@ extract_links = api.model('Extract Links', {
     })
 
 extract_model = api.model('Extract File', {
-    'id':                   fields.Integer,
-    'created_at':           fields.DateTime,
-    'cloze_filepath':       fields.String,
-    'question_filepath':    fields.String,
-    'deleted':              fields.Boolean,
-    'archived':             fields.Boolean,
-    'cloze_startstamp':     fields.Float,
-    'cloze_endstamp':       fields.Float,
+    'id':               fields.Integer,
+    'filepath':         fields.String,
+    'created_at':       fields.DateTime,
+    'startstamp':       fields.Float,
+    'endstamp':         fields.Float,
+    'transcript':       fields.String,
+    'archived':         fields.Boolean,
+    'deleted':          fields.Boolean,
     '_links': fields.Nested(extract_links)
     })
 
