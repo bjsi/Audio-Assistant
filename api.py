@@ -525,7 +525,7 @@ class Topics(Resource):
         per_page = min(request.args.get('per_page', 10, type=int), 100)
         data = TopicFile.to_collection_dict(db.session.query(TopicFile),
                                             page, per_page,
-                                            url_for('topics_topic'))
+                                            'topics_topic')
         return data
 
 
@@ -550,7 +550,7 @@ class TopicExtracts(Resource):
 class Topic(Resource):
     @api.marshal_with(topic_model)
     @api.response(200, "Successfully read topic")
-    def get(self, topic_id):
+    def get(self, id):
         """ Get a single topic
         Allows the user to get a single topic according
         to the topic id"""
@@ -563,7 +563,7 @@ class Topic(Resource):
 class TopicEvents(Resource):
     @api.marshal_with(paginated_topic_events_model)
     @api.response(200, "Successfully read topic's events")
-    def get(self, topic_id):
+    def get(self, id):
         """ Get a topic's events
         Allows the user to get a topic's events according
         to the topic id"""
