@@ -93,11 +93,11 @@ class TopicFile(PaginatedAPIMixin, db.Model):
                              back_populates="topic")
     # Many to many File >-< Tag
     yttags = db.relationship('YoutubeTag',
-                             secondary=yt_topicfile_tags,
+                             #secondary=yt_topicfile_tags,
                              back_populates='topics')
     # Many to many File >-< Tag
     mytags = db.relationship('MyTag',
-                             secondary=my_topicfile_tags,
+                             #secondary=my_topicfile_tags,
                              back_populates='topics')
 
     def to_dict(self):
