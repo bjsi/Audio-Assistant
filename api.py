@@ -478,7 +478,7 @@ class Topics(Resource):
         per_page = min(request.args.get('per_page', 10, type=int), 100)
         data = TopicFile.to_collection_dict(db.session.query(TopicFile),
                                             page, per_page,
-                                            url_for('api.topics'))
+                                            url_for('topics_topic'))
         return data
 
 
