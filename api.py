@@ -7,7 +7,6 @@ from config import DATABASE_URI
 from flask_restplus import reqparse
 from flask_cors import CORS
 
-# blueprint = Blueprint('api', __name__)
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URI
@@ -39,9 +38,6 @@ event_ns = api.namespace('events',
                          description="Operations for retrieving Topic, Extract and "
                                      "Item events")
 
-# Tag tables
-yt_topicfile_tags = db.Table('yt_topicfile_tags', db.metadata)
-my_topicfile_tags = db.Table('my_topicfile_tags', db.metadata)
 
 ##########################
 # Pagination Mixin Class #
@@ -53,28 +49,36 @@ class PaginatedAPIMixin(object):
         resources = query.paginate(page, per_page, False)
         data = {
                 "data": [
-                            item.to_dict()
-                            for item in resources.items
-                         ],
+                         item.to_dict()
+                         for item in resources.items
+                        ],
                 "_meta": {
-                            "page": page,
-                            "per_page": per_page,
-                            "total_pages": resources.pages,
-                            "total_items": resources.total
+                          "page": page,
+                          "per_page": per_page,
+                          "total_pages": resources.pages,
+                          "total_items": resources.total
                          },
                 "_links": {
-                            "self": url_for(endpoint, page=page,
-                                            per_page=per_page,
-                                            **kwargs),
-                            "next": url_for(endpoint, page=page + 1,
-                                            per_page=per_page,
-                                            **kwargs) if resources.has_next else None,
-                            "prev": url_for(endpoint, page=page - 1,
-                                            per_page=per_page,
-                                            **kwargs) if resources.has_next else None
+                           "self": url_for(endpoint, page=page,
+                                           per_page=per_page,
+                                           **kwargs),
+                           "next": url_for(endpoint, page=page + 1,
+                                           per_page=per_page,
+                                           **kwargs) if resources.has_next else None,
+                           "prev": url_for(endpoint, page=page - 1,
+                                           per_page=per_page,
+                                           **kwargs) if resources.has_next else None
                           }
                }
         return data
+
+
+##########################
+# Tag Association Tables #
+##########################
+
+yt_topicfile_tags = db.Table('yt_topicfile_tags', db.metadata)
+my_topicfile_tags = db.Table('my_topicfile_tags', db.metadata)
 
 
 ####################################
@@ -82,20 +86,19 @@ class PaginatedAPIMixin(object):
 ####################################
 
 class TopicFile(PaginatedAPIMixin, db.Model):
-    """ TODO """
+
+    """ Contains TopicFile attributes and relationships
+    Allows you to use the sqlalchemy models in
+    flask-sqlalchemy
+    """
+
     __table__ = db.Model.metadata.tables['topicfiles']
 
-    # One to many File |-< Extract
-    extracts = db.relationship("ExtractFile",
-                               back_populates="topic")
-    # One to many File |-< Activity
-    events = db.relationship("TopicEvent",
-                             back_populates="topic")
-    # Many to many File >-< Tag
+    extracts = db.relationship("ExtractFile", back_populates="topic")
+    events = db.relationship("TopicEvent", back_populates="topic")
     yttags = db.relationship('YoutubeTag',
                              secondary=yt_topicfile_tags,
                              back_populates='topics')
-    # Many to many File >-< Tag
     mytags = db.relationship('MyTag',
                              secondary=my_topicfile_tags,
                              back_populates='topics')
@@ -171,7 +174,6 @@ topic_model = api.model('Topic File', {
     '_links':           fields.Nested(topic_links)
     })
 
-
 paginated_topics_meta = api.model("Paginated Topics Meta", {
     "page":         fields.Integer,
     "per_page":     fields.Integer,
@@ -197,7 +199,12 @@ paginated_topics_model = api.model('Paginated Topic Files', {
 ######################################
 
 class ExtractFile(PaginatedAPIMixin, db.Model):
-    """ TODO """
+
+    """ Contains ExtractFile attributes and relationships
+    Allows you to use the sqlalchemy models in
+    flask-sqlalchemy
+    """
+
     __table__ = db.Model.metadata.tables['extractfiles']
 
     topic = db.relationship("TopicFile", back_populates="extracts")
