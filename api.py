@@ -749,10 +749,10 @@ class ExtractEvents(Resource):
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 10, type=int), 100)
         query = db.session.query(ExtractEvent).filter_by(extract_id=extract.id)
-        data = ExtractEvents.to_collection_dict(query,
-                                                page, per_page,
-                                                'extracts_extract_events',
-                                                id=id)
+        data = ExtractEvent.to_collection_dict(query,
+                                               page, per_page,
+                                               'extracts_extract_events',
+                                               id=id)
         return data
 
 
@@ -781,12 +781,12 @@ class Items(Resource):
 class Item(Resource):
     @api.marshal_with(extract_model)
     @api.response(200, "Successfully read the parent extract of item")
-    def get(self, item_id):
+    def get(self, id):
         """ Get item extract
         Allows the user to get the parent extract of the item
         according to the item id"""
 
-        item = db.session.query(ItemFile).get_or_404(item_id)
+        item = db.session.query(ItemFile).get_or_404(id)
         return item.to_dict()
 
 
@@ -818,7 +818,8 @@ class ItemEvents(Resource):
         query = db.session.query(ItemEvent).filter_by(item_id=item.id)
         data = ItemEvent.to_collection_dict(query,
                                             page, per_page,
-                                            'items_item_events')
+                                            'items_item_events',
+                                            id=id)
         return data
 
 
