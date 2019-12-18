@@ -104,13 +104,18 @@ class TopicFile(PaginatedAPIMixin, db.Model):
                 'created_at':     self.created_at,
                 'transcript':     self.transcript,
                 'rendered':       render_template("topic.html", topic=self),
-                # TODO Change to url_for
+                'yttags': [
+                            tag.tag
+                            for tag in self.yttags
+                          ],
+                'mytags': [
+                            tag.tag
+                            for tag in self.mytags
+                          ],
                 '_links': {
                         'self': url_for('topics_topic', id=self.id),
                         'extracts': url_for('topics_topic_extracts', id=self.id),
                         'events': url_for('topics_topic_events', id=self.id),
-                        'yttags': url_for('topics_topic_yttags', id=self.id),
-                        'mytags': url_for('topics_topic_mytags', id=self.id)
                 }
                }
         return data
@@ -120,8 +125,6 @@ topic_links = api.model('Topic File Links', {
         'self':     fields.String,
         'extracts': fields.String,
         'events':   fields.String,
-        'yttags':   fields.String,
-        'mytags':   fields.String,
     })
 
 topic_model = api.model('Topic File', {
@@ -145,6 +148,8 @@ topic_model = api.model('Topic File', {
     'cur_timestamp':    fields.Float,
     'created_at':       fields.DateTime,
     'transcript':       fields.String,
+    'yttags':           fields.List(fields.String),
+    'mytags':           fields.List(fields.String),
     '_links':           fields.Nested(topic_links)
     })
 
@@ -317,6 +322,7 @@ class TopicEvent(PaginatedAPIMixin, db.Model):
                 'timestamp':    self.timestamp,
                 'duration':     self.duration,
                 '_links': {
+                    # TODO Fix these
                     'self': url_for('events_event', id=self.id),
                     'topic': url_for('events_event_topic', id=self.id)
                     }
@@ -526,7 +532,7 @@ class Topics(Resource):
 @topic_ns.route('/<int:id>/extracts')
 class TopicExtracts(Resource):
     @api.marshal_with(paginated_extracts_model)
-    @api.response(200, "Successfully read child extracts")
+    @api.response(200, "Successfully read topic's extracts")
     def get(self, id):
         """ Get a topic's extracts
         Allows the user to read a list of child
@@ -552,6 +558,22 @@ class Topic(Resource):
         topic = db.session.query(TopicFile).get_or_404(topic_id)
         return topic.to_dict()
 
+
+@topic_ns.route('/<int:id>/events')
+class TopicEvents(Resource):
+    @api.marshal_with(paginated_topic_events_model)
+    @api.response(200, "Successfully read topic's events")
+    def get(self, topic_id):
+        """ Get a topic's events
+        Allows the user to get a topic's events according
+        to the topic id"""
+
+        topic = db.session.query(TopicFile).get_or_404(id)
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 10, type=int), 100)
+        data = TopicEvent.to_collection_dict(topic.events, page, per_page,
+                                             'topics_topic_events', id=id)
+        return data
 
 # @topic_ns.route('/yttags/')
 # class TopicTags(Resource):
@@ -708,7 +730,7 @@ class Item(Resource):
 
 
 @item_ns.route('/<int:id>/extract')
-class ItemParent(Resource):
+class ItemExtract(Resource):
     @api.marshal_with(extract_model)
     @api.response(200, "Successfully read the parent extract of item")
     def get(self, id):
