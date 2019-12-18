@@ -690,7 +690,7 @@ class Extracts(Resource):
         per_page = min(request.args.get('per_page', 10, type=int), 100)
         data = ExtractFile.to_collection_dict(db.session.query(ExtractFile),
                                               page, per_page,
-                                              url_for('extracts_extracts'))
+                                              'extracts_extracts')
         return data
 
 
@@ -732,7 +732,7 @@ class ExtractItems(Resource):
         query = db.session.query(ItemFile).filter_by(extract_id=extract.id)
         data = ItemFile.to_collection_dict(query,
                                            page, per_page,
-                                           url_for('extracts_extracts'))
+                                           'extracts_extracts')
         return data
         return extract.topic.to_dict()
 
@@ -750,7 +750,7 @@ class ExtractEvents(Resource):
         query = db.session.query(ExtractEvents).filter_by(extract_id=extract.id)
         data = ExtractEvents.to_collection_dict(query,
                                                 page, per_page,
-                                                url_for('extracts_extract_events'))
+                                                'extracts_extract_events')
         return data
 
 
@@ -771,7 +771,7 @@ class Items(Resource):
         per_page = min(request.args.get('per_page', 10, type=int), 100)
         data = ItemFile.to_collection_dict(db.session.query(ItemFile),
                                            page, per_page,
-                                           url_for('items_items'))
+                                           'items_items')
         return data
 
 
