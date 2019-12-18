@@ -222,7 +222,7 @@ class ExtractFile(PaginatedAPIMixin, db.Model):
                 "transcript": self.transcript,
                 'archived':   self.archived,
                 "deleted":    self.deleted,
-                'links': {
+                '_links': {
                     'self': url_for('extracts_extract', id=self.id),
                     'topic': url_for('extracts_extract_topic', id=self.id),
                     'items': url_for('extracts_extract_items', id=self.id),
@@ -285,7 +285,7 @@ class ItemFile(PaginatedAPIMixin, db.Model):
     def to_dict(self):
         data = {
                 'id':                self.id,
-                'created_at':        self.question_filepath,
+                'created_at':        self.created_at,
                 'question_filepath': self.question_filepath,
                 'cloze_filepath':    self.cloze_filepath,
                 'archived':          self.archived,
@@ -639,7 +639,7 @@ class TopicsEvents(Resource):
         per_page = min(request.args.get('per_page', 10, type=int), 100)
         data = TopicEvent.to_collection_dict(db.session.query(TopicEvent),
                                              page, per_page,
-                                             'events_topics')
+                                             'events_topics_events')
         return data
 
 
@@ -655,7 +655,7 @@ class ExtractsEvents(Resource):
         per_page = min(request.args.get('per_page', 10, type=int), 100)
         data = ExtractEvent.to_collection_dict(db.session.query(ExtractEvent),
                                                page, per_page,
-                                               'events_extracts')
+                                               'events_extracts_events')
         return data
 
 
@@ -671,7 +671,7 @@ class ItemsEvents(Resource):
         per_page = min(request.args.get('per_page', 10, type=int), 100)
         data = ItemEvent.to_collection_dict(db.session.query(ItemEvent),
                                             page, per_page,
-                                            'events_extracts')
+                                            'events_items_events')
         return data
 
 
@@ -699,11 +699,11 @@ class Extracts(Resource):
 class Extract(Resource):
     @api.marshal_with(extract_model)
     @api.response(200, "Successfully read a single extract")
-    def get(self, extract_id):
+    def get(self, id):
         """ Get a single extract
         Allows the user to read a single extract according to
         the extract id"""
-        extract = db.session.query(ExtractFile).get_or_404()
+        extract = db.session.query(ExtractFile).get_or_404(id)
         return extract.to_dict()
 
 
@@ -740,7 +740,7 @@ class ExtractItems(Resource):
 
 @extract_ns.route('/<int:id>/events')
 class ExtractEvents(Resource):
-    @api.marshal_with(topic_model)
+    @api.marshal_with(paginated_extract_events_model)
     @api.response(200, "Successfully read extract's events")
     def get(self, id):
         """ Get extract's events
@@ -748,10 +748,11 @@ class ExtractEvents(Resource):
         extract = db.session.query(ExtractFile).get_or_404(id)
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 10, type=int), 100)
-        query = db.session.query(ExtractEvents).filter_by(extract_id=extract.id)
+        query = db.session.query(ExtractEvent).filter_by(extract_id=extract.id)
         data = ExtractEvents.to_collection_dict(query,
                                                 page, per_page,
-                                                'extracts_extract_events')
+                                                'extracts_extract_events',
+                                                id=id)
         return data
 
 
@@ -814,7 +815,8 @@ class ItemEvents(Resource):
         item = db.session.query(ItemFile).get_or_404(id)
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 10, type=int), 100)
-        data = ItemEvent.to_collection_dict(item.events,
+        query = db.session.query(ItemEvent).filter_by(item_id=item.id)
+        data = ItemEvent.to_collection_dict(query,
                                             page, per_page,
                                             'items_item_events')
         return data
