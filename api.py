@@ -543,24 +543,10 @@ class MyTag(db.Model):
 # Learn how to write proper APIs
 # Add archived, deleted, datetime filters to the query string
 
+
 ##########
 # Topics #
 ##########
-
-# By default arguments are not required
-# Arguments default to None
-# Deleted filter didn't work
-
-# parser = reqparse.RequestParser()
-# parser.add_argument('start',
-#                     type=str,
-#                     help='Find Topics after this time',
-#                     location='list')
-# parser.add_argument('end',
-#                     type=str,
-#                     help='Find topics before this time',
-#                     location='list')
-
 
 @topic_ns.route('/')
 class Topics(Resource):
@@ -592,7 +578,8 @@ class TopicExtracts(Resource):
         topic = db.session.query(TopicFile).get_or_404(id)
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 10, type=int), 100)
-        data = TopicFile.to_collection_dict(topic.extracts, page, per_page,
+        query = db.session.query(ExtractFile).filter_by(topic_id=topic.id)
+        data = TopicFile.to_collection_dict(query, page, per_page,
                                             'topics_topic_extracts', id=id)
         return data
 
@@ -622,7 +609,8 @@ class TopicEvents(Resource):
         topic = db.session.query(TopicFile).get_or_404(id)
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 10, type=int), 100)
-        data = TopicEvent.to_collection_dict(topic.events, page, per_page,
+        query = db.session.query(TopicEvent).filter_by(topic_id=topic.id)
+        data = TopicEvent.to_collection_dict(query, page, per_page,
                                              'topics_topic_events', id=id)
         return data
 
@@ -702,7 +690,7 @@ class Extracts(Resource):
         per_page = min(request.args.get('per_page', 10, type=int), 100)
         data = ExtractFile.to_collection_dict(db.session.query(ExtractFile),
                                               page, per_page,
-                                              'http://audiopi:5000/extracts')
+                                              url_for('extracts_extracts'))
         return data
 
 
@@ -730,6 +718,25 @@ class ExtractTopic(Resource):
         return extract.topic.to_dict()
 
 
+@extract_ns.route('/<int:id>/items')
+class ExtractItems(Resource):
+    @api.marshal_with(paginated_items_model)
+    @api.response(200, "Successfully read child items of extract")
+    def get(self, id):
+        """ Get extract items
+        Allows the user to read the parent topic of an extract
+        according to the extract id"""
+        extract = db.session.query(ExtractFile).get_or_404(id)
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 10, type=int), 100)
+        query = db.session.query(ItemFile).filter_by(extract_id=extract.id)
+        data = ItemFile.to_collection_dict(query,
+                                           page, per_page,
+                                           url_for('extracts_extracts'))
+        return data
+        return extract.topic.to_dict()
+
+
 @extract_ns.route('/<int:id>/events')
 class ExtractEvents(Resource):
     @api.marshal_with(topic_model)
@@ -740,9 +747,10 @@ class ExtractEvents(Resource):
         extract = db.session.query(ExtractFile).get_or_404(id)
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 10, type=int), 100)
-        data = ExtractEvents.to_collection_dict(extract.events,
+        query = db.session.query(ExtractEvents).filter_by(extract_id=extract.id)
+        data = ExtractEvents.to_collection_dict(query,
                                                 page, per_page,
-                                                'http://audiopi:5000/items')
+                                                url_for('extracts_extract_events'))
         return data
 
 
@@ -763,7 +771,7 @@ class Items(Resource):
         per_page = min(request.args.get('per_page', 10, type=int), 100)
         data = ItemFile.to_collection_dict(db.session.query(ItemFile),
                                            page, per_page,
-                                           'http://audiopi:5000/items')
+                                           url_for('items_items'))
         return data
 
 
