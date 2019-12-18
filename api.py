@@ -39,9 +39,9 @@ event_ns = api.namespace('events',
                          description="Operations for retrieving Topic, Extract and "
                                      "Item events")
 
-
-
-
+# Tag tables
+yt_topicfile_tags = db.Table('yt_topicfile_tags', db.metadata)
+my_topicfile_tags = db.Table('my_topicfile_tags', db.metadata)
 
 ##########################
 # Pagination Mixin Class #
@@ -93,11 +93,11 @@ class TopicFile(PaginatedAPIMixin, db.Model):
                              back_populates="topic")
     # Many to many File >-< Tag
     yttags = db.relationship('YoutubeTag',
-                             #secondary=yt_topicfile_tags,
+                             secondary=yt_topicfile_tags,
                              back_populates='topics')
     # Many to many File >-< Tag
     mytags = db.relationship('MyTag',
-                             #secondary=my_topicfile_tags,
+                             secondary=my_topicfile_tags,
                              back_populates='topics')
 
     def to_dict(self):
@@ -511,14 +511,14 @@ paginated_item_events_model = api.model('Paginated Item Events', {
 class YoutubeTag(db.Model):
     __table__ = db.Model.metadata.tables['yttags']
     topics = db.relationship('TopicFile',
-                             # secondary=yt_topicfile_tags,
+                             secondary=yt_topicfile_tags,
                              back_populates='yttags')
 
 
 class MyTag(db.Model):
     __table__ = db.Model.metadata.tables['mytags']
     topics = db.relationship('TopicFile',
-                             # secondary=my_topicfile_tags,
+                             secondary=my_topicfile_tags,
                              back_populates='mytags')
 
 
@@ -599,7 +599,7 @@ class Topic(Resource):
         Allows the user to get a single topic according
         to the topic id"""
 
-        topic = db.session.query(TopicFile).get_or_404(topic_id)
+        topic = db.session.query(TopicFile).get_or_404(id)
         return topic.to_dict()
 
 
