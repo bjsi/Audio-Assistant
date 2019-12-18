@@ -2,7 +2,7 @@ from flask_restplus import Resource, Api
 import os
 from flask import Blueprint, request, Flask, render_template, url_for
 from flask_restplus import fields
-from flask_sqlalchemy import SQLAlchemy  # flask-sqlalchemy has easy pagination
+from flask_sqlalchemy import SQLAlchemy
 from config import DATABASE_URI
 from flask_restplus import reqparse
 from flask_cors import CORS
@@ -38,6 +38,9 @@ item_ns = api.namespace('items',
 event_ns = api.namespace('events',
                          description="Operations for retrieving Topic, Extract and "
                                      "Item events")
+
+
+
 
 
 ##########################
@@ -81,6 +84,21 @@ class PaginatedAPIMixin(object):
 class TopicFile(PaginatedAPIMixin, db.Model):
     """ TODO """
     __table__ = db.Model.metadata.tables['topicfiles']
+
+    # One to many File |-< Extract
+    extracts = db.relationship("ExtractFile",
+                               back_populates="topic")
+    # One to many File |-< Activity
+    events = db.relationship("TopicEvent",
+                             back_populates="topic")
+    # Many to many File >-< Tag
+    yttags = db.relationship('YoutubeTag',
+                             secondary=yt_topicfile_tags,
+                             back_populates='topics')
+    # Many to many File >-< Tag
+    mytags = db.relationship('MyTag',
+                             secondary=my_topicfile_tags,
+                             back_populates='topics')
 
     def to_dict(self):
         data = {
@@ -182,6 +200,10 @@ class ExtractFile(PaginatedAPIMixin, db.Model):
     """ TODO """
     __table__ = db.Model.metadata.tables['extractfiles']
 
+    topic = db.relationship("TopicFile", back_populates="extracts")
+    items = db.relationship("ItemFile", back_populates="extract")
+    events = db.relationship("ExtractEvent", back_populates="extract")
+
     def to_dict(self):
         data = {
                 "id":         self.id,
@@ -249,6 +271,9 @@ class ItemFile(PaginatedAPIMixin, db.Model):
     """ TODO """
     __table__ = db.Model.metadata.tables['itemfiles']
 
+    extract = db.relationship("ExtractFile", back_populates="items")
+    events = db.relationship("ItemEvent", back_populates="item")
+
     def to_dict(self):
         data = {
                 'id':                self.id,
@@ -313,6 +338,7 @@ paginated_items_model = api.model('Paginated Item Files', {
 class TopicEvent(PaginatedAPIMixin, db.Model):
     """ TODO """
     __table__ = db.Model.metadata.tables['topicevents']
+    topic = db.relationship("TopicFile", back_populates="events")
 
     def to_dict(self):
         data = {
@@ -371,6 +397,7 @@ paginated_topic_events_model = api.model('Paginated Topic Events', {
 class ExtractEvent(PaginatedAPIMixin, db.Model):
     """ TODO """
     __table__ = db.Model.metadata.tables['extractevents']
+    extract = db.relationship("ExtractFile", back_populates="events")
 
     def to_dict(self):
         data = {
@@ -429,6 +456,7 @@ paginated_extract_events_model = api.model('Paginated Extract Events', {
 class ItemEvent(PaginatedAPIMixin, db.Model):
     """ TODO """
     __table__ = db.Model.metadata.tables['itemevents']
+    item = db.relationship("ItemFile", back_populates="events")
 
     def to_dict(self):
         data = {
@@ -478,6 +506,22 @@ paginated_item_events_model = api.model('Paginated Item Events', {
     "_meta":    fields.Nested(paginated_item_events_meta),
     "_links":   fields.Nested(paginated_item_events_links)
     })
+
+
+class YoutubeTag(db.Model):
+    __table__ = db.Model.metadata.tables['yttags']
+    topics = db.relationship('TopicFile',
+                             # secondary=yt_topicfile_tags,
+                             back_populates='yttags')
+
+
+class MyTag(db.Model):
+    __table__ = db.Model.metadata.tables['mytags']
+    topics = db.relationship('TopicFile',
+                             # secondary=my_topicfile_tags,
+                             back_populates='mytags')
+
+
 
 # add a datetime / timestamp filter to these
 # Add a way to filter by tags both AND and OR
