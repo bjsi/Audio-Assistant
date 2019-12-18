@@ -154,6 +154,14 @@ topic_model = api.model('Topic File', {
     '_links':           fields.Nested(topic_links)
     })
 
+
+paginated_topics_meta = api.model("Paginated Topics Meta", {
+    "page":         fields.Integer,
+    "per_page":     fields.Integer,
+    "total_pages":  fields.Integer,
+    "total_items":  fields.Integer
+    })
+
 paginated_topics_links = api.model("Paginated Topics Links", {
    "self":      fields.String,
    "next":      fields.String,
@@ -161,14 +169,9 @@ paginated_topics_links = api.model("Paginated Topics Links", {
     })
 
 paginated_topics_model = api.model('Paginated Topic Files', {
-    "data":       fields.List(fields.Nested(topic_model)),
-    "_meta": {
-              "page":         fields.Integer,
-              "per_page":     fields.Integer,
-              "total_pages":  fields.Integer,
-              "total_items":  fields.Integer
-             },
-    "_links": fields.Nested(paginated_topics_links)
+    "data":     fields.List(fields.Nested(topic_model)),
+    "_meta":    fields.Nested(paginated_topics_meta),
+    "_links":   fields.Nested(paginated_topics_links)
     })
 
 
@@ -224,6 +227,13 @@ extract_model = api.model('Extract File', {
     '_links': fields.Nested(extract_links)
     })
 
+paginated_extracts_meta = api.model('Paginated Extracts Meta', {
+    "page":         fields.Integer,
+    "per_page":     fields.Integer,
+    "total_pages":  fields.Integer,
+    "total_items":  fields.Integer
+    })
+
 paginated_extracts_links = api.model('Paginated Extracts Links', {
    "self":      fields.String,
    "next":      fields.String,
@@ -231,14 +241,9 @@ paginated_extracts_links = api.model('Paginated Extracts Links', {
     })
 
 paginated_extracts_model = api.model('Paginated Extract Files', {
-    "data":       fields.List(fields.Nested(extract_model)),
-    "_meta": {
-              "page":         fields.Integer,
-              "per_page":     fields.Integer,
-              "total_pages":  fields.Integer,
-              "total_items":  fields.Integer
-             },
-    "_links": fields.Nested(paginated_extracts_links)
+    "data":     fields.List(fields.Nested(extract_model)),
+    "_meta":    fields.Nested(paginated_extracts_meta),
+    "_links":   fields.Nested(paginated_extracts_links)
     })
 
 
@@ -290,6 +295,13 @@ item_model = api.model('Item File', {
     '_links': fields.Nested(item_links)
     })
 
+paginated_items_meta = api.model("Paginated Items Meta", {
+    "page":         fields.Integer,
+    "per_page":     fields.Integer,
+    "total_pages":  fields.Integer,
+    "total_items":  fields.Integer
+    })
+
 paginated_items_links = api.model('Paginated Items Links', {
    "self":      fields.String,
    "next":      fields.String,
@@ -298,13 +310,8 @@ paginated_items_links = api.model('Paginated Items Links', {
 
 paginated_items_model = api.model('Paginated Item Files', {
     "data":       fields.List(fields.Nested(item_model)),
-    "_meta": {
-              "page":         fields.Integer,
-              "per_page":     fields.Integer,
-              "total_pages":  fields.Integer,
-              "total_items":  fields.Integer
-             },
-    "_links": fields.Nested(paginated_items_links)
+    "_meta":    fields.Nested(paginated_items_meta),
+    "_links":   fields.Nested(paginated_items_links)
     })
 
 
