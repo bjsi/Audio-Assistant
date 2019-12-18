@@ -103,8 +103,7 @@ class TopicFile(PaginatedAPIMixin, db.Model):
                 'rendered':       render_template("topic.html", topic=self),
                 # TODO Change to url_for
                 '_links': {
-                        'self': 'http://audiopi:5000/topics/' + \
-                                str(self.id),
+                        'self': url_for('topics_topic', id=self.id),
                         'extracts': 'http://audiopi:5000/topics/' + \
                                     str(self.id) + '/extracts',
                         'events': 'http://audiopi:5000/topics/' + \
@@ -191,10 +190,9 @@ class ExtractFile(PaginatedAPIMixin, db.Model):
                 "deleted":      self.deleted,
                 'links': {
                     # TODO change to url_for
-                    'self': 'http://audiopi:5000/extracts/' +
-                            str(self.id),
-                    'topic': 'http://audiopi:5000/topics/' +
-                             str(self.topic_id),
+                    'self': url_for('extracts_extract', id=self.id),
+                    'topic': 'http://audiopi:5000/extracts/' + self.id + \
+                             '/topic/',
                     'items': 'http://audiopi:5000/extracts/' +
                              str(self.id) + '/items',
                     'events': 'http://audiopi:5000/extracts/' +
@@ -263,7 +261,7 @@ class ItemFile(PaginatedAPIMixin, db.Model):
                 'cloze_stopstamp':   self.cloze_endstamp,
                 # TODO Change to url_for
                 '_links': {
-                    'self': 'http://audiopi:5000/items/' + self.id,
+                    'self': url_for('items_item', id=self.id),
                     'extract': 'http://audiopi:5000/items/' + \
                                self.id + '/extract',
                     'events': 'http://audiopi:5000/items/' + \
@@ -330,7 +328,7 @@ class TopicEvent(db.Model):
                     # TODO Change to url_for
                     'self': 'http://audiopi:5000/topics/' + \
                             self.topic_id + '/events/' + self.id,
-                    'topic': 'http://audiopi:5000/topics/' + self.topic_id
+                    'topic': url_for('topics_topic', id=self.topic_id)
                     }
                }
         return data
@@ -370,8 +368,7 @@ class ExtractEvent(db.Model):
                     # TODO Change to url_for
                     'self': 'http://audiopi:5000/extracts/' + \
                             self.extract_id + '/events/' + self.id,
-                    'extract': 'http://audiopi:5000/extracts/' + \
-                               self.extract_id
+                    'extract': url_for('extracts_extract', id=self.extract_id)
                     }
                }
         return data
@@ -411,7 +408,7 @@ class ItemEvent(db.Model):
                     # TODO Change to url_for
                     'self': 'http://audiopi:5000/items/' + \
                             self.item_id + '/events/' + self.id,
-                    'item': 'http://audiopi:5000/items/' + self.item_id,
+                    'item': url_for('items_item', id=self.item_id),
                 }
                }
         return data
@@ -482,18 +479,18 @@ class Topics(Resource):
         return data
 
 
-# @topic_ns.route('/<int:topic_id>/extracts')
-# class TopicExtracts(Resource):
-#     @api.marshal_with(paginated_extracts_model)
-#     @api.response(200, "Successfully read child extracts")
-#     def get(self, topic_id):
-#         """ Get a topic's extracts
-#         Allows the user to read a list of child
-#         extracts from the parent topic"""
-#
-#         # TODO
-#
-#         pass
+@topic_ns.route('/<int:topic_id>/extracts')
+class TopicExtracts(Resource):
+    @api.marshal_with(paginated_extracts_model)
+    @api.response(200, "Successfully read child extracts")
+    def get(self, topic_id):
+        """ Get a topic's extracts
+        Allows the user to read a list of child
+        extracts from the parent topic"""
+
+        # TODO
+
+        pass
 
 
 @topic_ns.route('/<int:topic_id>')
@@ -551,18 +548,18 @@ class Extract(Resource):
         return extract.to_dict()
 
 
-# @extract_ns.route('/<int:extract_id>/topic')
-# class ExtractTopic(Resource):
-#     @api.marshal_with(topic_model)
-#     @api.response(200, "Successfully read parent topic of extract")
-#     def get(self, extract_id):
-#         """ Get extract topic
-#         Allows the user to read the parent topic of an extract
-#         according to the extract id"""
-#
-#         # TODO
-#
-#         pass
+@extract_ns.route('/<int:extract_id>/topic')
+class ExtractTopic(Resource):
+    @api.marshal_with(topic_model)
+    @api.response(200, "Successfully read parent topic of extract")
+    def get(self, extract_id):
+        """ Get extract topic
+        Allows the user to read the parent topic of an extract
+        according to the extract id"""
+
+        # TODO
+
+        pass
 
 
 #########
@@ -599,19 +596,18 @@ class Item(Resource):
         return item.to_dict()
 
 
-# @item_ns.route('/<int:item_id>/extract')
-# class ItemParent(Resource):
-#     @api.marshal_with(extract_model)
-#     @api.response(200, "Successfully read the parent extract of item")
-#     def get(self, item_id):
-#         """ Get item extract
-#         Allows the user to get the parent extract of the item
-#         according to the item id"""
-#
-#         # TODO
-#
-#         pass
+@item_ns.route('/<int:item_id>/extract')
+class ItemParent(Resource):
+    @api.marshal_with(extract_model)
+    @api.response(200, "Successfully read the parent extract of item")
+    def get(self, item_id):
+        """ Get item extract
+        Allows the user to get the parent extract of the item
+        according to the item id"""
 
+        # TODO
+
+        pass
 
 
 if __name__ == "__main__":
