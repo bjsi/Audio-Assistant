@@ -109,16 +109,10 @@ class TopicFile(PaginatedAPIMixin, db.Model):
                                     str(self.id) + '/extracts',
                         'events': 'http://audiopi:5000/topics/' + \
                                   str(self.id) + '/events',
-                        'topic': 'http://audiopi:5000/topics/' + \
-                                 str(self.topic_id),
                         'yttags': 'http://audiopi:5000/topics/' + \
                                   str(self.id) + '/yttags',
                         'mytags': 'http://audiopi:5000/topics/' + \
                                   str(self.id) + '/mytags',
-                        'youtube_url': 'http://www.youtube.com/watch?v=' + \
-                                       self.youtube_id,
-                        'channel_url': 'httmp://www.youtube.com/channel/' + \
-                                       self.uploader_id
                 }
                }
         return data
@@ -127,7 +121,9 @@ class TopicFile(PaginatedAPIMixin, db.Model):
 topic_links = api.model('Topic File Links', {
         'self':     fields.String,
         'extracts': fields.String,
-        'events':   fields.String
+        'events':   fields.String,
+        'yttags':   fields.String,
+        'mytags':   fields.String,
     })
 
 topic_model = api.model('Topic File', {
@@ -482,7 +478,7 @@ class Topics(Resource):
         per_page = min(request.args.get('per_page', 10, type=int), 100)
         data = TopicFile.to_collection_dict(db.session.query(TopicFile),
                                             page, per_page,
-                                            'http://audiopi:5000/topics')
+                                            url_for('api.topics'))
         return data
 
 
