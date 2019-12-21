@@ -2,86 +2,57 @@
 
 <div class="card border-primary mb-2 topic-card" id="topic-card-{{ topic.id }}">
     <div class="card-header">
-        <p class="card-text"><i class="fa fa-calendar" aria-hidden="true"></i> {{ topic.created_at.strftime("%a %d %b %Y") }}</p>
+        <p class="card-text">
+            <i class="fa fa-calendar" aria-hidden="true"></i> {{ topic.created_at.strftime("%a %d %b %Y") }}
+        </p>
+        {# TODO add archive button #}
     </div>
     <div class="card-body">
         <h4 class="card-title">{{ topic.title }}</h5>
-        <div id="youtube-player-{{ topic.id }}"></div>
-        {# Real progress bar showing where you are in the vid, height 2px #}
+        {# TODO change max-width #}
+        <div class="card-img" src="{{ topic.thumbnail_url }}">
+
+        {# timebar showing where you are in the vid, height 2px #}
         <div class="progress" style="height: 2px;">
             <div class="progress-bar bg-danger"
                  role="progressbar"
                  style="width: 0%;"
-                 aria-valuenow="0"
-                 aria-valuemin="0"
-                 aria-valuemax="100"
                  id="timebar">
             </div>
         </div>
 
-        {# if no extractfiles #}
         <div class="progress mb-2" id="progressbar" style="height: 10px;">
-            {% if not topic.extractfiles %}
-                <div class="progress-bar progress-bar-striped"
-                     role="progressbar"
-                     style="width: {{ (topic.cur_timestamp/topic.duration)*100 }}%; height: 10px;"
-                     aria-valuenow="{{ (topic.cur_timestamp/topic.duration)*100 }}"
-                     aria-valuemin="0"
-                     aria-valuemax="100">
-                </div>
-            {% else %}
-                <div class="progress-bar progress-bar-striped"
-                     role="progressbar"
-                     style="width: {{ (topic.extractfiles[0].topicfile_startstamp/topic.duration)*100 }}%; height: 10px;"
-                     aria-valuenow="{{ (topic.extractfiles[0].topicfile_startstamp/topic.duration)*100 }}"
-                     aria-valuemin="0"
-                     aria-valuemax="100">
-                </div>
-                {% for extract in topic.extractfiles %}
-                <div class="progress-bar progress-bar-striped bg-warning"
-                     role="progressbar"
-                     style="width: {{ ((extract.topicfile_endstamp - extract.topicfile_startstamp)/topic.duration)*100 }}%; height: 10px;"
-                     aria-valuenow="{{ ((extract.topicfile_endstamp - extract.topicfile_startstamp)/topic.duration)*100 }}"
-                     aria-valuemin="0"
-                     aria-valuemax="100"
-                     id="extract-bar-{{ extract.id }}">
-                </div>
-                {% if loop.nextitem is defined %}
-                    <div class="progress-bar progress-bar-striped"
-                         role="progressbar"
-                         style="width: {{ ((loop.nextitem.topicfile_startstamp - extract.topicfile_endstamp)/topic.duration)*100 }}%; height: 10px;"
-                         aria-valuenow="{{ ((loop.nextitem.topicfile_startstamp - extract.topicfile_endstamp)/topic.duration)*100 }}"
-                         aria-valuemin="0"
-                         aria-valuemax="100">
-                    </div>
-                {% endif %}
-                {% endfor %}
-                <div class="progress-bar progress-bar-striped"
-                     role="progressbar"
-                     style="width: {{ ((topic.cur_timestamp - (topic.extractfiles | last).topicfile_endstamp)/topic.duration)*100 }}%; height: 10px;"
-                     aria-valuenow="{{ ((topic.cur_timestamp - (topic.extractfiles | last).topicfile_endstamp)/topic.duration)*100 }}"
-                     aria-valuemin="0"
-                     aria-valuemax="100"
-                     id="progress-bar-end">
-                </div>
-            {% endif %}
+        {# stacked progress bars added here #}
         </div>
-        <span class="mb-2"><button class="btn btn-primary" id="seekbackward"><i class="fa fa-backward" aria-hidden="true"></i></button></span>
-        <span class="mb-2"><button class="btn btn-primary" id="play"><i class="fa fa-play-circle" aria-hidden="true"></i></button></span>
-        <span class="mb-2"><button class="btn btn-primary" id="pause"><i class="fa fa-pause" aria-hidden="true"></i></button></span>
-        <span class="mb-2"><button class="btn btn-primary" id="seekforward"><i class="fa fa-forward" aria-hidden="true"></i></button></span>
-        <span class="mb-2"><button class="btn btn-primary" id="seek-to-cur"><i class="fa fa-next" aria-hidden="true"></i></button></span>
-        <br></br>
-        <span class="mb-2"><button class="btn btn-primary" id="speedone">1x</button></span>
-        <span class="mb-2"><button class="btn btn-primary" id="speedonetwofive">1.25x</button></span>
-        <span class="mb-2"><button class="btn btn-primary" id="speedonefive">1.5x</button></span>
     </div>
     <div class="card-footer">
-        <span><button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#collapse" id="tags-button"><i class="fa fa-file-video-o" aria-hidden="true"></i> Extracts</button></span>
-        <span><button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#collapse" id="extracts-button"><i class="fa fa-tags" aria-hidden="true"></i> Tags</button></span>
+        <span>
+                <button class="btn btn-primary"
+                      type="button"
+                      data-toggle="collapse"
+                      data-target="#collapse"
+                      id="tags-button">
+                    <i class="fa fa-file-video-o"></i> Extracts
+                </button>
+        </span>
+        <span>
+            <button class="btn btn-primary"
+                    type="button"
+                    data-toggle="collapse"
+                    data-target="#collapse"
+                    id="extracts-button">
+                <i class="fa fa-tags"></i> Tags
+            </button>
+        </span>
+        <span>
+            <button class="btn btn-primary"
+                    type="button"
+                    id="load-video-button">
+                <i class="fa fa-youtube-play"></i> Load Video
+            </button>
+        </span>
         <div class="collapse" id="collapse">
-            <div class="card card-body" id="collapse-content">
-            </div>
+            <div class="card card-body" id="collapse-content"></div>
         </div>
     </div>
 </div>
