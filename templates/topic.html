@@ -10,7 +10,7 @@
     <div class="card-body">
         <h4 class="card-title">{{ topic.title }}</h5>
         {# TODO change max-width #}
-        <div class="card-img" src="{{ topic.thumbnail_url }}">
+        <img class="card-img" src="{{ topic.thumbnail_url }}">
 
         {# timebar showing where you are in the vid, height 2px #}
         <div class="progress" style="height: 2px;">
@@ -39,7 +39,7 @@
             <button class="btn btn-primary"
                     type="button"
                     data-toggle="collapse"
-                    data-target="#collapse"
+                    data-target="#collapse-{{ topic.id }}"
                     id="extracts-button">
                 <i class="fa fa-tags"></i> Tags
             </button>
@@ -51,7 +51,7 @@
                 <i class="fa fa-youtube-play"></i> Load Video
             </button>
         </span>
-        <div class="collapse" id="collapse">
+        <div class="collapse" id="collapse-{{ topic.id }}">
             <div class="card card-body" id="collapse-content"></div>
         </div>
     </div>
