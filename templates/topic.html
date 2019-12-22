@@ -4,55 +4,52 @@
     <div class="card-header">
         <p class="card-text">
             <i class="fa fa-calendar" aria-hidden="true"></i> {{ topic.created_at.strftime("%a %d %b %Y") }}
+        <a class="badge badge-danger float-right"
+           href="#" 
+           id="archive-button-{{ topic.id }}">
+                a
+        </a>
         </p>
-        {# TODO add archive button #}
     </div>
     <div class="card-body">
-        <h4 class="card-title">{{ topic.title }}</h5>
+        <h6 class="card-title">{{ topic.title }}</h6>
         {# TODO change max-width #}
-        <img class="card-img" src="{{ topic.thumbnail_url }}">
-
-        {# timebar showing where you are in the vid, height 2px #}
-        <div class="progress" style="height: 2px;">
+        <img class="card-img mb-2" src="{{ topic.thumbnail_url }}">
+        <div class="progress mb-2" id="progressbar" style="height: 10px;">
             <div class="progress-bar bg-danger"
                  role="progressbar"
-                 style="width: 0%;"
-                 id="timebar">
+                 style="width: {{ topic.cur_timestamp }}%;">
             </div>
-        </div>
-
-        <div class="progress mb-2" id="progressbar" style="height: 10px;">
-        {# stacked progress bars added here #}
         </div>
     </div>
     <div class="card-footer">
         <span>
-                <button class="btn btn-primary"
+                <button class="btn btn-primary btn-sm"
                       type="button"
                       data-toggle="collapse"
-                      data-target="#collapse"
-                      id="tags-button">
+                      data-target="#collapse-{{ topic.id }}"
+                      id="tags-button-{{ topic.id }}">
                     <i class="fa fa-file-video-o"></i> Extracts
                 </button>
         </span>
         <span>
-            <button class="btn btn-primary"
+            <button class="btn btn-primary btn-sm"
                     type="button"
                     data-toggle="collapse"
                     data-target="#collapse-{{ topic.id }}"
-                    id="extracts-button">
+                    id="extracts-button-{{ topic.id }}">
                 <i class="fa fa-tags"></i> Tags
             </button>
         </span>
         <span>
-            <button class="btn btn-primary"
+            <button class="btn btn-primary btn-sm"
                     type="button"
-                    id="load-video-button">
+                    id="load-video-button-{{ topic.id }}">
                 <i class="fa fa-youtube-play"></i> Load Video
             </button>
         </span>
         <div class="collapse" id="collapse-{{ topic.id }}">
-            <div class="card card-body" id="collapse-content"></div>
+            <div class="card card-body" id="collapse-content-{{ topic.id }}"></div>
         </div>
     </div>
 </div>
