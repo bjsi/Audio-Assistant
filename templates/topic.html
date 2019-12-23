@@ -20,7 +20,7 @@
             <div class="progress-bar"
                  role="progressbar"
                  style="width: {{ (topic.cur_timestamp / topic.duration) * 100 }}%;">
-                {{((topic.cur_timestamp / topic.duration) | int) * 100 }}%
+                {{((topic.cur_timestamp / topic.duration * 100) | int }}%
             </div>
         </div>
     </div>
