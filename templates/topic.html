@@ -4,49 +4,52 @@
     <div class="card-header">
         <p class="card-text">
             <i class="fa fa-calendar" aria-hidden="true"></i> {{ topic.created_at.strftime("%a %d %b %Y") }}
-        <a class="badge badge-warning float-right"
-           href=""
-           id="dismiss-button-{{ topic.id }}">
-                dismiss
-        </a>
+            <a class="badge badge-warning float-right"
+               href=""
+               id="dismiss-button-{{ topic.id }}">
+                    d
+            </a>
         </p>
     </div>
     <div class="card-body">
-        <h6 class="card-title">{{ topic.title }}</h6>
+        <h5 class="card-title">{{ topic.title }}</h5>
+        <h6 class="card-subtitle mb-2 text-muted">{{ topic.uploader }}</h6>
         {# TODO change max-width #}
         <img class="card-img mb-2" src="{{ topic.thumbnail_url }}">
         <div class="progress mb-2" id="progressbar" style="height: 10px;">
             <div class="progress-bar bg-danger"
                  role="progressbar"
                  style="width: {{ topic.cur_timestamp }}%;">
+                {{ topic.cur_timestamp | int }}
             </div>
         </div>
     </div>
     <div class="card-footer">
         <span>
-                <button class="btn btn-primary btn-sm"
-                      type="button"
+                <a class="badge badge-primary"
+                      role="button"
                       data-toggle="collapse"
                       data-target="#collapse-{{ topic.id }}"
                       id="extracts-button-{{ topic.id }}">
                     <i class="fa fa-file-video-o"></i> Extracts
-                </button>
+                </a>
         </span>
         <span>
-            <button class="btn btn-primary btn-sm"
-                    type="button"
+            <a class="badge badge-primary"
+                    role="button"
                     data-toggle="collapse"
                     data-target="#collapse-{{ topic.id }}"
                     id="tags-button-{{ topic.id }}">
                 <i class="fa fa-tags"></i> Tags
-            </button>
+            </a>
         </span>
         <span>
-            <button class="btn btn-primary btn-sm"
-                    type="button"
-                    id="load-video-button-{{ topic.id }}">
+            <a class="badge badge-primary"
+                    role="button"
+                    id="load-video-button-{{ topic.id }}"
+                    href="">
                 <i class="fa fa-youtube-play"></i> Load Video
-            </button>
+            </a>
         </span>
         <div class="collapse" id="collapse-{{ topic.id }}">
             <div class="card card-body" id="collapse-content-{{ topic.id }}"></div>
