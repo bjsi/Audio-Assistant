@@ -690,7 +690,12 @@ class Extracts(Resource):
         files in the database that have not been archived or deleted"""
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 10, type=int), 100)
-        data = ExtractFile.to_collection_dict(db.session.query(ExtractFile).filter(ExtractFile.filepath != None).filter(ExtractFile.endstamp != None),
+        query = (db
+                 .session
+                 .query(ExtractFile)
+                 .filter(ExtractFile.filepath != None)
+                 .filter(ExtractFile.endstamp != None))
+        data = ExtractFile.to_collection_dict(query,
                                               page, per_page,
                                               'extracts_extracts')
         return data
@@ -704,7 +709,12 @@ class Extract(Resource):
         """ Get a single extract
         Allows the user to read a single extract according to
         the extract id"""
-        extract = db.session.query(ExtractFile).get_or_404(id)
+        extract = (db
+                   .session
+                   .query(ExtractFile)
+                   .filter(ExtractFile.filepath != None)
+                   .filter(Extract.endstamp != None)
+                   .get_or_404(id))
         return extract.to_dict()
 
 
