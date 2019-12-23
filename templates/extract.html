@@ -22,7 +22,7 @@
             </div>
             <div class="progress-bar bg-info"
                  role="progressbar"
-                 style="width: {{ ((extract.startstamp - extract.endstamp) / extract.topic.duration) * 100 }}%;">
+                 style="width: {{ ((extract.endstamp - extract.startstamp) / extract.topic.duration) * 100 }}%;">
             </div>
             <div class="progress-bar"
                  role="progressbar"
@@ -59,17 +59,17 @@
                 </a>
         </span>
         <span>
-                <button class="badge badge-primary"
-                      type="button"
+                <a class="badge badge-primary"
+                      role="button"
                       data-toggle="collapse"
                       data-target="#collapse-{{ extract.id }}"
                       id="items-button-{{ extract.id }}">
                     <i class="fa fa-file-video-o"></i> Items
-                </button>
+                </a>
         </span>
         <span>
-            <a class="btn btn-primary btn-sm"
-                    type="button"
+            <a class="badge badge-primary"
+                    role="button"
                     id="load-video-button-{{ extract.id }}">
                 <i class="fa fa-youtube-play"></i> Load Video
             </a>
