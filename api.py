@@ -690,7 +690,7 @@ class Extracts(Resource):
         files in the database that have not been archived or deleted"""
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 10, type=int), 100)
-        data = ExtractFile.to_collection_dict(db.session.query(ExtractFile),
+        data = ExtractFile.to_collection_dict(db.session.query(ExtractFile).filter_by(filepath != None).filter_by(endstamp != None),
                                               page, per_page,
                                               'extracts_extracts')
         return data

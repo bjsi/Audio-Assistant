@@ -17,10 +17,10 @@
         {# TODO change max-width #}
         <img class="card-img mb-2" src="{{ topic.thumbnail_url }}">
         <div class="progress mb-2" id="progressbar" style="height: 10px;">
-            <div class="progress-bar bg-danger"
+            <div class="progress-bar"
                  role="progressbar"
                  style="width: {{ topic.cur_timestamp }}%;">
-                {{ topic.cur_timestamp | int }}
+                {{(topic.cur_timestamp | int) / topic.duration }}%
             </div>
         </div>
     </div>
