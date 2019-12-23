@@ -12,22 +12,21 @@
         </p>
     </div>
     <div class="card-body">
-        <h6 class="card-title">Extract #{{ extract.id }}</h6>
-        {# add current timestamp #}
-        {# add topic thumbnail url #}
+        <h5 class="card-title">Extract #{{ extract.id }}</h5>
+        <h6 class="card-subtitle mb-2 text-muted">{{ extract.topic.title }}</h6>
         <img class="card-img mb-2" src="{{ extract.topic.thumbnail_url }}">
         <div class="progress mb-2" style="height: 10px;">
             <div class="progress-bar"
                  role="progressbar"
-                 style="width: {{ extract.startstamp / extract.topic.duration }}%;">
+                 style="width: {{ (extract.startstamp / extract.topic.duration) * 100 }}%;">
+            </div>
+            <div class="progress-bar bg-info"
+                 role="progressbar"
+                 style="width: {{ ((extract.startstamp - extract.endstamp) / extract.topic.duration) * 100 }}%;">
             </div>
             <div class="progress-bar"
                  role="progressbar"
-                 style="width: {{ (extract.startstamp - extract.endstamp) / extract.topic.duration }}%;">
-            </div>
-            <div class="progress-bar"
-                 role="progressbar"
-                 style="width: {{ (extract.topic.cur_timestamp - extract.endstamp) / extract.topic.duration }}%;">
+                 style="width: {{ ((extract.topic.cur_timestamp - extract.endstamp) / extract.topic.duration) * 100 }}%;">
             </div>
         </div>
         <span>
@@ -45,7 +44,7 @@
         <span>
             <button class="btn btn-primary btn-sm mb-2"
                     id="extract-seek-forward">
-                <i class="fa fa-forward">
+                <i class="fa fa-forward"></i>
             </button>
         </span>
     </div>

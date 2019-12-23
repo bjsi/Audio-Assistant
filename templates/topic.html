@@ -13,14 +13,14 @@
     </div>
     <div class="card-body">
         <h5 class="card-title">{{ topic.title }}</h5>
-        <h6 class="card-subtitle mb-2 text-muted">{{ topic.uploader }}</h6>
+        <h6 class="card-subtitle mb-2 text-muted">Uploader: {{ topic.uploader }}</h6>
         {# TODO change max-width #}
         <img class="card-img mb-2" src="{{ topic.thumbnail_url }}">
         <div class="progress mb-2" id="progressbar" style="height: 10px;">
             <div class="progress-bar"
                  role="progressbar"
-                 style="width: {{ topic.cur_timestamp }}%;">
-                {{(topic.cur_timestamp | int) / topic.duration }}%
+                 style="width: {{ (topic.cur_timestamp / topic.duration) * 100 }}%;">
+                {{((topic.cur_timestamp | int) / topic.duration) * 100 }}%
             </div>
         </div>
     </div>
@@ -46,8 +46,8 @@
         <span>
             <a class="badge badge-primary"
                     role="button"
-                    id="load-video-button-{{ topic.id }}"
-                <i class="fa fa-youtube-play"></i> Load Video
+                    id="load-video-button-{{ topic.id }}">
+                    <i class="fa fa-youtube-play"></i> Load Video
             </a>
         </span>
         <div class="collapse" id="collapse-{{ topic.id }}">
