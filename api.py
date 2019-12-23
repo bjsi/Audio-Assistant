@@ -222,6 +222,7 @@ class ExtractFile(PaginatedAPIMixin, db.Model):
                 "transcript": self.transcript,
                 'archived':   self.archived,
                 "deleted":    self.deleted,
+                "rendered":   render_template("extract.html", extract=self),
                 '_links': {
                     'self': url_for('extracts_extract', id=self.id),
                     'topic': url_for('extracts_extract_topic', id=self.id),
@@ -248,6 +249,7 @@ extract_model = api.model('Extract File', {
     'transcript':       fields.String,
     'archived':         fields.Boolean,
     'deleted':          fields.Boolean,
+    'rendered':         fields.String,
     '_links': fields.Nested(extract_links)
     })
 
@@ -292,6 +294,7 @@ class ItemFile(PaginatedAPIMixin, db.Model):
                 'deleted':           self.deleted,
                 'cloze_startstamp':  self.cloze_startstamp,
                 'cloze_endstamp':    self.cloze_endstamp,
+                'rendered':          render_template('item.html', item=self),
                 '_links': {
                     'self': url_for('items_item', id=self.id),
                     'extract': url_for('items_item_extract', id=self.id),
@@ -316,6 +319,7 @@ item_model = api.model('Item File', {
     'deleted':              fields.Boolean,
     'cloze_startstamp':     fields.Float,
     'cloze_endstamp':       fields.Float,
+    'rendered':             fields.String,
     '_links': fields.Nested(item_links)
     })
 

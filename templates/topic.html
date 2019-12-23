@@ -1,13 +1,13 @@
-{# Topic Template #}
+{# Topic Card Template #}
 
-<div class="card border-primary mb-2 topic-card" id="topic-card-{{ topic.id }}">
+<div class="card mb-2 topic-card" id="topic-card-{{ topic.id }}">
     <div class="card-header">
         <p class="card-text">
             <i class="fa fa-calendar" aria-hidden="true"></i> {{ topic.created_at.strftime("%a %d %b %Y") }}
-        <a class="badge badge-danger float-right"
-           href="#" 
-           id="archive-button-{{ topic.id }}">
-                a
+        <a class="badge badge-warning float-right"
+           href=""
+           id="dismiss-button-{{ topic.id }}">
+                dismiss
         </a>
         </p>
     </div>
@@ -28,7 +28,7 @@
                       type="button"
                       data-toggle="collapse"
                       data-target="#collapse-{{ topic.id }}"
-                      id="tags-button-{{ topic.id }}">
+                      id="extracts-button-{{ topic.id }}">
                     <i class="fa fa-file-video-o"></i> Extracts
                 </button>
         </span>
@@ -37,7 +37,7 @@
                     type="button"
                     data-toggle="collapse"
                     data-target="#collapse-{{ topic.id }}"
-                    id="extracts-button-{{ topic.id }}">
+                    id="tags-button-{{ topic.id }}">
                 <i class="fa fa-tags"></i> Tags
             </button>
         </span>

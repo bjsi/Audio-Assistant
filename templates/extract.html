@@ -1,0 +1,75 @@
+{# Extract Card Template #}
+
+<div class="card border-success mb-2 extract-card" id="item-card-{{ extract.id }}">
+    <div class="card-header">
+        <p class="card-text">
+            <i class="fa fa-calendar"></i> {{ extract.created_at.strftime("%a %d %b %Y") }}
+        <a class="badge badge-warning float-right"
+           href=""
+           id="dismiss-button-{{ extract.id }}">
+                dismiss
+        </a>
+        </p>
+    </div>
+    <div class="card-body">
+        <h6 class="card-title">Extract #{{ extract.id }}</h6>
+        <p class="card-text">start: {{ extract.startstamp }}</p>
+        <p class="card-text">end: {{ extract.endstamp }}</p>
+        <p class="card-text">filepath: {{ extract.filepath }}</p>
+        {# add current timestamp #}
+        <div class="progress mb-2" style="height: 10px;">
+            <div class="progress-bar bg-danger"
+                 role="progressbar"
+                 style="width: 0%;"
+                 id="extract-timebar-{{ extract.id }}">
+            </div>
+        </div>
+        <span>
+            <button class="btn btn-primary btn-sm mb-2"
+                    id="extract-seek-backward">
+                {# add icon #}
+            </button>
+        </span>
+        <span>
+            <button class="btn btn-primary btn-sm mb-2"
+                    id="extract-play">
+                {# add icon #}
+            </button>
+        </span>
+        <span>
+            <button class="btn btn-primary btn-sm mb-2"
+                    id="extract-seek-forward">
+                {# add icon #}
+            </button>
+        </span>
+    <div class="card-footer">
+        <span>
+                <button class="btn btn-primary btn-sm"
+                      type="button"
+                      data-toggle="collapse"
+                      data-target="#collapse-{{ extract.id }}"
+                      id="topic-button-{{ extract.id }}">
+                    <i class="fa fa-file-video-o"></i> Topic
+                </button>
+        </span>
+        <span>
+                <button class="btn btn-primary btn-sm"
+                      type="button"
+                      data-toggle="collapse"
+                      data-target="#collapse-{{ extract.id }}"
+                      id="items-button-{{ extract.id }}">
+                    <i class="fa fa-file-video-o"></i> Items
+                </button>
+        </span>
+        <span>
+            <button class="btn btn-primary btn-sm"
+                    type="button"
+                    id="load-video-button-{{ extract.id }}">
+                <i class="fa fa-youtube-play"></i> Load Video
+            </button>
+        </span>
+        <div class="collapse" id="collapse-{{ extract.id }}">
+            <div class="card card-body" id="collapse-content-{{ extract.id }}"></div>
+        </div>
+    </div>
+</div>

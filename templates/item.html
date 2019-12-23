@@ -1,0 +1,65 @@
+{# Item Card Template #}
+
+
+<div class="card border-primary mb-2 item-card" id="item-card-{{ item.id }}">
+    <div class="card-header">
+        <p class="card-text">
+            <i class="fa fa-calendar"></i> {{ item.created_at.strftime("%a %d %b %Y") }}
+        <a class="badge badge-warning float-right"
+           href=""
+           id="dismiss-button-{{ item.id }}">
+                dismiss
+        </a>
+        </p>
+    </div>
+    <div class="card-body">
+        <h6 class="card-title">Item #{{ Item.id }}</h6>
+        <p class="card-text">filepath: {{ item.filepath }}</p>
+        {# add current timestamp #}
+        <div class="progress mb-2" style="height: 10px;">
+            <div class="progress-bar bg-danger"
+                 role="progressbar"
+                 style="width: 0%;"
+                 id="item-timebar-{{ item.id }}">
+            </div>
+        </div>
+        <span>
+            <button class="btn btn-primary btn-sm mb-2"
+                    id="item-seek-backward">
+                {# add icon #}
+            </button>
+        </span>
+        <span>
+            <button class="btn btn-primary btn-sm mb-2"
+                    id="item-play">
+                {# add icon #}
+            </button>
+        </span>
+        <span>
+            <button class="btn btn-primary btn-sm mb-2"
+                    id="item-seek-forward">
+                {# add icon #}
+            </button>
+        </span>
+    <div class="card-footer">
+        <span>
+                <button class="btn btn-primary btn-sm"
+                      type="button"
+                      data-toggle="collapse"
+                      data-target="#collapse-{{ item.id }}"
+                      id="extract-button-{{ item.id }}">
+                    <i class="fa fa-file-video-o"></i> Extract
+                </button>
+        </span>
+        <span>
+            <button class="btn btn-primary btn-sm"
+                    type="button"
+                    id="load-video-button-{{ item.id }}">
+                <i class="fa fa-youtube-play"></i> Load Video
+            </button>
+        </span>
+        <div class="collapse" id="collapse-{{ item.id }}">
+            <div class="card card-body" id="collapse-content-{{ item.id }}"></div>
+        </div>
+    </div>
+</div>
