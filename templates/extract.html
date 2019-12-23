@@ -29,25 +29,11 @@
                  style="width: {{ ((extract.topic.cur_timestamp - extract.endstamp) / extract.topic.duration) * 100 }}%;">
             </div>
         </div>
-        <div class="progress mb-2" style="height: 2x;">
+        <div class="progress mb-2" style="height: 7x;">
             <div class="progress-bar"
                  role="progressbar"
                  style="width: 0%;"
                  id="extract-timebar-{{ extract.id }}">
-            </div>
-        </div>
-        <div class="progress mb-2" style="height: 10px;">
-            <div class="progress-bar bg-warning"
-                 role="progressbar"
-                 style="width: {{ (extract.items.cloze_startstamp / (extract.endstamp - extract.startstamp)) * 100 }}%;">
-            </div>
-            <div class="progress-bar bg-danger"
-                 role="progressbar"
-                 style="width: {{ ((extract.items.cloze_endstamp - extract.items.cloze_startstamp) / (extract.endstamp - extract.startstamp)) * 100 }}%;">
-            </div>
-            <div class="progress-bar bg-warning"
-                 role="progressbar"
-                 style="width: {{ ((extract.endstamp - extract.items.cloze_endstamp) / (extract.endstamp - extract.startstamp)) * 100 }}%;">
             </div>
         </div>
         <span>
