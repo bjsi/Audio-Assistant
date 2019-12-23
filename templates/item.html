@@ -5,17 +5,32 @@
     <div class="card-header">
         <p class="card-text">
             <i class="fa fa-calendar"></i> {{ item.created_at.strftime("%a %d %b %Y") }}
-        <a class="badge badge-warning float-right"
-           href=""
-           id="dismiss-button-{{ item.id }}">
-                dismiss
-        </a>
+            <a class="badge badge-warning float-right"
+               href=""
+               id="dismiss-button-{{ item.id }}">
+                    d
+            </a>
         </p>
     </div>
     <div class="card-body">
         <h6 class="card-title">Item #{{ item.id }}</h6>
-        <p class="card-text">filepath: {{ item.filepath }}</p>
-        {# add current timestamp #}
+        <p class="card-text">filepath: {{ item.question_filepath }}</p>
+
+        <div class="progress mb-2" style="height: 10px;">
+            <div class="progress-bar bg-warning"
+                 role="progressbar"
+                 style="width: {{ (item.cloze_startstamp/(item.extract.endstamp - item.extract.startstamp)) * 100 }}%;">
+            </div>
+            <div class="progress-bar bg-danger"
+                 role="progressbar"
+                 style="width: {{ (item.cloze_endstamp - item.cloze_startstamp)/(item.extract.endstamp - item.extract.startstamp) * 100 }}%;">
+            </div>
+            <div class="progress-bar bg-danger"
+                 role="progressbar"
+                 style="width: {{ (item.extract.endstamp - item.cloze_endstamp)/(item.extract.endstamp - item.extract.startstamp) * 100 }}%;">
+            </div>
+        </div>
+
         <div class="progress mb-2" style="height: 10px;">
             <div class="progress-bar bg-danger"
                  role="progressbar"
@@ -26,21 +41,22 @@
         <span>
             <button class="btn btn-primary btn-sm mb-2"
                     id="item-seek-backward">
-                {# add icon #}
+                <i class="fa fa-backward"></i>
             </button>
         </span>
         <span>
             <button class="btn btn-primary btn-sm mb-2"
                     id="item-play">
-                {# add icon #}
+                <i class="fa fa-pause"></i> / <i class="fa fa-circle-play"></i>
             </button>
         </span>
         <span>
             <button class="btn btn-primary btn-sm mb-2"
                     id="item-seek-forward">
-                {# add icon #}
+                <i class="fa fa-forward"></i>
             </button>
         </span>
+    </div>
     <div class="card-footer">
         <span>
                 <button class="btn btn-primary btn-sm"
