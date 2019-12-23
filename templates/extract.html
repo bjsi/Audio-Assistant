@@ -4,19 +4,18 @@
     <div class="card-header">
         <p class="card-text">
             <i class="fa fa-calendar"></i> {{ extract.created_at.strftime("%a %d %b %Y") }}
-        <a class="badge badge-warning float-right"
-           href=""
-           id="dismiss-button-{{ extract.id }}">
-                dismiss
-        </a>
+            <a class="badge badge-warning float-right"
+               href=""
+               id="dismiss-button-{{ extract.id }}">
+                    d
+            </a>
         </p>
     </div>
     <div class="card-body">
         <h6 class="card-title">Extract #{{ extract.id }}</h6>
-        <p class="card-text">start: {{ extract.startstamp }}</p>
-        <p class="card-text">end: {{ extract.endstamp }}</p>
-        <p class="card-text">filepath: {{ extract.filepath }}</p>
         {# add current timestamp #}
+        {# add topic thumbnail url #}
+        <img class="card-img mb-2" src="{{ extract.topic.thumbnail_url }}">
         <div class="progress mb-2" style="height: 10px;">
             <div class="progress-bar bg-danger"
                  role="progressbar"
@@ -27,33 +26,35 @@
         <span>
             <button class="btn btn-primary btn-sm mb-2"
                     id="extract-seek-backward">
-                {# add icon #}
+                <i class="fa fa-backward"></i>
             </button>
         </span>
         <span>
             <button class="btn btn-primary btn-sm mb-2"
-                    id="extract-play">
-                {# add icon #}
+                    id="extract-toggle">
+                <i class="fa fa-play-circle"></i> /
+                <i class="fa fa-pause"></i>
             </button>
         </span>
         <span>
             <button class="btn btn-primary btn-sm mb-2"
                     id="extract-seek-forward">
-                {# add icon #}
+                <i class="fa fa-forward">
             </button>
         </span>
+    </div>
     <div class="card-footer">
         <span>
-                <button class="btn btn-primary btn-sm"
-                      type="button"
+                <a class="badge badge-primary"
+                      role="button"
                       data-toggle="collapse"
                       data-target="#collapse-{{ extract.id }}"
                       id="topic-button-{{ extract.id }}">
                     <i class="fa fa-file-video-o"></i> Topic
-                </button>
+                </a>
         </span>
         <span>
-                <button class="btn btn-primary btn-sm"
+                <button class="badge badge-primary"
                       type="button"
                       data-toggle="collapse"
                       data-target="#collapse-{{ extract.id }}"
@@ -62,11 +63,11 @@
                 </button>
         </span>
         <span>
-            <button class="btn btn-primary btn-sm"
+            <a class="btn btn-primary btn-sm"
                     type="button"
                     id="load-video-button-{{ extract.id }}">
                 <i class="fa fa-youtube-play"></i> Load Video
-            </button>
+            </a>
         </span>
         <div class="collapse" id="collapse-{{ extract.id }}">
             <div class="card card-body" id="collapse-content-{{ extract.id }}"></div>

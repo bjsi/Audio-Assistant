@@ -3,7 +3,7 @@
 <div class="card mb-2 topic-card" id="topic-card-{{ topic.id }}">
     <div class="card-header">
         <p class="card-text">
-            <i class="fa fa-calendar" aria-hidden="true"></i> {{ topic.created_at.strftime("%a %d %b %Y") }}
+            <i class="fa fa-calendar"></i> {{ topic.created_at.strftime("%a %d %b %Y") }}
             <a class="badge badge-warning float-right"
                href=""
                id="dismiss-button-{{ topic.id }}">
@@ -47,7 +47,6 @@
             <a class="badge badge-primary"
                     role="button"
                     id="load-video-button-{{ topic.id }}"
-                    href="">
                 <i class="fa fa-youtube-play"></i> Load Video
             </a>
         </span>
