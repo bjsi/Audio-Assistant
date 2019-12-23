@@ -34,7 +34,7 @@ class Downloader(object):
         self.playback_rate = playback_rate
 
         # TODO Allow this to be set through API
-        self. ydl_opts = {
+        self.ydl_options = {
                 'format':           'worstaudio/worst',  # worst quality audio
                 # 'logger': logger(),
                 'progress_hooks': [self.finished_hook],
@@ -108,3 +108,9 @@ class Downloader(object):
 
             session.add(file)
             session.commit()
+
+
+if __name__ == "__main__":
+    playlist = "PLmj5g7olDDq53V3A3qmw9B_snM6bZqTez"
+    downloader = Downloader(playlist, 1)
+    downloader.download()

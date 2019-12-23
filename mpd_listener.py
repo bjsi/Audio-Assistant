@@ -33,7 +33,7 @@ while True:
         pass
     else:
         relative_fp = cur_song['file']
-        filepath = os.path.join(TOPICFILES_DIR,
+        filepath = os.path.join(AUDIOFILES_DIR,
                                 os.path.basename(relative_fp))
         cur_timestamp = float(status['elapsed'])
         file = (session
