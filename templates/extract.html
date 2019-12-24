@@ -15,6 +15,11 @@
         <h5 class="card-title">Extract #{{ extract.id }}</h5>
         <h6 class="card-subtitle mb-2 text-muted">{{ extract.topic.title }}</h6>
         <img class="card-img mb-2" src="{{ extract.topic.thumbnail_url }}">
+        <div class="card mb-2">
+            <div class="card-body">
+                <i class="fa fa-quote-left"></i> {{ extract.transcript }} <i class="fa fa-quote-right">
+            </div>
+        </div>
         <div class="progress mb-2" style="height: 10px;">
             <div class="progress-bar"
                  role="progressbar"
