@@ -782,7 +782,12 @@ class Items(Resource):
 
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 10, type=int), 100)
-        data = ItemFile.to_collection_dict(db.session.query(ItemFile),
+        query = (db
+                 .session
+                 .query(ItemFile)
+                 .filter(ItemFile.question_filepath != None)
+                 .filter(ItemFile.cloze_endstamp != None))
+        data = ItemFile.to_collection_dict(query,
                                            page, per_page,
                                            'items_items')
         return data
@@ -790,14 +795,19 @@ class Items(Resource):
 
 @item_ns.route('/<int:id>')
 class Item(Resource):
-    @api.marshal_with(extract_model)
+    @api.marshal_with(item_model)
     @api.response(200, "Successfully read the parent extract of item")
     def get(self, id):
         """ Get item extract
         Allows the user to get the parent extract of the item
         according to the item id"""
 
-        item = db.session.query(ItemFile).get_or_404(id)
+        item = (db
+                .session
+                .query(ItemFile)
+                .filter(ItemFile.cloze_endstamp != None)
+                .filter(ItemFile.question_filepath != None)
+                .get_or_404(id))
         return item.to_dict()
 
 
