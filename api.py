@@ -586,15 +586,28 @@ class Topics(Resource):
 class TopicExtracts(Resource):
     @api.marshal_with(paginated_extracts_model)
     @api.response(200, "Successfully read topic's extracts")
+    @api.param('start', 'Date string to match after')
+    @api.param('end', 'Date string to match before')
     def get(self, id):
         """ Get a topic's extracts
         Allows the user to read a list of child
         extracts from the parent topic"""
 
         topic = db.session.query(TopicFile).get_or_404(id)
+        query = db.session.query(ExtractFile).filter_by(topic_id=topic.id)
+
+        # Parse query string for filters
+        query_params = request.args
+        start = query_params.get('start')
+        end = query_params.get('end')
+
+        # Add filters
+        if start and end:
+            query = query.filter(ExtractFile.created_at >= start)
+            query = query.filter(ExtractFile.created_at <= end)
+
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 10, type=int), 100)
-        query = db.session.query(ExtractFile).filter_by(topic_id=topic.id)
         data = TopicFile.to_collection_dict(query, page, per_page,
                                             'topics_topic_extracts', id=id)
         return data
@@ -617,15 +630,28 @@ class Topic(Resource):
 class TopicEvents(Resource):
     @api.marshal_with(paginated_topic_events_model)
     @api.response(200, "Successfully read topic's events")
+    @api.param('start', 'Date string to match after')
+    @api.param('end', 'Date string to match before')
     def get(self, id):
         """ Get a topic's events
         Allows the user to get a topic's events according
         to the topic id"""
 
         topic = db.session.query(TopicFile).get_or_404(id)
+        query = db.session.query(TopicEvent).filter_by(topic_id=topic.id)
+
+        # Parse query string for filters
+        query_params = request.args
+        start = query_params.get('start')
+        end = query_params.get('end')
+
+        # Add filters
+        if start and end:
+            query = query.filter(TopicEvent.created_at >= start)
+            query = query.filter(TopicEvent.created_at <= end)
+
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 10, type=int), 100)
-        query = db.session.query(TopicEvent).filter_by(topic_id=topic.id)
         data = TopicEvent.to_collection_dict(query, page, per_page,
                                              'topics_topic_events', id=id)
         return data
@@ -647,12 +673,27 @@ class TopicEvents(Resource):
 class TopicsEvents(Resource):
     @api.marshal_with(paginated_topic_events_model)
     @api.response(200, 'Successfully read topic events')
+    @api.param('start', 'Date string to match after')
+    @api.param('end', 'Date string to match before')
     def get(self):
         """ Get all topic events
         Allows the user to read a list of all events """
+
+        query = db.session.query(TopicEvent)
+
+        # Parse query string for filters
+        query_params = request.args
+        start = query_params.get('start')
+        end = query_params.get('end')
+
+        # Add filters
+        if start and end:
+            query = query.filter(TopicEvent.created_at >= start)
+            query = query.filter(TopicEvent.created_at <= end)
+
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 10, type=int), 100)
-        data = TopicEvent.to_collection_dict(db.session.query(TopicEvent),
+        data = TopicEvent.to_collection_dict(query,
                                              page, per_page,
                                              'events_topics_events')
         return data
@@ -662,13 +703,26 @@ class TopicsEvents(Resource):
 class ExtractsEvents(Resource):
     @api.marshal_with(paginated_extract_events_model)
     @api.response(200, 'Successfully read extract events')
+    @api.param('start', 'Date string to match after')
+    @api.param('end', 'Date string to match before')
     def get(self):
         """ Get all extract events
         Allows the user to read a list of all extract events """
+        query = db.session.query(ExtractEvent)
+
+        # Parse query string for filters
+        query_params = request.args
+        start = query_params.get('start')
+        end = query_params.get('end')
+
+        # Add filters
+        if start and end:
+            query = query.filter(ExtractEvent.created_at >= start)
+            query = query.filter(ExtractEvent.created_at <= end)
 
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 10, type=int), 100)
-        data = ExtractEvent.to_collection_dict(db.session.query(ExtractEvent),
+        data = ExtractEvent.to_collection_dict(query,
                                                page, per_page,
                                                'events_extracts_events')
         return data
@@ -678,13 +732,27 @@ class ExtractsEvents(Resource):
 class ItemsEvents(Resource):
     @api.marshal_with(paginated_item_events_model)
     @api.response(200, 'Successfully read item events')
+    @api.param('start', 'Date string to match after')
+    @api.param('end', 'Date string to match before')
     def get(self):
         """ Get all item events
         Allows the user to read a list of all item events """
 
+        query = db.session.query(ItemEvent)
+
+        # Parse query string for filters
+        query_params = request.args
+        start = query_params.get('start')
+        end = query_params.get('end')
+
+        # Add filters
+        if start and end:
+            query = query.filter(ItemEvent.created_at >= start)
+            query = query.filter(ItemEvent.created_at <= end)
+
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 10, type=int), 100)
-        data = ItemEvent.to_collection_dict(db.session.query(ItemEvent),
+        data = ItemEvent.to_collection_dict(query,
                                             page, per_page,
                                             'events_items_events')
         return data
@@ -698,17 +766,31 @@ class ItemsEvents(Resource):
 class Extracts(Resource):
     @api.marshal_with(paginated_extracts_model)
     @api.response(200, 'Successfully read extracts')
+    @api.param('start', 'Date string to match after')
+    @api.param('end', 'Date string to match before')
     def get(self):
         """ Get outstanding extracts
         Allows the user to read a list of all outstanding extract
         files in the database that have not been archived or deleted"""
-        page = request.args.get('page', 1, type=int)
-        per_page = min(request.args.get('per_page', 10, type=int), 100)
+
         query = (db
                  .session
                  .query(ExtractFile)
                  .filter(ExtractFile.filepath != None)
                  .filter(ExtractFile.endstamp != None))
+
+        # Parse query string for filters
+        query_params = request.args
+        start = query_params.get('start')
+        end = query_params.get('end')
+
+        # Add filters
+        if start and end:
+            query = query.filter(ExtractFile.created_at >= start)
+            query = query.filter(ExtractFile.created_at <= end)
+
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 10, type=int), 100)
         data = ExtractFile.to_collection_dict(query,
                                               page, per_page,
                                               'extracts_extracts')
@@ -748,14 +830,28 @@ class ExtractTopic(Resource):
 class ExtractItems(Resource):
     @api.marshal_with(paginated_items_model)
     @api.response(200, "Successfully read child items of extract")
+    @api.param('start', 'Date string to match after')
+    @api.param('end', 'Date string to match before')
     def get(self, id):
         """ Get extract items
         Allows the user to read the parent topic of an extract
         according to the extract id"""
+
         extract = db.session.query(ExtractFile).get_or_404(id)
+        query = db.session.query(ItemFile).filter_by(extract_id=extract.id)
+
+        # Parse query string for filters
+        query_params = request.args
+        start = query_params.get('start')
+        end = query_params.get('end')
+
+        # Add filters
+        if start and end:
+            query = query.filter(ItemFile.created_at >= start)
+            query = query.filter(ItemFile.created_at <= end)
+
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 10, type=int), 100)
-        query = db.session.query(ItemFile).filter_by(extract_id=extract.id)
         data = ItemFile.to_collection_dict(query,
                                            page, per_page,
                                            'extracts_extracts')
@@ -767,13 +863,27 @@ class ExtractItems(Resource):
 class ExtractEvents(Resource):
     @api.marshal_with(paginated_extract_events_model)
     @api.response(200, "Successfully read extract's events")
+    @api.param('start', 'Date string to match after')
+    @api.param('end', 'Date string to match before')
     def get(self, id):
         """ Get extract's events
         Allows the user to read the events of the extract """
+
         extract = db.session.query(ExtractFile).get_or_404(id)
+        query = db.session.query(ExtractEvent).filter_by(extract_id=extract.id)
+
+        # Parse query string for filters
+        query_params = request.args
+        start = query_params.get('start')
+        end = query_params.get('end')
+
+        # Add filters
+        if start and end:
+            query = query.filter(ExtractEvent.created_at >= start)
+            query = query.filter(ExtractEvent.created_at <= end)
+
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 10, type=int), 100)
-        query = db.session.query(ExtractEvent).filter_by(extract_id=extract.id)
         data = ExtractEvent.to_collection_dict(query,
                                                page, per_page,
                                                'extracts_extract_events',
@@ -789,18 +899,31 @@ class ExtractEvents(Resource):
 class Items(Resource):
     @api.marshal_with(paginated_items_model)
     @api.response(200, "Successfully read the parent of extract")
+    @api.param('start', 'Date string to match after')
+    @api.param('end', 'Date string to match before')
     def get(self):
         """ Get outstanding items
         Allows the user to get a list of outstanding
         items that haven't been deleted or archived"""
 
-        page = request.args.get('page', 1, type=int)
-        per_page = min(request.args.get('per_page', 10, type=int), 100)
         query = (db
                  .session
                  .query(ItemFile)
                  .filter(ItemFile.question_filepath != None)
                  .filter(ItemFile.cloze_endstamp != None))
+
+        # Parse query string for filters
+        query_params = request.args
+        start = query_params.get('start')
+        end = query_params.get('end')
+
+        # Add filters
+        if start and end:
+            query = query.filter(ItemFile.created_at >= start)
+            query = query.filter(ItemFile.created_at <= end)
+
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 10, type=int), 100)
         data = ItemFile.to_collection_dict(query,
                                            page, per_page,
                                            'items_items')
@@ -842,15 +965,28 @@ class ItemExtract(Resource):
 class ItemEvents(Resource):
     @api.marshal_with(paginated_item_events_model)
     @api.response(200, "Successfully read the events of item")
+    @api.param('start', 'Date string to match after')
+    @api.param('end', 'Date string to match before')
     def get(self, id):
         """ Get item's events
         Allows the user to get the events of the item
         according to the item id"""
 
         item = db.session.query(ItemFile).get_or_404(id)
+        query = db.session.query(ItemEvent).filter_by(item_id=item.id)
+
+        # Parse query string for filters
+        query_params = request.args
+        start = query_params.get('start')
+        end = query_params.get('end')
+
+        # Add filters
+        if start and end:
+            query = query.filter(ItemEvent.created_at >= start)
+            query = query.filter(ItemEvent.created_at <= end)
+
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 10, type=int), 100)
-        query = db.session.query(ItemEvent).filter_by(item_id=item.id)
         data = ItemEvent.to_collection_dict(query,
                                             page, per_page,
                                             'items_item_events',
