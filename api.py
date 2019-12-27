@@ -554,6 +554,8 @@ class MyTag(db.Model):
 class Topics(Resource):
     @api.marshal_with(paginated_topics_model)
     @api.response(200, 'Successfully read topics')
+    @api.param('start', 'Date string to match after')
+    @api.param('end', 'Date string to match before')
     # @api.expect(parser)
     def get(self):
         """ Get all Topics
