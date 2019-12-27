@@ -560,9 +560,19 @@ class Topics(Resource):
         Allows the user to read a list of all topic files
         in the database that have not been deleted """
 
+        query = db.session.query(TopicFile)
+
+        # Parse query string for filters
+        query_params = request.args
+        start = query_params.get('start')
+        end = query_params.get('end')
+
+        query = query.filter(TopicFile.created_at >= start)
+        query = query.filter(TopicFile.created_at <= end)
+
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 10, type=int), 100)
-        data = TopicFile.to_collection_dict(db.session.query(TopicFile),
+        data = TopicFile.to_collection_dict(query,
                                             page, per_page,
                                             'topics_topics')
         return data
