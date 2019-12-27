@@ -567,8 +567,10 @@ class Topics(Resource):
         start = query_params.get('start')
         end = query_params.get('end')
 
-        query = query.filter(TopicFile.created_at >= start)
-        query = query.filter(TopicFile.created_at <= end)
+        # Add filters
+        if start and end:
+            query = query.filter(TopicFile.created_at >= start)
+            query = query.filter(TopicFile.created_at <= end)
 
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 10, type=int), 100)
