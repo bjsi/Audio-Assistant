@@ -126,7 +126,7 @@ class ItemQueue(Mpd, object):
         if item:
             load_beep()
             item.archived = True
-            session.commmit()
+            session.commit()
         else:
             # TODO Log severe error
             print("ERROR: Currently playing item "
