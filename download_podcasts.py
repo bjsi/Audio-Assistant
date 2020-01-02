@@ -25,7 +25,7 @@ class Downloader(object):
     Saves metadata about the video to the DB
     """
 
-    def __init__(self, youtube_id: str, playback_rate: float):
+    def __init__(self):
         """
         :youtube_id: String. ID of the youtube video.
         :playback_rate: Float. Desired playback rate for the track
