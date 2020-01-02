@@ -27,8 +27,8 @@ class BTDevice(object):
     def is_connected(self) -> bool:
         """ Check if the bluetooth device is connected or not
         """
-        connected_devs = subprocess.getoutput("hcitool con")
-        if self.address in connected_devs:
+        connected_devs = subprocess.check_output(["hcitool", "con"], encoding="UTF-8")
+        if self.address in connected_devs.split():
             self.connected = True
             return True
         return False
@@ -41,7 +41,7 @@ class BTDevice(object):
         count = 0
         while count < attempts:
             count += 1
-            bt_data = subprocess.getoutput("hcitool con")
+            bt_data = subprocess.check_output(["hcitool", "con"], encoding="UTF-8")
             if self.address in bt_data.split():
                 return True
             print("{} not connected.".format(self.name))
@@ -62,11 +62,11 @@ class BTHeadphones(BTDevice):
     """ Class for bluetooth headphones """
 
     def __init__(self):
-        super().__init__(HEADPHONES.address,
-                         HEADPHONES.name)
+        super().__init__(HEADPHONES['address'],
+                         HEADPHONES['name'])
 
     def __repr__(self):
-        return f"<BT Headphones: name={self.name}, address={self.address}>"
+        return f"<BTHeadphones: name={self.name}, address={self.address}>"
 
 
 class BTController(BTDevice):
@@ -79,12 +79,16 @@ class BTController(BTDevice):
         :input_devices: TODO
         :devices: TODO
         """
-        super().__init__(CONTROLLER.address,
-                         CONTROLLER.name)
-        self.keys = CONTROLLER.keys
-        self.input_devices = CONTROLLER.input_devices
-        self.devices = {device.fd: device
-                        for device in self.input_devices}
+        super().__init__(CONTROLLER['address'],
+                         CONTROLLER['name'])
+        self.keys = CONTROLLER['keys']
+        self.input_devices = map(InputDevice,
+                                 CONTROLLER['input_devices'])
+    
+    def load_devices(self):
+        if self.is_connected():
+            self.devices = {device.fd: device
+                            for device in self.input_devices}
 
-        def __repr(self):
-            return f"<BT Controller: name={self.name}, address={self.address}>"
+    def __repr__(self):
+        return f"<BTController: name={self.name}, address={self.address}>"

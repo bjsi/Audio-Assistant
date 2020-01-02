@@ -10,7 +10,7 @@ from Bluetooth.Device import (BTHeadphones,
 # Then launch the actual program
 
 
-def main_loop(C: Controller):
+def main_loop(C: Controller, hp: BTHeadphones, con: BTController):
     """Set up the main loop for the controller.
     Reads key codes and values from the connected
     device and executes the associated commands in the
@@ -25,30 +25,44 @@ def main_loop(C: Controller):
                         if event.code in C.active_keys:
                             C.active_keys[event.code]()
         except (PermissionError, OSError):
-            # attempt to reconnect?
-            pass
+            while not hp.is_connected():
+                print("Connecting to headphones")
+                hp.connect()
+            while not con.is_connected():
+                print("Connecting to controller")
+                con.connect()
+                con.load_devices()
+            continue
 
 
-def launch_loop():
+def launch_loop(hp: BTHeadphones, con: BTController):
     """ Loop until the launch key is pressed
     When launch key pressed, run the main loop """
 
-    LAUNCH_KEY = CONTROLLER.keys.KEY_A
+    LAUNCH_KEY = CONTROLLER['keys']['KEY_A']
+    launched = False
 
-    while True:
+    while not launched:
         try:
             r, w, x = select(con.devices, [], [])
             for fd in r:
                 for event in con.devices[fd].read():
                     if event.value == 1:
                         if event.code == LAUNCH_KEY:
-                            break
+                            launched = True
         except (PermissionError, OSError):
-            # attempt to reconnect?
-            pass
+            while not hp.is_connected():
+                print("Connecting to headphones")
+                hp.connect()
+            while not con.is_connected():
+                print("Connecting to controller")
+                con.connect()
+                con.load_devices()
+            continue
 
     C = Controller()
-    main_loop(C)
+    C.get_global_topics()
+    main_loop(C, hp, con)
 
 
 if __name__ == "__main__":
@@ -57,4 +71,8 @@ if __name__ == "__main__":
     con = BTController()
     while (not hp.is_connected()) and (not con.is_connected()):
         time.sleep(3)
-    launch_loop()
+
+    print(hp)
+    print(con)
+    con.load_devices()
+    launch_loop(hp, con)
