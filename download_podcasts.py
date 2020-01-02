@@ -30,12 +30,9 @@ class Downloader(object):
         :youtube_id: String. ID of the youtube video.
         :playback_rate: Float. Desired playback rate for the track
         """
-        self.youtube_id = youtube_id
-        self.playback_rate = playback_rate
 
-        # TODO Allow this to be set through API
         self.ydl_options = {
-                'format':           'worstaudio/worst',  # worst quality audio
+                'format': 'worstaudio/worst',  # worst quality audio
                 # 'logger': logger(),
                 'progress_hooks': [self.finished_hook],
                 'download_archive': ARCHIVE_FILE,
@@ -49,12 +46,12 @@ class Downloader(object):
                 'max_downloads': 1,
         }
 
-    def download(self):
-        """ Download the  """
+    def download(self, youtube_id: str):
+        """ Download the video"""
         with youtube_dl.YoutubeDL(self.ydl_options) as ydl:
-            ydl.download([self.youtube_id])
+            ydl.download([youtube_id])
 
-    def finished_hook(target):
+    def finished_hook(self, target):
         """ Runs after each successful download """
 
         if target['status'] == 'finished':
@@ -111,6 +108,5 @@ class Downloader(object):
 
 
 if __name__ == "__main__":
-    playlist = "PLmj5g7olDDq53V3A3qmw9B_snM6bZqTez"
-    downloader = Downloader(playlist, 1)
-    downloader.download()
+    downloader = Downloader()
+    downloader.download("PLmj5g7olDDq53V3A3qmw9B_snM6bZqTez")
