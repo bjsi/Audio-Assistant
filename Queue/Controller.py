@@ -59,7 +59,7 @@ class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
         }
 
         # Extend the base class keys with the inter-queue keys
-
+ 
         self.extracting_keys = {
                 **self.extracting_keys,
                 **self.extracting_inter_queue_keys
@@ -111,7 +111,7 @@ class Controller(TopicQueue, ExtractQueue, ItemQueue, object):
                  .one_or_none())
 
         # Create list of mpd-recognised child extracts
-        if topic and topic.extracts:
+        if topic:
             extracts = []
             for extract in topic.extracts:
                 if not extract.archived:
