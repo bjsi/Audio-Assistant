@@ -1,31 +1,42 @@
-from config import CONTROLLER, HEADPHONES
 import subprocess
 import time
 from evdev import InputDevice
+from config import (CONTROLLER,
+                    HEADPHONES)
 
 
-# Not sure that this is necessary
 class BTDevice(object):
-    """Bluetooth device base class"""
 
-    def __init__(self, address, name, input_devices="", keys=""):
-        """TODO: to be defined. """
+    """ Generic bluetooth device class
+    Gets inherited by Headphone and Controller subclasses
+    """
 
-        self.keys = keys
+    def __init__(self, address: str, name: str):
+
+        """
+        :mac_address: String. MAC address of the Bluetooth Device
+        :name: String. Human-readable name of the device
+
+        :connected: Bool. True if device is connected
+        """
+
         self.address = address
         self.name = name
-        if input_devices:
-            self.input_devices = map(InputDevice, input_devices)
-            self.devices = {device.fd: device
-                            for device in self.input_devices}
         self.connected = False
 
-    def bt_connect(self, attempts=5) -> bool:
-        """Connect to a bluetooth device
+    def is_connected(self) -> bool:
+        """ Check if the bluetooth device is connected or not
+        """
+        connected_devs = subprocess.getoutput("hcitool con")
+        if self.address in connected_devs:
+            self.connected = True
+            return True
+        return False
 
-        :attempts: TODO
-        :returns: TODO
-
+    def connect(self, attempts=5) -> bool:
+        """ Connect to a bluetooth device
+        :attempts: Int. How many connection attempts to make
+        :returns: Bool. True if connected
         """
         count = 0
         while count < attempts:
@@ -44,3 +55,36 @@ class BTDevice(object):
             print("Connection attempt {} failed.".format(count))
             time.sleep(3)
         return False
+
+
+class BTHeadphones(BTDevice):
+
+    """ Class for bluetooth headphones """
+
+    def __init__(self):
+        super().__init__(HEADPHONES.address,
+                         HEADPHONES.name)
+
+    def __repr__(self):
+        return f"<BT Headphones: name={self.name}, address={self.address}>"
+
+
+class BTController(BTDevice):
+
+    """ Calss for bluetooth controller """
+
+    def __init__(self):
+        """
+        :keys: Dict[key name: key code]
+        :input_devices: TODO
+        :devices: TODO
+        """
+        super().__init__(CONTROLLER.address,
+                         CONTROLLER.name)
+        self.keys = CONTROLLER.keys
+        self.input_devices = CONTROLLER.input_devices
+        self.devices = {device.fd: device
+                        for device in self.input_devices}
+
+        def __repr(self):
+            return f"<BT Controller: name={self.name}, address={self.address}>"
