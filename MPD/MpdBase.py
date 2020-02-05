@@ -5,7 +5,7 @@ import os
 from config import HOST
 from config import PORT
 from config import AUDIOFILES_BASEDIR
-from contextlib import contextmanager
+from contextlib import contextmanager, ExitStack
 from typing import List, Dict
 
 
@@ -27,9 +27,6 @@ class Mpd(object):
 
         """Create temporary connection to mpd client.
         """
-        if self.connected():
-            return
-            yield
         try:
             self.client.connect(self.host, self.port)
             yield
@@ -64,7 +61,8 @@ class Mpd(object):
         """Checks if mpd recognises the file.
         :rel_fp: MPD base-relative filepath.
         """
-        with self.connection():
+
+        with self.connection() if not self.connected() else ExitStack():
             try:
                 if self.client.find('file', rel_fp):
                     return True
@@ -79,7 +77,7 @@ class Mpd(object):
         :returns: True on success, false on failure.
         """
         if queue:
-            with self.connection():
+            with self.connection() if not self.connected() else ExitStack():
                 self.client.clear()
                 for file in queue:
                     self.client.add(file)
@@ -90,7 +88,7 @@ class Mpd(object):
         """MPD state can be play, pause or stop.
         Stop state blocks play/pause toggles and status queries.
         """
-        with self.connection():
+        with self.connection() if not self.connected() else ExitStack():
             state = self.client.status()['state']
             if state == 'stop':
                 self.client.play()
@@ -98,7 +96,7 @@ class Mpd(object):
 
     def toggle(self):
         """Toggle between play and pause."""
-        with self.connection():
+        with self.connection() if not self.connected() else ExitStack():
             self.remove_stop_state()
             self.client.pause()
         print("Play")
@@ -107,7 +105,7 @@ class Mpd(object):
         """Get the currently playing track
         :returns: relative filepath, absolute filepath and time elapsed.
         """
-        with self.connection():
+        with self.connection() if not self.connected() else ExitStack():
             # Get rel_fp of current track
             self.remove_stop_state()
             cur_song = self.client.currentsong()
@@ -128,7 +126,7 @@ class Mpd(object):
         """Play the previous track
         :returns: The song.
         """
-        with self.connection():
+        with self.connection() if not self.connected() else ExitStack():
             self.remove_stop_state()
             self.client.previous()
         print("Previous")
@@ -138,7 +136,7 @@ class Mpd(object):
         """Play the next track
         :returns: The song.
         """
-        with self.connection():
+        with self.connection() if not self.connected() else ExitStack():
             self.remove_stop_state()
             self.client.next()
         return self.current_track()
@@ -148,7 +146,7 @@ class Mpd(object):
         mpd
         :returns: TODO
         """
-        with self.connection():
+        with self.connection() if not self.connected() else ExitStack():
             self.remove_stop_state()
             status = self.client.status()
             cur_timestamp = float(status.get('elapsed', 0.0))
@@ -161,7 +159,7 @@ class Mpd(object):
         mpd
         :returns: TODO
         """
-        with self.connection():
+        with self.connection() if not self.connected() else ExitStack():
             self.remove_stop_state()
             status = self.client.status()
             cur_timestamp = float(status.get('elapsed', 0.0))
@@ -176,7 +174,7 @@ class Mpd(object):
         :returns: TODO
         """
         print("vol up")
-        with self.connection():
+        with self.connection() if not self.connected() else ExitStack():
             status = self.client.status()
             cur_vol = int(status['volume'])
             new_vol = cur_vol + 5
@@ -191,7 +189,7 @@ class Mpd(object):
 
         """
         print("vol down")
-        with self.connection():
+        with self.connection() if not self.connected() else ExitStack():
             status = self.client.status()
             cur_vol = int(status['volume'])
             new_vol = cur_vol - 5
@@ -204,7 +202,7 @@ class Mpd(object):
         """Seek forward frame-by-frame
         :returns: TODO
         """
-        with self.connection():
+        with self.connection() if not self.connected() else ExitStack():
             self.remove_stop_state()
             status = self.client.status()
             cur_timestamp = float(status.get('elapsed', 0.0))
@@ -220,7 +218,7 @@ class Mpd(object):
         """Seek backward frame-by-frame
         :returns: TODO
         """
-        with self.connection():
+        with self.connection() if not self.connected() else ExitStack():
             self.remove_stop_state()
             status = self.client.status()
             cur_timestamp = float(status.get('elapsed', 0.0))
@@ -236,11 +234,11 @@ class Mpd(object):
     def repeat(self, state: int):
         """Repeat if 1, do not repeat if 0
         """
-        with self.connection():
+        with self.connection() if not self.connected() else ExitStack():
             self.client.repeat(state)
 
     def single(self, state: int):
         """Single if 1, not single if 0
         """
-        with self.connection():
+        with self.connection() if not self.connected() else ExitStack():
             self.client.single(state)

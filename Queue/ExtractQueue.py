@@ -19,6 +19,7 @@ from config import (KEY_X,
                     KEY_OK,
                     KEY_MENU,
                     GAME_X)
+from contextlib import ExitStack
 
 
 class ExtractQueue(Mpd, object):
@@ -100,7 +101,7 @@ class ExtractQueue(Mpd, object):
     def load_cloze_options(self):
         """ Set the state options for when clozing """
         # Set playback options
-        with self.connection():
+        with self.connection() if not self.connected() else ExitStack():
             self.client.repeat(1)
             self.client.single(1)
         # Set state information and keys
@@ -111,7 +112,7 @@ class ExtractQueue(Mpd, object):
     def load_global_extract_options(self):
         """ Set the state options for "global extract queue" """
         # Set playback options
-        with self.connection():
+        with self.connection() if not self.connected() else ExitStack():
             self.client.repeat(1)
             self.client.single(1)
         # Set state information and keys

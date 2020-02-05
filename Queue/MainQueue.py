@@ -9,6 +9,7 @@ from Sounds.sounds import (click_sound1,
 from config import (KEY_A,
                     KEY_UP,
                     KEY_DOWN)
+from contextlib import ExitStack
 
 
 class MainQueue(TopicQueue, ExtractQueue, ItemQueue, object):
@@ -181,7 +182,7 @@ class MainQueue(TopicQueue, ExtractQueue, ItemQueue, object):
                     self.load_topic_options()
                     espeak(self.current_queue)
                 # Seek to the startstamp of the child extract
-                    with self.connection():
+                    with self.connection() if not self.connected() else ExitStack():
                         self.remove_stop_state()
                         self.client.seekcur(extract.startstamp)
                 else:

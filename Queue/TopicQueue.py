@@ -21,6 +21,7 @@ from config import (KEY_X,
                     GAME_X,
                     GAME_B,
                     KEY_MENU)
+from contextlib import ExitStack
 
 
 class TopicQueue(Mpd, object):
@@ -212,7 +213,7 @@ class TopicQueue(Mpd, object):
 
         # Seek to the current timestamp
         if topic:
-            with self.connection():
+            with self.connection() if not self.connected() else ExitStack():
                 self.client.seekcur(float(topic.cur_timestamp))
         else:
             # TODO Log severe error
@@ -240,7 +241,7 @@ class TopicQueue(Mpd, object):
 
         # Seek to the current timestamp
         if topic:
-            with self.connection():
+            with self.connection() if not self.connected() else ExitStack():
                 self.client.seekcur(float(topic.cur_timestamp))
         else:
             # TODO Log severe error
