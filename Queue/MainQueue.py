@@ -8,8 +8,7 @@ from Sounds.sounds import (click_sound1,
                            espeak)
 from config import (KEY_A,
                     KEY_UP,
-                    KEY_DOWN,
-                    controller_config)
+                    KEY_DOWN)
 
 
 class MainQueue(TopicQueue, ExtractQueue, ItemQueue, object):
