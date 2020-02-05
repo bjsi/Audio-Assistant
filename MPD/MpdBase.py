@@ -28,6 +28,7 @@ class Mpd(object):
         """Create temporary connection to mpd client.
         """
         if self.connected():
+            return
             yield
         try:
             self.client.connect(self.host, self.port)
