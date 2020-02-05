@@ -28,7 +28,7 @@ class MainQueue(TopicQueue, ExtractQueue, ItemQueue, object):
         :item_keys: Functions available in item queue.
         """
 
-        super.__init__()
+        super().__init__()
 
         # State
         self.current_queue: str = "global topic queue"
