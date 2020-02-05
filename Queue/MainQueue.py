@@ -95,7 +95,7 @@ class MainQueue(TopicQueue, ExtractQueue, ItemQueue, object):
         click_sound1()
 
         # Get filepath of current song
-        cur_song = self.current_song()
+        cur_song = self.current_track()
         filepath = cur_song['absolute_fp']
 
         # Find currently playing topic
@@ -140,7 +140,7 @@ class MainQueue(TopicQueue, ExtractQueue, ItemQueue, object):
         click_sound1()
 
         # Get filepath of current extract
-        cur_song = self.current_song()
+        cur_song = self.current_track()
         filepath = cur_song['absolute_fp']
 
         # Find extract in DB
@@ -213,7 +213,7 @@ class MainQueue(TopicQueue, ExtractQueue, ItemQueue, object):
         click_sound1()
 
         # Get filepath of currently playing extract
-        cur_song = self.current_song()
+        cur_song = self.current_track()
         filepath = cur_song['absolute_fp']
 
         # Find extract in DB
@@ -274,7 +274,7 @@ class MainQueue(TopicQueue, ExtractQueue, ItemQueue, object):
         click_sound1()
 
         # get the filepath of the currently playing item
-        cur_song = self.current_song()
+        cur_song = self.current_track()
         filepath = cur_song['absolute_fp']
 
         # Find item in the DB

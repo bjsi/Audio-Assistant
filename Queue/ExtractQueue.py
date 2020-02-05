@@ -130,7 +130,7 @@ class ExtractQueue(Mpd, object):
         click_sound1()
 
         # Get the currently playing extract
-        cur_song = self.current_song()
+        cur_song = self.current_track()
         cur_timestamp = cur_song['elapsed']
         filepath = cur_song['absolute_fp']
 
@@ -162,7 +162,7 @@ class ExtractQueue(Mpd, object):
         click_sound2()
 
         # Get filepath and timestamp of current extract
-        cur_song = self.current_song()
+        cur_song = self.current_track()
         cur_timestamp = float(cur_song['elapsed'])
         filepath = cur_song['absolute_fp']
 
@@ -207,7 +207,7 @@ class ExtractQueue(Mpd, object):
         assert self.queue in ["local extract queue", "global extract queue"]
 
         # Get the currently playing extract
-        cur_song = self.current_song()
+        cur_song = self.current_track()
         filepath = cur_song['absolute_fp']
 
         # Find the extract in DB

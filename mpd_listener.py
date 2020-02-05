@@ -4,7 +4,8 @@ from contextlib import contextmanager
 import mpd
 from config import (HOST,
                     PORT,
-                    TOPICFILES_DIR)
+                    TOPICFILES_DIR,
+                    AUDIOFILES_BASEDIR)
 from models import (session,
                     TopicFile)
 
@@ -32,9 +33,9 @@ while True:
     if state in ['pause', 'stop']:
         pass
     else:
-        relative_fp = cur_song['file']
-        filepath = os.path.join(AUDIOFILES_DIR,
-                                os.path.basename(relative_fp))
+        rel_fp = cur_song['file']
+        filepath = os.path.join(AUDIOFILES_BASEDIR,
+                                os.path.basename(rel_fp))
         cur_timestamp = float(status['elapsed'])
         file = (session
                 .query(TopicFile)
