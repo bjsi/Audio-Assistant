@@ -93,7 +93,6 @@ class Mpd(object):
             if state == 'stop':
                 self.client.play()
                 self.client.pause(1)
-                return
 
     def toggle(self):
         """Toggle between play and pause."""
