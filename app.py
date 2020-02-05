@@ -1,4 +1,4 @@
-from Queue.Controller import Controller
+from Queue.MainQueue import MainQueue
 from select import select
 import time
 from config import CONTROLLER
@@ -10,7 +10,7 @@ from Bluetooth.Device import (BTHeadphones,
 # Then launch the actual program
 
 
-def main_loop(C: Controller, hp: BTHeadphones, con: BTController):
+def main_loop(queue: MainQueue, hp: BTHeadphones, con: BTController):
     """Set up the main loop for the controller.
     Reads key codes and values from the connected
     device and executes the associated commands in the
@@ -22,8 +22,8 @@ def main_loop(C: Controller, hp: BTHeadphones, con: BTController):
             for fd in r:
                 for event in con.devices[fd].read():
                     if event.value == 1:
-                        if event.code in C.active_keys:
-                            C.active_keys[event.code]()
+                        if event.code in queue.active_keys:
+                            queue.active_keys[event.code]()
         except (PermissionError, OSError):
             while not hp.is_connected():
                 print("Connecting to headphones")
@@ -60,9 +60,9 @@ def launch_loop(hp: BTHeadphones, con: BTController):
                 con.load_devices()
             continue
 
-    C = Controller()
-    C.get_global_topics()
-    main_loop(C, hp, con)
+    queue = MainQueue()
+    queue.get_global_topics()
+    main_loop(queue, hp, con)
 
 
 if __name__ == "__main__":

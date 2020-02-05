@@ -1,0 +1,7 @@
+{
+  "AUDIOFILES_BASEDIR": "/home/pi/audiofiles",
+  "TOPICFILES_DIR": "/home/pi/audiofiles/topicfiles",
+  "EXTRACTFILES_DIR": "/home/pi/audiofiles/extractfiles",
+  "QUESTIONFILES_DIR": "/home/pi/audiofiles/questionfiles",
+  "EXTRACTFILES_EXT": ".wav"
+}

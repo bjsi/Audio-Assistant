@@ -2,28 +2,21 @@ import mpd
 from mpd import MPDClient
 import time
 import os
-from typing import Dict, List
 from config import HOST
 from config import PORT
 from config import AUDIOFILES_BASEDIR
 from contextlib import contextmanager
+from typing import List, Dict
 
 
 class Mpd(object):
 
-    """
-    Mpd class implements all the functions
-    needed to interact with the MPD daemon.
+    """Music player daemon basic functions.
     """
 
     def __init__(self):
 
-        """
-        Host and port for the mpd client can be
-        customised in the config.py file
-
-        :host: defaults to localhost (127.0.0.1)
-        :port: defaults to port 6060
+        """Check your mpd config and set custom host and port in config.py.
         """
         self.host = HOST if HOST else "localhost"
         self.port = PORT if PORT else 6060
@@ -32,58 +25,75 @@ class Mpd(object):
     @contextmanager
     def connection(self):
 
-        """Create a temporary connection to the mpd
-        client to execute a command and immediately
-        disconnect
+        """Create temporary connection to mpd client.
+        """
+        if not self.connected():
+            try:
+                self.client.connect(self.host, self.port)
+                yield
+            finally:
+                self.client.close()
+                self.client.disconnect()
+
+    @staticmethod
+    def abs_to_rel(abs_fp: str) -> str:
+        """ Convert an absolute filepath to a MPD base-relative filepath"""
+        filename = os.path.basename(abs_fp)
+        basedir = os.path.dirname(abs_fp)
+        rel_dir = os.path.basename(basedir)
+        return os.path.join(rel_dir, filename)
+        
+    @staticmethod
+    def rel_to_abs(rel_fp: str) -> str:
+        """ Convert an MPD-relative filepath to an absolute filepath """
+        return os.path.join(AUDIOFILES_BASEDIR, rel_fp)
+
+    def connected(self) -> bool:
+        """Test connection to MPD server.
+        :return: True if connected else False
         """
         try:
-            self.client.connect(self.host, self.port)
-            yield
-        finally:
-            self.client.close()
-            self.client.disconnect()
+            self.client.ping()
+            return True
+        except mpd.base.ConnectionError:
+            return False
 
-    def mpd_recognised(self, filepath: str) -> bool:
-        """ Checks if mpd recognises the file
-        Necessary just after creating a new Extract
-        or Item """
+    def mpd_recognised(self, rel_fp: str) -> bool:
+        """Checks if mpd recognises the file.
+        :rel_fp: MPD base-relative filepath.
+        """
         with self.connection():
             try:
-                recognised = self.client.find('file', filepath)
-                if recognised:
+                if self.client.find('file', rel_fp):
                     return True
             except mpd.base.CommandError:
-                print("Mpd doesn't recognise {}"
-                      .format(filepath))
+                print("Mpd doesn't recognise {}".format(rel_fp))
         return False
 
-    def load_playlist(self, playlist: List[str]):
-        """ Loads a playlist
-        :playlist: An iterable of audio files,
-        relative to the mpd base directory
+    def load_queue(self, queue: List[str]) -> bool:
+        """Loads a queue of audio tracks.
+
+        :queue: List of MPD base-relative filepaths.
+        :returns: True on success, false on failure.
         """
-        if playlist:
+        if queue:
             with self.connection():
                 self.client.clear()
-                for file in playlist:
+                for file in queue:
                     self.client.add(file)
-            print("Playlist loaded:")
-            print(playlist)
-        else:
-            print("Error loading playlist - No files")
+            return True
+        return False
 
     def remove_stop_state(self):
         """MPD state can be play, pause or stop.
-        Stop state blocks play/pause toggles and
-        throws an exception if you query the current
-        file.
-        Always called from within self.connection
-        context, so not needed here.
+        Stop state blocks play/pause toggles and status queries.
         """
-        state = self.client.status()['state']
-        if state == 'stop':
-            self.client.play()
-            self.client.pause(1)
+        with self.connection():
+            state = self.client.status()['state']
+            if state == 'stop':
+                self.client.play()
+                self.client.pause(1)
+                return
 
     def toggle(self):
         """Toggle between play and pause."""
@@ -92,48 +102,50 @@ class Mpd(object):
             self.client.pause()
         print("Play")
 
-    def current_song(self) -> Dict:
-        """Get the currently playing song
-        :returns: dict containing relative filepath,
-        absolute filepath and time elapsed in seconds.miliseconds.
+    def current_track(self) -> Dict:
+        """Get the currently playing track
+        :returns: relative filepath, absolute filepath and time elapsed.
         """
         with self.connection():
+            # Get rel_fp of current track
             self.remove_stop_state()
             cur_song = self.client.currentsong()
             status = self.client.status()
-            relative_fp = cur_song.get('file', None)
+            rel_fp = cur_song.get('file', None)
+            # Get abs_fp of current track
+            abs_fp = self.rel_to_abs(rel_fp)
+            # Get elapsed of current track
             elapsed = status.get('elapsed', 0.0)
-            absolute_fp = os.path.join(AUDIOFILES_BASEDIR,
-                                       relative_fp)
 
-            song_info = {'relative_fp': relative_fp,
-                         'absolute_fp': absolute_fp,
-                         'elapsed': elapsed}
-            return song_info
+            return {
+                'relative_fp': rel_fp,
+                'absolute_fp': abs_fp,
+                'elapsed': elapsed
+            }
 
-    def previous(self):
+    def previous(self) -> str:
         """Play the previous track
-        :returns: TODO
+        :returns: The song.
         """
         with self.connection():
             self.remove_stop_state()
             self.client.previous()
         print("Previous")
+        return self.current_track()
 
-    def next(self):
+    def next(self) -> str:
         """Play the next track
-        :returns: TODO
+        :returns: The song.
         """
         with self.connection():
             self.remove_stop_state()
             self.client.next()
-        print("Next")
+        return self.current_track()
 
     def seek_forward(self):
         """An improvement on the seeking command from
         mpd
         :returns: TODO
-
         """
         with self.connection():
             self.remove_stop_state()
@@ -147,7 +159,6 @@ class Mpd(object):
         """An improvement on the seeking command from
         mpd
         :returns: TODO
-
         """
         with self.connection():
             self.remove_stop_state()
@@ -162,7 +173,6 @@ class Mpd(object):
     def volume_up(self):
         """Increase the volume
         :returns: TODO
-
         """
         print("vol up")
         with self.connection():
@@ -221,3 +231,15 @@ class Mpd(object):
             time.sleep(0.2)
             self.client.pause(1)
         print("Stutter backward")
+
+    def repeat(self, state: int):
+        """Repeat if 1, do not repeat if 0
+        """
+        with self.connection():
+            self.client.repeat(state)
+
+    def single(self, state: int):
+        """Single if 1, not single if 0
+        """
+        with self.connection():
+            self.client.single(state)

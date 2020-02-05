@@ -1,4 +1,3 @@
-from config import *
 import mpd
 from extract_funcs import cloze_processor
 import time
@@ -26,10 +25,11 @@ class AudioAssistant(Mpd, object):
         local item queue
         :*_keys: Dict. Enum-like structure mapping keycode constants to method names.
         """
-        Mpd.__init__(self)
-        self.recording = False
-        self.clozing = False
-        self.current_playlist = "global topic queue"
+        super.__init__()
+
+        self.recording: bool = False
+        self.clozing: bool = False
+        self.current_queue: str = "global topic queue"
 
         self.active_keys = {}
 
@@ -44,7 +44,7 @@ class AudioAssistant(Mpd, object):
                 KEY_A:      self.load_global_extracts,
                 GAME_X:     self.volume_up,
                 GAME_B:     self.volume_down,
-                #GAME_Y:     self.requires_video
+                # GAME_Y:     self.requires_video
         }
 
         self.recording_keys = {

@@ -27,7 +27,8 @@ class BTDevice(object):
     def is_connected(self) -> bool:
         """ Check if the bluetooth device is connected or not
         """
-        connected_devs = subprocess.check_output(["hcitool", "con"], encoding="UTF-8")
+        connected_devs = subprocess.check_output(["hcitool", "con"],
+                                                 encoding="UTF-8")
         if self.address in connected_devs.split():
             self.connected = True
             return True
@@ -41,7 +42,8 @@ class BTDevice(object):
         count = 0
         while count < attempts:
             count += 1
-            bt_data = subprocess.check_output(["hcitool", "con"], encoding="UTF-8")
+            bt_data = subprocess.check_output(["hcitool", "con"],
+                                              encoding="UTF-8")
             if self.address in bt_data.split():
                 return True
             print("{} not connected.".format(self.name))

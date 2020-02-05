@@ -1,6 +1,7 @@
 import os
 import time
 import subprocess
+from typing import Dict, List, Callable
 from config import (TOPICFILES_DIR,
                     EXTRACTFILES_DIR,
                     EXTRACTFILES_EXT,
@@ -24,29 +25,28 @@ from config import (KEY_X,
 
 class TopicQueue(Mpd, object):
 
-    """ Extends core mpd functions for the
-    Topic queue.
+    """Extends core mpd functions for the Topic queue.
     """
 
     def __init__(self):
         """
-        :queue: String. Name of the current playlist
-        :active_keys: Dict[Keycode constants: method names]
-        :recording: Boolean. True if currently recording
-        :clozing: Boolean. True if currently clozing
-        :topic_keys: Dict[Keycode constants: method names]
+        :queue: String. Name of the current playlist.
+        :active_keys: Functions available in current queue.
+        :recording: True if recording.
+        :clozing: True if clozing.
+        :topic_keys: Functions available in current queue.
         """
 
-        Mpd.__init__(self)
+        super().__init__()
 
         # State
-        self.queue = "global topic queue"
-        self.active_keys = {}
-        self.recording = False
-        self.clozing = False
+        self.current_queue: str = "global topic queue"
+        self.active_keys: Dict[int, Callable] = {}
+        self.recording: bool = False
+        self.clozing: bool = False
 
         # Keys
-        self.topic_keys = {
+        self.topic_keys: Dict[int, Callable] = {
                 KEY_X:      self.toggle,
                 KEY_B:      self.prev_topic,
                 KEY_Y:      self.next_topic,
@@ -58,54 +58,31 @@ class TopicQueue(Mpd, object):
                 KEY_MENU:   self.archive_topic
         }
 
-        self.recording_keys = {
+        self.recording_keys: Dict[int, Callable] = {
                 KEY_OK:     self.stop_recording
         }
 
-    @staticmethod
-    def rel_to_abs_topic(filepath: str) -> str:
-        """ Convert a filepath relative to the mpd base dir to an
-        absolute filepath
-        Relative: topicfiles/<topic_fp>.wav
-        Absolute: /home/pi ... /topicfiles/<topic_fp>.wav """
-        filename = os.path.basename(filepath)
-        abs_fp = os.path.join(TOPICFILES_DIR, filename)
-        return abs_fp
-
-    @staticmethod
-    def abs_to_rel_topic(filepath: str) -> str:
-        """ Convert an absolute filepath to a filepath relative to
-        the mpd base dir
-        Relative: topicfiles/<topic_fp>.wav
-        Absolute: /home/pi ... /topicfiles/<topic_fp>.wav """
-        filename = os.path.basename(filepath)
-        directory = os.path.basename(TOPICFILES_DIR)
-        rel_fp = os.path.join(directory, filename)
-        return rel_fp
-
     def load_topic_options(self):
-        """ Set the state options for "global topic queue".
+        """Set state options for "global topic queue".
         """
         # Set playback options
-        with self.connection():
-            self.client.repeat(1)
-            self.client.single(0)
+        self.repeat(1)
+        self.single(0)
         # Set state information and keys
         self.active_keys = self.topic_keys
-        self.queue = "global topic queue"
+        self.current_queue = "global topic queue"
         self.recording = False
         self.clozing = False
 
     def load_recording_options(self):
-        """ Set the state options for when recording
+        """Set state options for when recording
         """
         # Set playback options
-        with self.connection():
-            self.client.repeat(1)
-            self.client.single(1)
+        self.repeat(1)
+        self.single(1)
         # Set state information and keys
         self.active_keys = self.recording_keys
-        self.queue = "global topic queue"
+        self.current_queue = "global topic queue"
         self.recording = True
         self.clozing = False
 
@@ -121,24 +98,27 @@ class TopicQueue(Mpd, object):
                   .order_by(TopicFile.created_at.asc())
                   .all())
         if topics:
-            topics = [
-                        self.abs_to_rel_topic(topic.filepath)
-                        for topic in topics
-                     ]
-            self.load_playlist(topics)
-            self.load_topic_options()
-            espeak(self.queue)
+            topic_queue = [
+                            self.abs_to_rel(topic.filepath)
+                            for topic in topics
+                          ]
+            if self.load_queue(topic_queue):
+                self.load_topic_options()
+                espeak(self.current_queue)
+            else:
+                negative_beep()
+                print("Failed to load topic queue")
         else:
             negative_beep()
             print("No outstanding topics")
 
     def start_recording(self):
-        """ Start recording a new extract from a topic.
+        """Start recording a new extract from a topic.
         """
         click_sound1()
 
         # Get filename of current topic
-        cur_song = self.current_song()
+        cur_song = self.current_track()
         basename = os.path.basename(cur_song['absolute_fp'])
 
         # create extract filepath
@@ -180,7 +160,7 @@ class TopicQueue(Mpd, object):
         # TODO Log severe error if this breaks
         assert self.recording
         # Get current song info
-        cur_song = self.current_song()
+        cur_track = self.current_track()
 
         # Kill the active parecord process
         child = subprocess.Popen(['pkill', 'parecord'],
@@ -200,7 +180,7 @@ class TopicQueue(Mpd, object):
                        .order_by(ExtractFile.created_at.desc())
                        .first())
             if extract:
-                extract.endstamp = cur_song['elapsed']
+                extract.endstamp = cur_track['elapsed']
                 session.commit()
             else:
                 # TODO Log severe error
@@ -214,14 +194,14 @@ class TopicQueue(Mpd, object):
         Skip to the topic's current timestamp
         """
         # TODO Log severe error if this breaks
-        assert self.queue == "global topic queue"
+        assert self.current_queue == "global topic queue"
         self.next()
 
         click_sound1()
 
         # Get information on the next file
         # TODO Do I need to remove stop state here?
-        cur_song = self.current_song()
+        cur_song = self.current_track()
         filepath = cur_song['absolute_fp']
 
         # Find the topic in the DB
@@ -243,13 +223,13 @@ class TopicQueue(Mpd, object):
         Skip to the topic's current timestamp
         """
         # TODO Log severe error if this breaks
-        assert self.queue == "global topic queue"
+        assert self.current_queue == "global topic queue"
         self.previous()
 
         click_sound1()
 
         # Get information on the previous file
-        cur_song = self.current_song()
+        cur_song = self.current_track()
         filepath = cur_song['absolute_fp']
 
         # Find the topic in the DB
@@ -268,15 +248,15 @@ class TopicQueue(Mpd, object):
 
     def archive_topic(self):
         """ Archive the current topic.
-        Topics should be archived automatically when progress > 90%
-        Archived can also be set to True at runtime
-        Archived topics with no outstanding child extracts will be deleted by a script
+        Topics should be archived automatically when progress > 90%.
+        Archived can also be set to True at runtime.
+        Archived topics with no outstanding child extracts will be deleted.
         """
         # TODO Log severe error on break
-        assert self.queue == "global topic queue"
+        assert self.current_queue == "global topic queue"
 
         # Get information on the current topic
-        cur_song = self.current_song()
+        cur_song = self.current_track()
         filepath = cur_song['absolute_fp']
 
         # Find topic in DB

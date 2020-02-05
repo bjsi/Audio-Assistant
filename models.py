@@ -129,7 +129,6 @@ class TopicFile(Base):
 
     # TODO Should this be a property?
 
-    @property
     def progress(self) -> float:
         """" Returns percentage listened to """
         return (self.cur_timestamp / self.duration) * 100

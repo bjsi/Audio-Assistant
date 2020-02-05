@@ -1,0 +1,53 @@
+{
+  "controller": {
+    "name": "MOCUTE-052_S23-AUTO",
+    "mac_address": "E0:F8:48:05:27:EF",
+    "functions_to_keys": {
+      "get_extract_topic": "KEY_DOWN",
+      "get_extract_items": "KEY_DOWN",
+      "get_item_extract": "KEY_U",
+      "global_topic_queue": "KEY_A",
+      "global_extract_queue": "KEY_A",
+      "global_item_queue": "",
+      "skip_forward": "KEY_RIGHT",
+      "skip_backward": "KEY_LEFT",
+      "volume_up": "GAME_X",
+      "volume_down": "GAME_B",
+      "dismiss": "",
+      "toggle_extract": "",
+      "toggle_cloze": "",
+      "start_extracting": "",
+      "stop_extracting": "",
+      "start_clozing": "",
+      "stop_clozing": "",
+      "play": "",
+      "pause": ""
+    },
+    "keys_to_keycodes": {
+      "KEY_X": 164,
+      "KEY_A": 115,
+      "KEY_B": 114,
+      "KEY_Y": 139,
+      "KEY_PWR": 158,
+      "KEY_MENU": 189,
+      "KEY_UP": 208,
+      "KEY_RIGHT": 163,
+      "KEY_LEFT": 165,
+      "KEY_DOWN": 168,
+      "KEY_OK": 28,
+      "GAME_X": 307,
+      "GAME_A": 315,
+      "GAME_B": 311,
+      "GAME_Y": 308,
+      "GAME_PWR": 305,
+      "GAME_MENU": 315,
+      "GAME_OK": 9
+    },
+    "input_devices": [
+      "/dev/input/event0",
+      "/dev/input/event1",
+      "/dev/input/event2",
+      "/dev/input/event3"
+    ]
+  }
+}

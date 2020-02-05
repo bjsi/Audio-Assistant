@@ -1,5 +1,5 @@
 import os
-import mpd
+from typing import Dict, Callable, List
 from config import EXTRACTFILES_DIR
 from MPD.MpdBase import Mpd
 from models import ExtractFile, ItemFile, session
@@ -37,16 +37,16 @@ class ExtractQueue(Mpd, object):
         :clozing_keys: Dict[Keycode constant: method names]
         """
 
-        Mpd.__init__(self)
+        super().__init__()
 
         # State
-        self.queue = "global extract queue"
-        self.active_keys = {}
-        self.recording = False
-        self.clozing = False
+        self.queue: str = "global extract queue"
+        self.active_keys: Dict[int, Callable] = {}
+        self.recording: bool = False
+        self.clozing: bool = False
 
         # Keys
-        self.extracting_keys = {
+        self.extracting_keys: Dict[int, Callable] = {
                 KEY_X:      self.toggle,
                 KEY_B:      self.previous,
                 KEY_Y:      self.next,
@@ -58,40 +58,17 @@ class ExtractQueue(Mpd, object):
                 KEY_MENU:   self.archive_extract
         }
 
-        self.clozing_keys = {
+        self.clozing_keys: Dict[int, Callable] = {
                 KEY_X:      self.toggle,
                 KEY_RIGHT:  self.stutter_forward,
                 KEY_LEFT:   self.stutter_backward,
                 KEY_OK:     self.stop_clozing,
         }
 
-    @staticmethod
-    def rel_to_abs_extract(filepath: str) -> str:
-        """ Convert filepath relative to absolute
-        Relative means relative to mpd base directory
-        Relative: extractfiles/<extract_fp>.wav
-        Absolute: /home/pi ... /extractfiles/<extract_fp>.wav """
-        filename = os.path.basename(filepath)
-        abs_fp = os.path.join(EXTRACTFILES_DIR, filename)
-        return abs_fp
-
-    @staticmethod
-    def abs_to_rel_extract(filepath: str) -> str:
-        """ Convert filepath absolute to relative
-        Relative means relative to mpd base directory
-        Relative: extractfiles/<extract_fp>.wav
-        Absolute: /home/pi ... /extractfiles/<extract_fp>.wav """
-        filename = os.path.basename(filepath)
-        directory = os.path.basename(EXTRACTFILES_DIR)
-        rel_fp = os.path.join(directory, filename)
-        return rel_fp
-
-    def get_global_extracts(self):
-        """ Get global extracts
-        Load the global extract queue"""
-        # TODO Log severe error if this assert breaks
-        assert self.queue == "global topic queue"
-
+    def get_global_extracts(self) -> bool:
+        """ Get global extracts and load global extract queue
+        :returns: True on success else false.
+        """
         # Get extracts from DB
         extracts = (session
                     .query(ExtractFile)
@@ -101,18 +78,20 @@ class ExtractQueue(Mpd, object):
 
         # Add mpd-recognised extracts to queue
         if extracts:
-            playlist = []
+            extract_queue: List[str] = []
             for extract in extracts:
-                rel_fp = self.abs_to_rel_extract(extract.filepath)
+                rel_fp = self.abs_to_rel(extract.filepath)
                 if self.mpd_recognised(rel_fp):
-                    playlist.append(rel_fp)
-            if playlist:
-                self.load_playlist(playlist)
+                    extract_queue.append(rel_fp)
+            if extract_queue:
+                self.load_playlist(extract_queue)
                 self.load_global_extract_options()
                 espeak(self.queue)
             else:
                 negative_beep()
+                espeak("No extracts")
                 print("No MPD recognised extracts")
+                return False
         else:
             negative_beep()
             print("No extracts found in DB")
