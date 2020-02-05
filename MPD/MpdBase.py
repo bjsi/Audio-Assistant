@@ -27,13 +27,14 @@ class Mpd(object):
 
         """Create temporary connection to mpd client.
         """
-        if not self.connected():
-            try:
-                self.client.connect(self.host, self.port)
-                yield
-            finally:
-                self.client.close()
-                self.client.disconnect()
+        if self.connected():
+            yield
+        try:
+            self.client.connect(self.host, self.port)
+            yield
+        finally:
+            self.client.close()
+            self.client.disconnect()
 
     @staticmethod
     def abs_to_rel(abs_fp: str) -> str:
