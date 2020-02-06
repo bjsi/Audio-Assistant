@@ -22,13 +22,13 @@ devices = ('/dev/input/event0',
            '/dev/input/event3')
 
 input_devices = map(InputDevice, devices)
-devices = {device.fd: device
-           for device in input_devices}
 
 
 if __name__ == "__main__":
     controller = Controller()
     controller.connect()
+    devices = {device.fd: device
+               for device in input_devices}
     while True:
         r, w, x = select(devices, [], [])
         for fd in r:
