@@ -26,6 +26,8 @@ devices = {device.fd: device
 
 
 if __name__ == "__main__":
+    controller = Controller()
+    controller.connect()
     while True:
         r, w, x = select(devices, [], [])
         for fd in r:
