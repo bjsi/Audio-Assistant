@@ -1,6 +1,7 @@
 from time import sleep
 from bluezero import central
-from evdev import InputDevice, select
+from evdev import InputDevice
+from select import select
 
 
 class Controller(object):
