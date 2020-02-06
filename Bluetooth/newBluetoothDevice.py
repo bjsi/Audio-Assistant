@@ -16,8 +16,7 @@ class Controller(object):
         self.remote_device.load_gatt()
 
 
-devices = ('/dev/input/event0',
-           '/dev/input/event1',
+devices = ('/dev/input/event1',
            '/dev/input/event2',
            '/dev/input/event3')
 
