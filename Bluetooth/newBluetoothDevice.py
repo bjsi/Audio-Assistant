@@ -10,7 +10,7 @@ class Controller(object):
                                              device_addr="E0:F8:48:05:27:EF")
         
     def connect(self):
-        self. remote_device.connect()
+        self.remote_device.connect()
         while not self.remote_device.services_resolved:
             sleep(0.5)
         self.remote_device.load_gatt()
