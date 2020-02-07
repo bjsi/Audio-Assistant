@@ -3,7 +3,6 @@ from bluezero import central
 from evdev import InputDevice
 from select import select
 import pyudev
-from mpd import MPDClient
 
 
 class Controller(object):
@@ -32,7 +31,7 @@ if __name__ == "__main__":
             r.remove(monitor.fileno())
             for udev in iter(monitor.poll, None):
                 if udev.device_node in ["/dev/input/event0",
-                                       "/dev/input/event1",
+                                        "/dev/input/event1",
                                         "/dev/input/event2",
                                         "/dev/input/event3"]:
                     if udev.action == u'add':

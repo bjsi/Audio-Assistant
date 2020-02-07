@@ -1,5 +1,5 @@
 from .TopicQueue import TopicQueue
-from typing import Dict, Callable, List
+from typing import Dict, Callable, List, Any
 from models import session, TopicFile, ExtractFile, ItemFile
 from .ExtractQueue import ExtractQueue
 from .ItemQueue import ItemQueue
