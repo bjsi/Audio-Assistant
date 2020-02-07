@@ -47,7 +47,7 @@ def main_loop(queue: MainQueue, hp: BTHeadphones, con: BTController):
                 if dev:
                     for event in dev.read():
                         if event.value == 1 and event.code in queue.active_keys:
-                            queue.active_keys[event.code]
+                            queue.active_keys[event.code]()
         # Hacky? But works excellently
         except OSError:
             continue
