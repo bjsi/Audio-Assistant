@@ -6,18 +6,23 @@ import time
 from config import CONTROLLER
 from Bluetooth.Device import (BTHeadphones,
                               BTController)
+import subprocess
 
 # Loop until headphones and controller are both connected
 # Wait until user presses the launch key
 # Then launch the actual program
 
+# queue: MainQueue, hp: BTHeadphones, con: BTController
 
-def main_loop(queue: MainQueue, hp: BTHeadphones, con: BTController):
+
+def main_loop():
     """Set up the main loop for the controller.
     Reads key codes and values from the connected
     device and executes the associated commands in the
     AudioAssistant active_keys dict.
     """
+    queue = MainQueue()
+    queue.get_global_topics()
     context = pyudev.Context()
     monitor = pyudev.Monitor.from_netlink(context)
     monitor.filter_by(subsystem='input')
@@ -28,16 +33,17 @@ def main_loop(queue: MainQueue, hp: BTHeadphones, con: BTController):
         if monitor.fileno() in r:
             r.remove(monitor.fileno())
             for udev in iter(monitor.poll, None):
-                if udev.device_node in ["/dev/input/event0",
-                                        "/dev/input/event1",
-                                        "/dev/input/event2",
-                                        "/dev/input/event3"]:
+                if udev.device_node and "event" in udev.device_node:
                     if udev.action == u'add':
                         print(f"Device added: {udev}")
                         dev = InputDevice(udev.device_node)
                         fds[dev.fd] = dev
                         break
                     if udev.action == u'remove':
+                        if udev.get('DEVPATH') and "virtual" in udev.get("DEVPATH"):
+                            print("Restarting pulseaudio...")
+                            subprocess.Call(['pulseaudio', '-k'])
+                            subprocess.Call(['pulseaudio', '--start'])
                         print(f'Device removed: {udev}')
                         fds = {monitor.fileno(): monitor}
                         break
@@ -71,6 +77,44 @@ def main_loop(queue: MainQueue, hp: BTHeadphones, con: BTController):
     #         continue
 
 
+def launch_loop2():
+    context = pyudev.Context()
+    monitor = pyudev.Monitor.from_netlink(context)
+    monitor.filter_by(subsystem='input')
+    monitor.start()
+    fds = {monitor.fileno(): monitor}
+    while True:
+        r, w, x = select(fds, [], [])
+        if monitor.fileno() in r:
+            r.remove(monitor.fileno())
+            for udev in iter(monitor.poll, None):
+                if udev.device_node and "event" in udev.device_node:
+                    if udev.action == u'add':
+                        print(f"Device added: {udev}")
+                        dev = InputDevice(udev.device_node)
+                        fds[dev.fd] = dev
+                        break
+                    if udev.action == u'remove':
+                        if udev.get('DEVPATH') and "virtual" in udev.get("DEVPATH"):
+                            print("Restarting pulseaudio...")
+                            subprocess.Call(['pulseaudio', '-k'])
+                            subprocess.Call(['pulseaudio', '--start'])
+                        print(f'Device removed: {udev}')
+                        fds = {monitor.fileno(): monitor}
+                        break
+        try:
+            for fd in r:
+                dev = fds.get(fd, None)
+                if dev:
+                    for event in dev.read():
+                        if event.value == 1 and event.code == CONTROLLER['keys']['KEY_A']:
+                            ## Check if 
+                            main_loop()
+        # Hacky? But works excellently
+        except OSError:
+            continue
+
+
 def launch_loop(hp: BTHeadphones, con: BTController):
     """ Loop until the launch key is pressed
     When launch key pressed, run the main loop """
@@ -102,13 +146,14 @@ def launch_loop(hp: BTHeadphones, con: BTController):
 
 
 if __name__ == "__main__":
-    # C = Controller()
-    hp = BTHeadphones()
-    con = BTController()
-    while (not hp.is_connected()) and (not con.is_connected()):
-        time.sleep(3)
+   # # C = Controller()
+   # hp = BTHeadphones()
+   # con = BTController()
+   # while (not hp.is_connected()) and (not con.is_connected()):
+   #     time.sleep(3)
 
-    print(hp)
-    print(con)
-    con.load_devices()
-    launch_loop(hp, con)
+   # print(hp)
+   # print(con)
+   # con.load_devices()
+   # launch_loop(hp, con)
+   main_loop()
