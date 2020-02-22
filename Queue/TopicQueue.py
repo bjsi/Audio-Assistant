@@ -22,6 +22,21 @@ from config import (KEY_X,
                     GAME_B,
                     KEY_MENU)
 from contextlib import ExitStack
+import logging
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter('%(levelname)s:%(name)s:%(funcName)s():%(message)s')
+
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(formatter)
+
+file_handler = logging.FileHandler("topic_queue.log")
+file_handler.setFormatter(formatter)
+
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
 
 
 class TopicQueue(Mpd, object):
@@ -31,11 +46,15 @@ class TopicQueue(Mpd, object):
 
     def __init__(self):
         """
-        :queue: String. Name of the current playlist.
-        :active_keys: Functions available in current queue.
+        :queue: Name of the current queue.
+
+        :active_keys: Methods available in current queue.
+
         :recording: True if recording.
+
         :clozing: True if clozing.
-        :topic_keys: Functions available in current queue.
+
+        :topic_keys: Methods available in current queue.
         """
 
         super().__init__()
@@ -63,8 +82,8 @@ class TopicQueue(Mpd, object):
                 KEY_OK:     self.stop_recording
         }
 
-    def load_topic_options(self):
-        """Set state options for "global topic queue".
+    def load_topic_options(self) -> None:
+        """Set state options for global topic queue.
         """
         # Set playback options
         self.repeat(1)
@@ -74,8 +93,10 @@ class TopicQueue(Mpd, object):
         self.current_queue = "global topic queue"
         self.recording = False
         self.clozing = False
+        espeak(self.current_queue)
+        logger.info("Loaded global topic options.")
 
-    def load_recording_options(self):
+    def load_recording_options(self) -> None:
         """Set state options for when recording
         """
         # Set playback options
@@ -86,41 +107,53 @@ class TopicQueue(Mpd, object):
         self.current_queue = "global topic queue"
         self.recording = True
         self.clozing = False
+        logger.info("Loaded recording options.")
 
-    def get_global_topics(self):
-        """ Query DB for outstanding topics
+    def get_global_topics(self) -> bool:
+        """Get global topics and load global topic queue.
+        :returns: True on success else false.
         """
         # Get outstanding topics from DB
-        topics = (session
-                  .query(TopicFile)
-                  .filter_by(deleted=False)
-                  .filter_by(archived=False)
-                  .filter((TopicFile.cur_timestamp / TopicFile.duration) < 0.9)
-                  .order_by(TopicFile.created_at.asc())
-                  .all())
+        topics: List[TopicFile] = (session
+                                   .query(TopicFile)
+                                   .filter_by(deleted=False)
+                                   .filter_by(archived=False)
+                                   .filter((TopicFile.cur_timestamp
+                                            / TopicFile.duration) < 0.9)
+                                   .order_by(TopicFile.created_at.asc())
+                                   .all())
+
         if topics:
-            topic_queue = [
-                            self.abs_to_rel(topic.filepath)
-                            for topic in topics
-                          ]
+            # List of rel_fps.
+            topic_queue: List[str] = [
+                                      self.abs_to_rel(topic.filepath)
+                                      for topic in topics
+                                     ]
             if self.load_queue(topic_queue):
                 self.load_topic_options()
-                espeak(self.current_queue)
+                logger.info("Loaded global topic queue.")
+                return True
             else:
                 negative_beep()
-                print("Failed to load topic queue")
+                logger.info("Call to load_queue failed.")
+                return False
         else:
             negative_beep()
-            print("No outstanding topics")
+            logger.info("No outstanding topics found in DB.")
+            return False
 
-    def start_recording(self):
+    def start_recording(self) -> bool:
         """Start recording a new extract from a topic.
         """
+        assert self.current_queue == "global topic queue"
+
+        logger.info("Started recording")
+
         click_sound1()
 
         # Get filename of current topic
         cur_song = self.current_track()
-        basename = os.path.basename(cur_song['absolute_fp'])
+        basename = os.path.basename(cur_song['abs_fp'])
 
         # create extract filepath
         # /home/pi ... /extractfiles/<name-epoch time->.wav
@@ -131,35 +164,39 @@ class TopicQueue(Mpd, object):
                                   EXTRACTFILES_EXT)
 
         # TODO consider changing to ffmpeg
+        # TODO check the exit code of the subprocess
         # Start parecord process and load recording options
         subprocess.Popen(['parecord',
                           '--channels=1',
                           '-d',
                           RECORDING_SINK,
                           extract_fp], shell=False)
+
         self.load_recording_options()
 
         # Add the extract as a child of the topic
-        source_topic_fp = cur_song['absolute_fp']
+        source_topic_fp = cur_song['abs_fp']
         timestamp = cur_song['elapsed']
-        topic = (session
-                 .query(TopicFile)
-                 .filter_by(filepath=source_topic_fp)
-                 .one_or_none())
+        topic: TopicFile = (session
+                            .query(TopicFile)
+                            .filter_by(filepath=source_topic_fp)
+                            .one_or_none())
         if topic:
-            extract = ExtractFile(filepath=extract_fp,
-                                  startstamp=timestamp)
+            extract: ExtractFile = ExtractFile(filepath=extract_fp,
+                                               startstamp=timestamp)
             topic.extracts.append(extract)
             session.commit()
-        else:
-            # TODO Log severe error
-            print("ERROR: Couldn't find topic in DB")
+            logger.info("Created a new extract.")
+            return True
 
-    def stop_recording(self):
-        """ Stop the current recording.
+        logger.error("Currently playing topic not found in DB.")
+        return False
+
+    def stop_recording(self) -> bool:
+        """Stop the current recording.
         """
-        # TODO Log severe error if this breaks
-        assert self.recording
+        assert self.recording is True
+
         # Get current song info
         cur_track = self.current_track()
 
@@ -176,122 +213,111 @@ class TopicQueue(Mpd, object):
             self.load_topic_options()
 
             # Get the last inserted extract
-            extract = (session
-                       .query(ExtractFile)
-                       .order_by(ExtractFile.created_at.desc())
-                       .first())
+            extract: ExtractFile = (session
+                                    .query(ExtractFile)
+                                    .order_by(ExtractFile.created_at.desc())
+                                    .first())
             if extract:
                 extract.endstamp = cur_track['elapsed']
                 session.commit()
+                logger.info("Stopped recording.")
+                return True
             else:
-                # TODO Log severe error
-                print("ERROR: No extract found in DB")
+                logger.error("Currently recording extract not found in DB.")
+                return False
         else:
-            # TODO Log strange error
-            print("ERROR: There was no active parecord process")
+            logger.error("There was no active parecord process to stop.")
+            return False
 
-    def next_topic(self):
-        """ Go to the next topic in the queue.
-        Skip to the topic's current timestamp
+    def next_topic(self) -> bool:
+        """ Go to the next topic in the queue at the lastest timestamp.
         """
-        # TODO Log severe error if this breaks
         assert self.current_queue == "global topic queue"
-        self.next()
 
+        self.next()
         click_sound1()
 
         # Get information on the next file
         # TODO Do I need to remove stop state here?
         cur_song = self.current_track()
-        filepath = cur_song['absolute_fp']
+        filepath = cur_song['abs_fp']
 
         # Find the topic in the DB
-        topic = (session
-                 .query(TopicFile)
-                 .filter_by(filepath=filepath)
-                 .one_or_none())
+        topic: TopicFile = (session
+                            .query(TopicFile)
+                            .filter_by(filepath=filepath)
+                            .one_or_none())
 
         # Seek to the current timestamp
         if topic:
             with self.connection() if not self.connected() else ExitStack():
                 self.client.seekcur(float(topic.cur_timestamp))
-        else:
-            # TODO Log severe error
-            print("ERROR: Currently playing Topic not in DB")
+            logger.info("Playing the next topic.")
+            return True
+        logger.error("Currently playing Topic not in DB.")
+        return False
 
-    def prev_topic(self):
-        """ Go to the previous topic in the queue.
-        Skip to the topic's current timestamp
+    def prev_topic(self) -> bool:
+        """Go to the previous topic in the queue at the latest timestamp.
         """
-        # TODO Log severe error if this breaks
         assert self.current_queue == "global topic queue"
-        self.previous()
 
+        self.previous()
         click_sound1()
 
         # Get information on the previous file
         cur_song = self.current_track()
-        filepath = cur_song['absolute_fp']
+        filepath = cur_song['abs_fp']
 
         # Find the topic in the DB
-        topic = (session
-                 .query(TopicFile)
-                 .filter_by(filepath=filepath)
-                 .one_or_none())
+        topic: TopicFile = (session
+                            .query(TopicFile)
+                            .filter_by(filepath=filepath)
+                            .one_or_none())
 
         # Seek to the current timestamp
         if topic:
             with self.connection() if not self.connected() else ExitStack():
                 self.client.seekcur(float(topic.cur_timestamp))
-        else:
-            # TODO Log severe error
-            print("ERROR: Currently playing Topic not in DB")
+            logger.info("Playing the next topic.")
+            return True
+        logger.error("Currently playing Topic not in DB")
+        return False
 
-    def archive_topic(self):
+    def archive_topic(self) -> bool:
         """ Archive the current topic.
         Topics should be archived automatically when progress > 90%.
         Archived can also be set to True at runtime.
         Archived topics with no outstanding child extracts will be deleted.
         """
-        # TODO Log severe error on break
         assert self.current_queue == "global topic queue"
 
         # Get information on the current topic
         cur_song = self.current_track()
-        filepath = cur_song['absolute_fp']
+        filepath = cur_song['abs_fp']
 
         # Find topic in DB
-        topic = (session
-                 .query(TopicFile)
-                 .filter_by(filepath=filepath)
-                 .one_or_none())
+        topic: TopicFile = (session
+                            .query(TopicFile)
+                            .filter_by(filepath=filepath)
+                            .one_or_none())
 
         # Archive the Topic
         if topic:
             load_beep()
             topic.archived = 1
             session.commit()
-            print("Archived {}".format(topic))
-        else:
-            # TODO Log severe error
-            print("ERROR: Couldn't find topic in DB")
+            logger.info("Archived a topic.")
+            return True
+        logger.error("Currently playing topic could not in DB.")
+        return False
 
 
 if __name__ == "__main__":
-    """ When run as a top-level script, the
-    ExtractQueue can be tested in isolation
-    from TopicQueue and ItemQueue """
+    """Run this script to test the topic queue in isolation.
+    """
 
     topic_queue = TopicQueue()
     topic_queue.get_global_topics()
 
-    # Create the main loop
-    while True:
-        r, w, x = select(controller.devices, [], [])
-        for fd in r:
-            for event in controller.devices[fd].read():
-                if event.value == 1:
-                    if event.code in audio_assistant.active_keys:
-                        audio_assistant.active_keys[event.code]()
-
-    # TODO Catch Exceptions
+    # TODO: Add loop

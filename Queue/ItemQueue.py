@@ -11,19 +11,39 @@ from config import (KEY_X,
                     KEY_Y,
                     KEY_MENU,
                     GAME_X)
+import logging
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter('%(levelname)s:%(name)s:%(funcName)s():%(message)s')
+
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(formatter)
+
+file_handler = logging.FileHandler("item_queue.log")
+file_handler.setFormatter(formatter)
+
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
 
 
 class ItemQueue(Mpd, object):
 
-    """Extends core mpd functions for the Item queue."""
+    """Extends core mpd functions for the Item queue.
+    """
 
     def __init__(self):
         """
         :queue: The name of the current queue.
-        :active_keys: Functions available in current queue.
+
+        :active_keys: Methods available in current queue.
+
         :clozing: Boolean. True if clozing.
+
         :recording: True if recording.
-        :item_keys: Mapping between key codes and methods.
+
+        :item_keys: Methods available in the item queue.
         """
 
         super().__init__()
@@ -42,20 +62,22 @@ class ItemQueue(Mpd, object):
                 KEY_MENU:   self.archive_item
         }
 
-    def get_global_items(self):
-        """Get outstanding items.
-        Load global item queue"""
-
+    def get_global_items(self) -> bool:
+        """Get global items and load the global item queue.
+        
+        :returns: True on success else false.
+        """
         # Query DB for outstanding items
-        items = (session
-                 .query(ItemFile)
-                 .filter_by(deleted=False)
-                 .filter(ItemFile.question_filepath != None)
-                 .all())
+        items: List[ItemFile] = (session
+                                 .query(ItemFile)
+                                 .filter_by(deleted=False)
+                                 .filter(ItemFile.question_filepath != None)
+                                 .all())
 
         # Add mpd-recognised items to the queue
         if items:
-            item_queue = []
+            # List of rel_fps
+            item_queue: List[str] = []
             for item in items:
                 rel_fp = self.abs_to_rel(item.question_filepath)
                 if self.mpd_recognised(rel_fp):
@@ -63,19 +85,20 @@ class ItemQueue(Mpd, object):
             if item_queue:
                 if self.load_queue(item_queue):
                     self.load_global_item_options()
-                    espeak(self.current_queue)
+                    logger.info("Loaded a global item queue.")
+                    return True
                 else:
-                    negative_beep()
-                    print("Failed to load global item queue.")
+                    logger.error("Call to load_queue failed.")
+                    return False
             else:
-                negative_beep()
-                print("No outstanding items in DB")
+                logger.info("No MPD-recognised items found in DB.")
+                return False
         else:
-            negative_beep()
-            print("No items in DB")
+            logger.info("No items found in DB.")
+            return False
 
-    def load_global_item_options(self):
-        """ Set state options for "global item queue".
+    def load_global_item_options(self) -> None:
+        """Set state options for global item queue.
         """
         # Set playback options
         self.repeat(1)
@@ -85,50 +108,43 @@ class ItemQueue(Mpd, object):
         self.current_queue = "global item queue"
         self.clozing = False
         self.recording = False
+        espeak(self.current_queue)
+        logger.info("Loaded global item options.")
 
-    def archive_item(self):
+    def archive_item(self) -> bool:
         """Archive the current item.
-        Archived items will be deleted by a script
+
+        Archived items will be deleted by a script.
         Non-archived items are archived and deleted after export
         """
-        # TODO Log severe error
-        assert self.current_queue in ["local item queue", "global item queue"]
-
+        assert self.current_queue in ["local item queue",
+                                      "global item queue"]
         # Get the currently playing item
         cur_song = self.current_track()
-        filepath = cur_song['absolute_fp']
+        filepath = cur_song['abs_fp']
 
         # Find the item in DB
         item = (session
                 .query(ItemFile)
                 .filter_by(question_filepath=filepath)
                 .one_or_none())
+
         # Archive the item
         if item:
-            load_beep()
             item.archived = True
             session.commit()
-        else:
-            # TODO Log severe error
-            print("ERROR: Currently playing item "
-                  "not found in the DB")
+            load_beep()
+            logger.info("Archived an item.")
+            return True
+        logger.error("Currently playing item not found in DB.")   
+        return False
 
 
 if __name__ == "__main__":
-    """ When run as a top-level script, the
-    ExtractQueue can be tested in isolation
-    from TopicQueue and ItemQueue """
+    """Run this file to test item queue in isolation.
+    """
 
     item_queue = ItemQueue()
     item_queue.get_global_items()
 
-    # Create the main loop
-    while True:
-        r, w, x = select(controller.devices, [], [])
-        for fd in r:
-            for event in controller.devices[fd].read():
-                if event.value == 1:
-                    if event.code in audio_assistant.active_keys:
-                        audio_assistant.active_keys[event.code]()
-
-    # TODO Catch Exceptions
+    # TODO add Main Queue.

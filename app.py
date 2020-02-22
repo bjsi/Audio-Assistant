@@ -7,7 +7,7 @@ from config import CONTROLLER
 from Bluetooth.Device import (BTHeadphones,
                               BTController)
 import subprocess
-from Sounds.sounds import espeak
+from Sounds.sounds import espeak, negative_beep
 
 
 def main_loop():
@@ -16,7 +16,6 @@ def main_loop():
     device and executes the associated commands in the
     AudioAssistant active_keys dict.
     """
-    # if headphones connected TODO
     context = pyudev.Context()
     monitor = pyudev.Monitor.from_netlink(context)
     # headphones and controller both in the input subsystem
@@ -66,8 +65,9 @@ def main_loop():
                 if dev:
                     for event in dev["dev"].read():
                         if event.value == 1 and event.code in queue.active_keys:
-                            # run the mapped command in AA
-                            queue.active_keys[event.code]()
+                            # Failed commands return False
+                            if queue.active_keys[event.code]() is False:
+                                negative_beep()
             
         # Hacky? But works excellently
         except OSError:

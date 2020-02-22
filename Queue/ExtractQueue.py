@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Callable, List
+from typing import Dict, Callable, List, Literal
 from config import EXTRACTFILES_DIR
 from MPD.MpdBase import Mpd
 from models import ExtractFile, ItemFile, session
@@ -20,22 +20,41 @@ from config import (KEY_X,
                     KEY_MENU,
                     GAME_X)
 from contextlib import ExitStack
+import logging
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter('%(levelname)s:%(name)s:%(funcName)s():%(message)s')
+
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(formatter)
+
+file_handler = logging.FileHandler("extract_queue.log")
+file_handler.setFormatter(formatter)
+
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
 
 
 class ExtractQueue(Mpd, object):
 
-    """ Extends core mpd functions for the
-    Extract Queue
+    """Extends core mpd functions for the Extract Queue
     """
 
     def __init__(self):
         """
-        :queue: String. The current playlist
-        :active_keys: Dict[Keycode constant: method names]
-        :recording: Boolean. True if recording
-        :clozing: Boolean. True if recording
-        :extracting_keys: Dict[Keycode constant: method names]
-        :clozing_keys: Dict[Keycode constant: method names]
+        :queue: Name of the current queue.
+
+        :active_keys: Currently available methods.
+
+        :recording: True if recording.
+
+        :clozing: True if clozing.
+
+        :extracting_keys: Methods available while extracting.
+
+        :clozing_keys: Methods available while clozing.
         """
 
         super().__init__()
@@ -46,7 +65,7 @@ class ExtractQueue(Mpd, object):
         self.recording: bool = False
         self.clozing: bool = False
 
-        # Keys
+        # Keycodes mapped to methods for extracting.
         self.extracting_keys: Dict[int, Callable] = {
                 KEY_X:      self.toggle,
                 KEY_B:      self.previous,
@@ -59,6 +78,7 @@ class ExtractQueue(Mpd, object):
                 KEY_MENU:   self.archive_extract
         }
 
+        # Keycodes mapped to methods for clozing.
         self.clozing_keys: Dict[int, Callable] = {
                 KEY_X:      self.toggle,
                 KEY_RIGHT:  self.stutter_forward,
@@ -67,64 +87,78 @@ class ExtractQueue(Mpd, object):
         }
 
     def get_global_extracts(self) -> bool:
-        """ Get global extracts and load global extract queue
+        """Get global extracts and load global extract queue.
+
         :returns: True on success else false.
         """
         # Get extracts from DB
-        extracts = (session
-                    .query(ExtractFile)
-                    .filter_by(deleted=False)
-                    .order_by(ExtractFile.created_at.desc())
-                    .all())
+        extracts: List[ExtractFile] = (session
+                                       .query(ExtractFile)
+                                       .filter_by(deleted=False)
+                                       .order_by(ExtractFile.created_at.desc())
+                                       .all())
 
         # Add mpd-recognised extracts to queue
         if extracts:
+            # List of rel_fps
             extract_queue: List[str] = []
             for extract in extracts:
                 rel_fp = self.abs_to_rel(extract.filepath)
+                # Check that mpd recognises the files
+                # Necessary after recording an extract with parecord
                 if self.mpd_recognised(rel_fp):
                     extract_queue.append(rel_fp)
             if extract_queue:
-                self.load_queue(extract_queue)
-                self.load_global_extract_options()
-                espeak(self.queue)
+                if self.load_queue(extract_queue):
+                    self.load_global_extract_options()
+                    logger.info("Loaded global extract queue.")
+                    return True
+                else:
+                    logger.info("Call to load_queue failed.")
+                    return False
             else:
-                negative_beep()
-                espeak("No extracts")
-                print("No MPD recognised extracts")
+                logger.info("No MPD-recognised outstanding extracts found.")
+                espeak("No extracts found.")
                 return False
         else:
-            negative_beep()
-            print("No extracts found in DB")
-            # TODO Should it switch to global extract queue?
+            logger.info("No extracts found in DB.")
+            espeak("No extracts found.")
+            return False
 
     def load_cloze_options(self):
-        """ Set the state options for when clozing """
+        """Set the state options for when clozing.
+        """
+        assert self.queue in ["global extract queue",
+                              "local extract queue"]
         # Set playback options
-        with self.connection() if not self.connected() else ExitStack():
-            self.client.repeat(1)
-            self.client.single(1)
+        self.repeat(1)
+        self.single(1)
         # Set state information and keys
         self.clozing = True
         self.recording = False
         self.active_keys = self.clozing_keys
+        logger.info("Loaded cloze options.")
 
     def load_global_extract_options(self):
-        """ Set the state options for "global extract queue" """
+        """Set the state options for global extract queue.
+        """
         # Set playback options
         with self.connection() if not self.connected() else ExitStack():
-            self.client.repeat(1)
-            self.client.single(1)
+            self.repeat(1)
+            self.single(1)
         # Set state information and keys
         self.clozing = False
         self.recording = False
         self.active_keys = self.extracting_keys
         self.queue = "global extract queue"
+        logger.info("Loaded global extract queue options.")
+        espeak(self.queue)
 
-    def start_clozing(self):
-        """ Start a cloze deletion on an extract """
-        # TODO Log severe error if either of these asserts break
-        assert self.queue in ["local extract queue", "global extract queue"]
+    def start_clozing(self) -> bool:
+        """Start a cloze deletion on an extract
+        """
+        assert self.queue in ["local extract queue",
+                              "global extract queue"]
         assert not self.clozing
 
         click_sound1()
@@ -132,116 +166,123 @@ class ExtractQueue(Mpd, object):
         # Get the currently playing extract
         cur_song = self.current_track()
         cur_timestamp = cur_song['elapsed']
-        filepath = cur_song['absolute_fp']
+        filepath = cur_song['abs_fp']
 
         # Find the extract in DB
-        extract = (session
-                   .query(ExtractFile)
-                   .filter_by(filepath=filepath)
-                   .one_or_none())
+        extract: ExtractFile = (session
+                                .query(ExtractFile)
+                                .filter_by(filepath=filepath)
+                                .one_or_none())
 
         # Add a new child item to the extract
         if extract:
             extract.items.append(ItemFile(cloze_startstamp=cur_timestamp))
             session.commit()
             self.load_cloze_options()
-        else:
-            # TODO Log severe error
-            negative_beep()
-            print("ERROR: Couldn't find extract in DB.")
+            logger.info("Started clozing.")
+            return True
+        logger.error("Couldn't find currently playing extract in DB.")
+        negative_beep()
+        return False
 
-    def stop_clozing(self):
-        """ Stop the current cloze deletion
-        Finish the cloze on the currently playing extract
-        Send the Item to the cloze processor"""
+    def stop_clozing(self) -> bool:
+        """Stop the current cloze deletion and send to cloze processor.
 
-        # TODO Log severe error if either of these asserts break
-        assert self.queue in ["local extract queue", "global extract queue"]
+        :returns: True on success else false.
+        """
+
+        assert self.queue in ["local extract queue",
+                              "global extract queue"]
         assert self.clozing
+        logger.info("Stopping the current cloze.")
 
         click_sound2()
 
         # Get filepath and timestamp of current extract
         cur_song = self.current_track()
-        cur_timestamp = float(cur_song['elapsed'])
-        filepath = cur_song['absolute_fp']
+        cur_timestamp = cur_song['elapsed']
+        filepath = cur_song['abs_fp']
 
         # Get extract from DB
-        extract = (session
-                   .query(ExtractFile)
-                   .filter_by(filepath=filepath)
-                   .one_or_none())
+        # TODO: Do you need to filter by outstanding?
+        extract: ExtractFile = (session
+                                .query(ExtractFile)
+                                .filter_by(filepath=filepath)
+                                .one_or_none())
 
         # Get the last inserted itemfile
-        # TODO add more error else's for the if statements
         if extract:
-            items = extract.items
+            items: List[ItemFile] = extract.items
+            # TODO: Is there a better way to get the last inserted
             last_item = max(items, key=lambda item: item.created_at)
             # Set the endstamp of the item
-            if last_item and last_item.cloze_startstamp:
-                if last_item.cloze_startstamp < cur_timestamp:
-                    last_item.cloze_endstamp = cur_timestamp
-                    session.commit()
-                    if self.queue == "local extract queue":
-                        self.load_local_extract_options()
-                    else:
-                        self.load_global_extract_options()
-
-                    # Send item to the cloze processor
-                    question, cloze = cloze_processor(last_item)
-                    if question and cloze:
-                        last_item.question_filepath = question
-                        last_item.cloze_filepath = cloze
+            if last_item:
+                if last_item.cloze_startstamp:
+                    if last_item.cloze_startstamp < cur_timestamp:
+                        last_item.cloze_endstamp = cur_timestamp
                         session.commit()
-        else:
-            # TODO Log severe errors like this
-            print("Couldn't find extract in DB")
+                        if self.queue == "local extract queue":
+                            self.load_local_extract_options()
+                        else:
+                            self.load_global_extract_options()
 
-    def archive_extract(self):
+                        # Send item to the cloze processor
+                        question, cloze = cloze_processor(last_item)
+                        if question and cloze:
+                            last_item.question_filepath = question
+                            last_item.cloze_filepath = cloze
+                            session.commit()
+                            logger.info("New cloze created.")
+                            return True
+                        else:
+                            logger.error("Cloze question or answer not returned from processor.")
+                else:
+                    logger.error("Attempted to stop a cloze without a startstamp.")
+                    return False
+            else:
+                logger.error("Couldn't find last item for this extract.")
+                return False
+        else:
+            logger.error("Couldn't find currently playing extract in DB.")
+            return False
+
+    def archive_extract(self) -> bool:
         """ Archive the current extract.
+
         Archived extracts will be deleted by a script (not at runtime)
         if they have no outstanding child items.
         Achived extracts with outstanding child items are deleted after export
         """
-        # TODO Log severe error
-        assert self.queue in ["local extract queue", "global extract queue"]
+        assert self.queue in ["local extract queue",
+                              "global extract queue"]
 
         # Get the currently playing extract
         cur_song = self.current_track()
-        filepath = cur_song['absolute_fp']
+        filepath = cur_song['abs_fp']
 
         # Find the extract in DB
-        extract = (session
-                   .query(ExtractFile)
-                   .filter_by(filepath=filepath)
-                   .one_or_none())
+        extract: ExtractFile = (session
+                                .query(ExtractFile)
+                                .filter_by(filepath=filepath)
+                                .one_or_none())
 
         # Archive the extract
         if extract:
-            load_beep()
             extract.archived = True
             session.commit()
-        else:
-            # TODO Log severe error
-            print("ERROR: Currently playing extract not "
-                  "found in the database")
+            load_beep()
+            logger.info("Archived extract.")
+            return True
+        logger.error("Currently playing extract not found in DB.")
+        return False
 
 
 if __name__ == "__main__":
-    """ When run as a top-level script, the
-    ExtractQueue can be tested in isolation
-    from TopicQueue and ItemQueue """
+    """Run the file to test the extract queue in isolation.
+    """
 
     extract_queue = ExtractQueue()
     extract_queue.get_global_extracts()
 
     # Create the main loop
-    while True:
-        r, w, x = select(controller.devices, [], [])
-        for fd in r:
-            for event in controller.devices[fd].read():
-                if event.value == 1:
-                    if event.code in audio_assistant.active_keys:
-                        audio_assistant.active_keys[event.code]()
-
-    # TODO Catch Exceptions
+    # TODO: Main Loop

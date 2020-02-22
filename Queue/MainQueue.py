@@ -10,23 +10,44 @@ from config import (KEY_A,
                     KEY_UP,
                     KEY_DOWN)
 from contextlib import ExitStack
+import logging
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter('%(levelname)s:%(name)s:%(funcName)s():%(message)s')
+
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(formatter)
+
+file_handler = logging.FileHandler("main_queue.log")
+file_handler.setFormatter(formatter)
+
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
 
 
 class MainQueue(TopicQueue, ExtractQueue, ItemQueue, object):
 
-    """Main AudioAssistant queue
+    """Main AudioAssistant queue with Topics, Extracts and Items.
     """
 
     def __init__(self):
 
         """
         :current_queue: The name of the current queue.
-        :clozing: True if currently clozing
-        :recording: True if currently recording
-        :active_keys: Functions available in current queue.
-        :extracting_keys: Functions available in extract queue.
-        :topic_keys: Functions available in topic queue.
-        :item_keys: Functions available in item queue.
+
+        :clozing: True if currently clozing.
+
+        :recording: True if currently recording.
+
+        :active_keys: Methods available in current queue.
+
+        :extracting_keys: Methods available in extract queue.
+
+        :topic_keys: Methods available in topic queue.
+
+        :item_keys: Methods available in item queue.
         """
 
         super().__init__()
@@ -55,6 +76,7 @@ class MainQueue(TopicQueue, ExtractQueue, ItemQueue, object):
         }
 
         # Add inter-queue keys to base queue keys
+        # TODO: Switch to Chain Maps for keys?
         self.extracting_keys: Dict[int, Callable] = {
                 **self.extracting_keys,
                 **self.extracting_inter_queue_keys
@@ -85,28 +107,32 @@ class MainQueue(TopicQueue, ExtractQueue, ItemQueue, object):
         self.recording = False
         self.active_keys = self.extracting_keys
         self.current_queue = "local extract queue"
+        espeak(self.current_queue)
+        logger.info("Loaded local extract options.")
 
-    def get_topic_extracts(self):
-        """ Get child extracts of the current topic.
+    def get_topic_extracts(self) -> bool:
+        """Get child extracts of the current topic.
         """
-        # TODO Log severe error if this assert breaks
         assert self.current_queue == "global topic queue"
+
+        logger.info("Getting topic's child extracts.")
 
         click_sound1()
 
         # Get filepath of current song
         cur_song = self.current_track()
-        filepath = cur_song['absolute_fp']
+        filepath = cur_song['abs_fp']
 
         # Find currently playing topic
-        topic = (session
-                 .query(TopicFile)
-                 .filter_by(filepath=filepath)
-                 .one_or_none())
+        topic: List[TopicFile] = (session
+                                  .query(TopicFile)
+                                  .filter_by(filepath=filepath)
+                                  .one_or_none())
 
         # Create list of mpd-recognised child extracts
         if topic:
-            extract_queue = []
+            # List of rel_fps
+            extract_queue: List[str] = []
             for extract in topic.extracts:
                 if not extract.archived:
                     rel_fp = self.abs_to_rel(extract.filepath)
@@ -115,52 +141,58 @@ class MainQueue(TopicQueue, ExtractQueue, ItemQueue, object):
             if extract_queue:
                 self.load_queue(extract_queue)
                 self.load_local_extract_options()
-                espeak(self.current_queue)
+                logger.info("Loaded local extract queue.")
+                return True
             else:
                 negative_beep()
-                print("No non-archived extracts found for this topic")
+                # TODO: add Topic information to the log message.
+                logger.info("No outstanding extracts found for topic.")
+                return False
         else:
-            # TODO Log severe errors like this one
-            print("ERROR: Currently playing Topic "
-                  "not found in the database")
+            logger.error("Currently playing topic not found in DB.")
+            return False
 
     #####################################
     # Extract (child) -> Topic (parent) #
     #####################################
 
-    def get_extract_topic(self):
+    def get_extract_topic(self) -> bool:
         """Get the parent topic of the currently playing extract.
+
         Places the parent topic first in the global topic queue.
-        Loads the global topic queue
+        Loads the global topic queue.
+
+        :returns: True on success else false.
         """
-        # TODO Log severe error if assert breaks
         assert self.current_queue in ["local extract queue",
                                       "global extract queue"]
+
+        logger.info("Getting extract's topic.")
 
         click_sound1()
 
         # Get filepath of current extract
         cur_song = self.current_track()
-        filepath = cur_song['absolute_fp']
+        filepath = cur_song['abs_fp']
 
         # Find extract in DB
-        extract = (session
-                   .query(ExtractFile)
-                   .filter_by(filepath=filepath)
-                   .one_or_none())
+        extract: ExtractFile = (session
+                                .query(ExtractFile)
+                                .filter_by(filepath=filepath)
+                                .one_or_none())
 
         # Get extract's parent topic
         if extract:
-            parent = extract.topic
+            parent: TopicFile = extract.topic
             if not parent.deleted:
                 parent_rel_fp = self.abs_to_rel(parent.filepath)
 
                 # Get outstanding topics
-                topics = (session
-                          .query(TopicFile)
-                          .filter_by(deleted=False)
-                          .filter_by(archived=False)
-                          .all())
+                topics: List[TopicFile] = (session
+                                           .query(TopicFile)
+                                           .filter_by(deleted=False)
+                                           .filter_by(archived=False)
+                                           .all())
                 topics = [
                             self.abs_to_rel(topic.filepath)
                             for topic in topics
@@ -180,51 +212,53 @@ class MainQueue(TopicQueue, ExtractQueue, ItemQueue, object):
                 # Load global topic queue
                 if self.load_queue(topics):
                     self.load_topic_options()
-                    espeak(self.current_queue)
                 # Seek to the startstamp of the child extract
                     with self.connection() if not self.connected() else ExitStack():
                         self.remove_stop_state()
                         self.client.seekcur(extract.startstamp)
+                    logger.info("Loaded global topic queue.")
+                    return True
                 else:
                     negative_beep()
-                    print("Error: Topics failed to load")
+                    logger.error("Call to load_queue failed.")
+                    return False
             else:
-                # TODO Log critical error - topic should not be deleted if it
-                # has outstanding extracts
                 negative_beep()
-                print("ERROR: Parent of extract {} already deleted!"
-                      .format(extract))
+                logger.error("Parent topic has outstanding extracts, but has been deleted.")
+                return False
         else:
-            # TODO Log severe error
-            print("Extract {} could not be found in the DB"
-                  .format(extract.filepath))
+            negative_beep()
+            logger.error("Extract could not be found in the DB")
+            return False
 
     ####################################
     # Extract (parent) -> Item (child) #
     ####################################
 
-    def get_extract_items(self):
-        """ Get child items of the current parent extract
-        Load local extract queue """
-        # TODO Log severe error if assert breaks
+    def get_extract_items(self) -> bool:
+        """Get child items of the current parent extract and load queue.
+        """
         assert self.current_queue in ["local extract queue",
                                       "global extract queue"]
+
+        logger.info("Getting child items.")
 
         click_sound1()
 
         # Get filepath of currently playing extract
         cur_song = self.current_track()
-        filepath = cur_song['absolute_fp']
+        filepath = cur_song['abs_fp']
 
         # Find extract in DB
-        extract = (session
-                   .query(ExtractFile)
-                   .filter_by(filepath=filepath)
-                   .one_or_none())
+        extract: ExtractFile = (session
+                                .query(ExtractFile)
+                                .filter_by(filepath=filepath)
+                                .one_or_none())
 
         # Find extract's outstanding child items
         if extract:
-            extract_items = extract.items
+            extract_items: List[ItemFile] = extract.items
+            # List of rel_fps
             item_queue: List[str] = []
             for item in extract_items:
                 if item.question_filepath and not item.archived:
@@ -234,17 +268,19 @@ class MainQueue(TopicQueue, ExtractQueue, ItemQueue, object):
             if item_queue:
                 if self.load_queue(item_queue):
                     self.load_local_item_options()
-                    espeak(self.current_queue)
+                    logger.info("Loaded local item queue.")
+                    return True
                 else:
                     negative_beep()
-                    print("Error: Failed to load items")
+                    logger.error("Call to load_queue failed.")
+                    return False
             else:
                 negative_beep()
-                print("No child items found for extract {}"
-                      .format(extract))
+                logger.error("No child items found for extract.")
+                return False
         else:
-            # TODO Log severe error
-            print("ERROR: Extract not found in DB")
+            logger.error("Extract was not found in DB.")
+            return False
 
     def load_local_item_options(self):
         """Set state options for "local item queue".
@@ -257,40 +293,47 @@ class MainQueue(TopicQueue, ExtractQueue, ItemQueue, object):
         self.current_queue = "local item queue"
         self.clozing = False
         self.recording = False
+        logger.info("Loaded local item options.")
+        espeak(self.current_queue)
 
     ####################################
     # Item (child) -> Extract (parent) #
     ####################################
 
-    def get_item_extract(self):
+    def get_item_extract(self) -> bool:
         """Get the extract parent of the currently playing Item.
         Get the topic parent of the extract.
         Create a local extract queue.
         Load global extract queue.
+
+        :returns: True on success else false.
         """
-        # TODO Log severe error if broken
-        assert self.current_queue in ["local item queue", "global item queue"]
+        assert self.current_queue in ["local item queue",
+                                      "global item queue"]
+
+        logger.info("Getting extract of current item.")
 
         click_sound1()
 
         # get the filepath of the currently playing item
         cur_song = self.current_track()
-        filepath = cur_song['absolute_fp']
+        filepath = cur_song['abs_fp']
 
         # Find item in the DB
-        item = (session
-                .query(ItemFile)
-                .filter_by(question_filepath=filepath)
-                .one_or_none())
+        item: ItemFile = (session
+                          .query(ItemFile)
+                          .filter_by(question_filepath=filepath)
+                          .one_or_none())
 
         # Get the item's parent extract
         if item:
-            parent = item.extract
+            parent: ExtractFile = item.extract
             if not parent.deleted:
                 # Get the extract's parent topic
-                topic = parent.topic
-                local_extracts = topic.extracts
+                topic: TopicFile = parent.topic
+                local_extracts: List[ExtractFile] = topic.extracts
                 parent_extract_fp = self.abs_to_rel(parent.filepath)
+                # List of rel_fps.
                 extract_queue: List[str] = [
                                         self.abs_to_rel(extract.filepath)
                                         for extract in local_extracts
@@ -300,14 +343,19 @@ class MainQueue(TopicQueue, ExtractQueue, ItemQueue, object):
                 # Move parent extract to the front and load playlist
                 extract_queue.remove(parent_extract_fp)
                 extract_queue.insert(0, parent_extract_fp)
-                self.load_queue(extract_queue)
-                self.load_local_extract_options()
-                espeak(self.current_queue)
+                if self.load_queue(extract_queue):
+                    self.load_local_extract_options()
+                    logger.info("Loaded local extract queue.")
+                    return True
+                else:
+                    negative_beep()
+                    logger.error("Call to load_queue failed.")
+                    return False
             else:
-                # TODO Log critical error
                 negative_beep()
-                print("ERROR: {} is an orphan. Extract already deleted"
-                      .format(item))
+                logger.error("Item has no undeleted parent extract.")
+                return False
         else:
-            # TODO Log severe error
-            print("ERROR: Item not found in DB.")
+            negative_beep()
+            logger.error("Currently playing item not found in DB.")
+            return False

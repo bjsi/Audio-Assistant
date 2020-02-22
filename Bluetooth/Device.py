@@ -86,7 +86,7 @@ class BTController(BTDevice):
         self.keys = CONTROLLER['keys']
         self.input_devices = map(InputDevice,
                                  CONTROLLER['input_devices'])
-    
+
     def load_devices(self):
         if self.is_connected():
             self.devices = {device.fd: device
