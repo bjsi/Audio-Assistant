@@ -125,7 +125,7 @@ class Mpd(object):
         logger.debug("Toggled play / pause.")
 
     # TODO: Better typing on the return dict
-    def current_track(self) -> Dict[str, str, float]:
+    def current_track(self) -> Dict:
         """Get the currently playing track.
 
         :returns: rel_fp, abs_fp and time elapsed (float).
