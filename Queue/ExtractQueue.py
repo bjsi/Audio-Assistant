@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Callable, List, Literal
+from typing import Dict, Callable, List
 from config import EXTRACTFILES_DIR
 from MPD.MpdBase import Mpd
 from models import ExtractFile, ItemFile, session
