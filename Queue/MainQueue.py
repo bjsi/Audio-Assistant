@@ -250,8 +250,8 @@ class MainQueue(TopicQueue, ExtractQueue, ItemQueue, object):
         """Set state options for "local item queue".
         """
         # Set playback options
-        self.client.repeat(1)
-        self.client.single(1)
+        self.repeat(1)
+        self.single(1)
         # Set state information options
         self.active_keys = self.item_keys
         self.current_queue = "local item queue"

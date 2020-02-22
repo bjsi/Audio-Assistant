@@ -85,7 +85,7 @@ class ExtractQueue(Mpd, object):
                 if self.mpd_recognised(rel_fp):
                     extract_queue.append(rel_fp)
             if extract_queue:
-                self.load_playlist(extract_queue)
+                self.load_queue(extract_queue)
                 self.load_global_extract_options()
                 espeak(self.queue)
             else:
