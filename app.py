@@ -8,14 +8,17 @@ from Bluetooth.Device import (BTHeadphones,
                               BTController)
 import subprocess
 from Sounds.sounds import espeak, negative_beep
+from Queue.QueueBase import QueueBase
 
 
-def main_loop():
+def main_loop(queue: QueueBase):
     """Set up the main loop for the controller.
     Reads key codes and values from the connected
     device and executes the associated commands in the
     AudioAssistant active_keys dict.
     """
+    # TODO: What if this returns False?
+    queue.load_initial_queue()
     context = pyudev.Context()
     monitor = pyudev.Monitor.from_netlink(context)
     # headphones and controller both in the input subsystem
@@ -75,6 +78,6 @@ def main_loop():
 
 
 if __name__ == "__main__":
+    # Change queue to an individual queue to test in isolation.
     queue = MainQueue()
-    queue.get_global_topics()
-    main_loop()
+    main_loop(queue)

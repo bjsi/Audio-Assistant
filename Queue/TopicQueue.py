@@ -2,14 +2,12 @@ import os
 import time
 import subprocess
 from typing import Dict, List, Callable
-from config import (TOPICFILES_DIR,
-                    EXTRACTFILES_DIR,
+from config import (EXTRACTFILES_DIR,
                     EXTRACTFILES_EXT,
                     RECORDING_SINK)
 from MPD.MpdBase import Mpd
 from models import TopicFile, ExtractFile, session
-from Sounds.sounds import (negative_beep,
-                           espeak,
+from Sounds.sounds import (espeak,
                            click_sound1,
                            load_beep)
 from config import (KEY_X,
@@ -23,6 +21,7 @@ from config import (KEY_X,
                     KEY_MENU)
 from contextlib import ExitStack
 import logging
+from Queue.QueueBase import QueueBase
 
 
 logger = logging.getLogger(__name__)
@@ -39,14 +38,14 @@ logger.addHandler(file_handler)
 logger.addHandler(console_handler)
 
 
-class TopicQueue(Mpd, object):
+class TopicQueue(Mpd, QueueBase, object):
 
     """Extends core mpd functions for the Topic queue.
     """
 
     def __init__(self):
         """
-        :queue: Name of the current queue.
+        :current_queue: Name of the current queue.
 
         :active_keys: Methods available in current queue.
 
@@ -64,6 +63,9 @@ class TopicQueue(Mpd, object):
         self.active_keys: Dict[int, Callable] = {}
         self.recording: bool = False
         self.clozing: bool = False
+
+        # Set the initial load queue method.
+        self.load_initial_queue = self.get_global_topics
 
         # Keys
         self.topic_keys: Dict[int, Callable] = {
@@ -130,15 +132,13 @@ class TopicQueue(Mpd, object):
                                       for topic in topics
                                      ]
             if self.load_queue(topic_queue):
-                self.load_topic_options()
                 logger.info("Loaded global topic queue.")
+                self.load_topic_options()
                 return True
             else:
-                negative_beep()
                 logger.info("Call to load_queue failed.")
                 return False
         else:
-            negative_beep()
             logger.info("No outstanding topics found in DB.")
             return False
 
@@ -146,8 +146,6 @@ class TopicQueue(Mpd, object):
         """Start recording a new extract from a topic.
         """
         assert self.current_queue == "global topic queue"
-
-        logger.info("Started recording")
 
         click_sound1()
 
@@ -172,9 +170,11 @@ class TopicQueue(Mpd, object):
                           RECORDING_SINK,
                           extract_fp], shell=False)
 
+        logger.info("Started a parecord subprocess.")
         self.load_recording_options()
 
         # Add the extract as a child of the topic
+        # TODO: What if abs_fp returns None?
         source_topic_fp = cur_song['abs_fp']
         timestamp = cur_song['elapsed']
         topic: TopicFile = (session
@@ -238,6 +238,7 @@ class TopicQueue(Mpd, object):
         click_sound1()
 
         # Get information on the next file
+        # TODO: What if abs_fp is None.
         # TODO Do I need to remove stop state here?
         cur_song = self.current_track()
         filepath = cur_song['abs_fp']
@@ -265,6 +266,7 @@ class TopicQueue(Mpd, object):
         self.previous()
         click_sound1()
 
+        # TODO: What if abs_fp is None
         # Get information on the previous file
         cur_song = self.current_track()
         filepath = cur_song['abs_fp']
@@ -311,13 +313,3 @@ class TopicQueue(Mpd, object):
             return True
         logger.error("Currently playing topic could not in DB.")
         return False
-
-
-if __name__ == "__main__":
-    """Run this script to test the topic queue in isolation.
-    """
-
-    topic_queue = TopicQueue()
-    topic_queue.get_global_topics()
-
-    # TODO: Add loop

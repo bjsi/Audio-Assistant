@@ -5,6 +5,10 @@ import os
 from models import ExtractFile, ItemFile, session
 
 
+# TODO: Convert this into a class, add logging.
+# TODO: Consider using the python ffmpeg package.
+
+
 def cloze_processor(item):
     # the parent extract
     extract = item.extract

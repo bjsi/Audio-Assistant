@@ -4,6 +4,7 @@ import time
 from models import session, ExtractFile
 from config import *
 
+
 def vtt_to_text(subs_file):
     vtt = webvtt.read(subs_file)
     transcript = ""

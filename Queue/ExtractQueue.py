@@ -1,11 +1,8 @@
-import os
 from typing import Dict, Callable, List
-from config import EXTRACTFILES_DIR
 from MPD.MpdBase import Mpd
 from models import ExtractFile, ItemFile, session
 from .extract_funcs import cloze_processor
-from Sounds.sounds import (negative_beep,
-                           espeak,
+from Sounds.sounds import (espeak,
                            click_sound1,
                            click_sound2,
                            load_beep)
@@ -17,10 +14,9 @@ from config import (KEY_X,
                     KEY_LEFT,
                     KEY_DOWN,
                     KEY_OK,
-                    KEY_MENU,
-                    GAME_X)
-from contextlib import ExitStack
+                    KEY_MENU)
 import logging
+from Queue.QueueBase import QueueBase
 
 
 logger = logging.getLogger(__name__)
@@ -37,7 +33,7 @@ logger.addHandler(file_handler)
 logger.addHandler(console_handler)
 
 
-class ExtractQueue(Mpd, object):
+class ExtractQueue(Mpd, QueueBase, object):
 
     """Extends core mpd functions for the Extract Queue
     """
@@ -60,10 +56,13 @@ class ExtractQueue(Mpd, object):
         super().__init__()
 
         # State
-        self.queue: str = "global extract queue"
+        self.current_queue: str = "global extract queue"
         self.active_keys: Dict[int, Callable] = {}
         self.recording: bool = False
         self.clozing: bool = False
+
+        # Set the initial queue method.
+        self.load_initial_queue = self.get_global_extracts
 
         # Keycodes mapped to methods for extracting.
         self.extracting_keys: Dict[int, Callable] = {
@@ -110,26 +109,26 @@ class ExtractQueue(Mpd, object):
                     extract_queue.append(rel_fp)
             if extract_queue:
                 if self.load_queue(extract_queue):
-                    self.load_global_extract_options()
                     logger.info("Loaded global extract queue.")
+                    self.load_global_extract_options()
                     return True
                 else:
                     logger.info("Call to load_queue failed.")
                     return False
             else:
                 logger.info("No MPD-recognised outstanding extracts found.")
-                espeak("No extracts found.")
+                espeak("No extracts.")
                 return False
         else:
             logger.info("No extracts found in DB.")
-            espeak("No extracts found.")
+            espeak("No extracts.")
             return False
 
     def load_cloze_options(self):
         """Set the state options for when clozing.
         """
-        assert self.queue in ["global extract queue",
-                              "local extract queue"]
+        assert self.current_queue in ["global extract queue",
+                                      "local extract queue"]
         # Set playback options
         self.repeat(1)
         self.single(1)
@@ -143,26 +142,26 @@ class ExtractQueue(Mpd, object):
         """Set the state options for global extract queue.
         """
         # Set playback options
-        with self.connection() if not self.connected() else ExitStack():
-            self.repeat(1)
-            self.single(1)
+        self.repeat(1)
+        self.single(1)
         # Set state information and keys
         self.clozing = False
         self.recording = False
         self.active_keys = self.extracting_keys
-        self.queue = "global extract queue"
+        self.current_queue = "global extract queue"
         logger.info("Loaded global extract queue options.")
-        espeak(self.queue)
+        espeak(self.current_queue)
 
     def start_clozing(self) -> bool:
         """Start a cloze deletion on an extract
         """
-        assert self.queue in ["local extract queue",
-                              "global extract queue"]
+        assert self.current_queue in ["local extract queue",
+                                      "global extract queue"]
         assert not self.clozing
 
         click_sound1()
-
+        
+        # TODO: What if abs_fp is None
         # Get the currently playing extract
         cur_song = self.current_track()
         cur_timestamp = cur_song['elapsed']
@@ -182,7 +181,6 @@ class ExtractQueue(Mpd, object):
             logger.info("Started clozing.")
             return True
         logger.error("Couldn't find currently playing extract in DB.")
-        negative_beep()
         return False
 
     def stop_clozing(self) -> bool:
@@ -190,21 +188,19 @@ class ExtractQueue(Mpd, object):
 
         :returns: True on success else false.
         """
-
-        assert self.queue in ["local extract queue",
-                              "global extract queue"]
+        assert self.current_queue in ["local extract queue",
+                                      "global extract queue"]
         assert self.clozing
-        logger.info("Stopping the current cloze.")
 
         click_sound2()
 
+        # TODO: What if abs_fp is None
         # Get filepath and timestamp of current extract
         cur_song = self.current_track()
         cur_timestamp = cur_song['elapsed']
         filepath = cur_song['abs_fp']
 
         # Get extract from DB
-        # TODO: Do you need to filter by outstanding?
         extract: ExtractFile = (session
                                 .query(ExtractFile)
                                 .filter_by(filepath=filepath)
@@ -221,7 +217,8 @@ class ExtractQueue(Mpd, object):
                     if last_item.cloze_startstamp < cur_timestamp:
                         last_item.cloze_endstamp = cur_timestamp
                         session.commit()
-                        if self.queue == "local extract queue":
+                        logger.info("Stopped the current cloze.")
+                        if self.current_queue == "local extract queue":
                             self.load_local_extract_options()
                         else:
                             self.load_global_extract_options()
@@ -240,7 +237,7 @@ class ExtractQueue(Mpd, object):
                     logger.error("Attempted to stop a cloze without a startstamp.")
                     return False
             else:
-                logger.error("Couldn't find last item for this extract.")
+                logger.error("Couldn't find last created item for this extract.")
                 return False
         else:
             logger.error("Couldn't find currently playing extract in DB.")
@@ -253,9 +250,10 @@ class ExtractQueue(Mpd, object):
         if they have no outstanding child items.
         Achived extracts with outstanding child items are deleted after export
         """
-        assert self.queue in ["local extract queue",
-                              "global extract queue"]
-
+        assert self.current_queue in ["local extract queue",
+                                      "global extract queue"]
+        
+        # TODO: What if abs_fp returns None
         # Get the currently playing extract
         cur_song = self.current_track()
         filepath = cur_song['abs_fp']
@@ -275,14 +273,3 @@ class ExtractQueue(Mpd, object):
             return True
         logger.error("Currently playing extract not found in DB.")
         return False
-
-
-if __name__ == "__main__":
-    """Run the file to test the extract queue in isolation.
-    """
-
-    extract_queue = ExtractQueue()
-    extract_queue.get_global_extracts()
-
-    # Create the main loop
-    # TODO: Main Loop

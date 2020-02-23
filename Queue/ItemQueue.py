@@ -1,17 +1,14 @@
-import os
-from config import QUESTIONFILES_DIR
 from typing import List, Dict, Callable
 from Sounds.sounds import espeak
 from MPD.MpdBase import Mpd
 from models import ItemFile, session
-from Sounds.sounds import (negative_beep,
-                           load_beep)
+from Sounds.sounds import load_beep
 from config import (KEY_X,
                     KEY_B,
                     KEY_Y,
-                    KEY_MENU,
-                    GAME_X)
+                    KEY_MENU)
 import logging
+from Queue.QueueBase import QueueBase
 
 
 logger = logging.getLogger(__name__)
@@ -28,7 +25,7 @@ logger.addHandler(file_handler)
 logger.addHandler(console_handler)
 
 
-class ItemQueue(Mpd, object):
+class ItemQueue(Mpd, QueueBase, object):
 
     """Extends core mpd functions for the Item queue.
     """
@@ -53,6 +50,9 @@ class ItemQueue(Mpd, object):
         self.active_keys: Dict[int, Callable] = {}
         self.clozing: bool = False
         self.recording: bool = False
+
+        # Set initial queue method.
+        self.load_initial_queue = self.get_global_items
 
         # Keys
         self.item_keys: Dict[int, Callable] = {
@@ -84,8 +84,8 @@ class ItemQueue(Mpd, object):
                     item_queue.append(rel_fp)
             if item_queue:
                 if self.load_queue(item_queue):
-                    self.load_global_item_options()
                     logger.info("Loaded a global item queue.")
+                    self.load_global_item_options()
                     return True
                 else:
                     logger.error("Call to load_queue failed.")
@@ -119,15 +119,17 @@ class ItemQueue(Mpd, object):
         """
         assert self.current_queue in ["local item queue",
                                       "global item queue"]
+
+        # TODO: What if abs_fp returns None
         # Get the currently playing item
         cur_song = self.current_track()
         filepath = cur_song['abs_fp']
 
         # Find the item in DB
-        item = (session
-                .query(ItemFile)
-                .filter_by(question_filepath=filepath)
-                .one_or_none())
+        item: ItemFile = (session
+                          .query(ItemFile)
+                          .filter_by(question_filepath=filepath)
+                          .one_or_none())
 
         # Archive the item
         if item:
@@ -138,13 +140,3 @@ class ItemQueue(Mpd, object):
             return True
         logger.error("Currently playing item not found in DB.")   
         return False
-
-
-if __name__ == "__main__":
-    """Run this file to test item queue in isolation.
-    """
-
-    item_queue = ItemQueue()
-    item_queue.get_global_items()
-
-    # TODO add Main Queue.

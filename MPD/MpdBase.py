@@ -6,7 +6,7 @@ from config import HOST
 from config import PORT
 from config import AUDIOFILES_BASEDIR
 from contextlib import contextmanager, ExitStack
-from typing import List, Dict
+from typing import List, Dict, Optional
 import logging
 
 
@@ -45,10 +45,12 @@ class Mpd(object):
         """
         try:
             self.client.connect(self.host, self.port)
+            logger.debug("Connected to MPD server.")
             yield
         finally:
             self.client.close()
             self.client.disconnect()
+            logger.debug("Disconnected from MPD server.")
 
     @staticmethod
     def abs_to_rel(abs_fp: str) -> str:
@@ -100,7 +102,7 @@ class Mpd(object):
                 self.client.clear()
                 for file in queue:
                     self.client.add(file)
-            logger.info("Loaded a new queue.")
+            logger.info(f"Loaded a new queue with {len(queue)} tracks.")
             return True
         return False
 
@@ -114,7 +116,6 @@ class Mpd(object):
             if state == 'stop':
                 self.client.play()
                 self.client.pause(1)
-                logger.debug("Removed MPD stop state.")
 
     def toggle(self) -> None:
         """Toggle between play and pause.
@@ -136,17 +137,16 @@ class Mpd(object):
             self.remove_stop_state()
             cur_song = self.client.currentsong()
             status = self.client.status()
-            # TODO: What if rel_fp returns None.
-            rel_fp = cur_song.get('file', None)
+            rel_fp: Optional[str] = cur_song.get('file', None)
             # Get abs_fp of current track
-            abs_fp = self.rel_to_abs(rel_fp)
+            abs_fp: Optional[str] = self.rel_to_abs(rel_fp) if rel_fp else None
             # Get elapsed of current track
-            elapsed = status.get('elapsed', 0.0)
+            elapsed = float(status.get('elapsed', 0.0))
 
             return {
                     'rel_fp': rel_fp,
                     'abs_fp': abs_fp,
-                    'elapsed': float(elapsed)
+                    'elapsed': elapsed
                    }
 
     def previous(self) -> None:
@@ -250,11 +250,9 @@ class Mpd(object):
         """
         with self.connection() if not self.connected() else ExitStack():
             self.client.repeat(state)
-        logger.debug(f"Repeat state changed to {state}.")
 
     def single(self, state: int):
         """Single if 1, not single if 0.
         """
         with self.connection() if not self.connected() else ExitStack():
             self.client.single(state)
-        logger.debug(f"Single state changed to {state}.")
