@@ -11,11 +11,20 @@ from Sounds.sounds import espeak, negative_beep
 from Queue.QueueBase import QueueBase
 
 
+# TODO: Logging
+# Log keypress / keycodes
+# Log command failure
+
+# TODO: Add better comments.
+
 def main_loop(queue: QueueBase):
-    """Set up the main loop for the controller.
-    Reads key codes and values from the connected
-    device and executes the associated commands in the
-    AudioAssistant active_keys dict.
+    """Main entry point for Audio Assistant.
+    
+    Reads key codes from the controller and executes mapped command.
+
+    Allows reconnection of both controller and headphones*.
+
+    * Requires that they are trusted in bluetoothctl.
     """
     # TODO: What if this returns False?
     queue.load_initial_queue()
@@ -44,6 +53,7 @@ def main_loop(queue: QueueBase):
                         # when controller added 4 events occur
                         break
                     if udev.action == u'remove':
+                        # TODO: Find a better way to identify devices.
                         if udev.get('DEVPATH') and "virtual" in udev.get("DEVPATH"):
                             print("Headphones disconnected")
                             # Restart pulseaudio so headphones work
@@ -54,7 +64,8 @@ def main_loop(queue: QueueBase):
                             print("Controller Removed")
                         print(f'Device removed: {udev}')
                         # Remove the fd from the fds dict
-                        # avoid dict size changed error
+                        # Uses a copy of the dict to avoid
+                        # dict size changed while iterating error
                         d = {k: v for k, v in fds.items()}
                         for fd in d:
                             if d[fd] is not monitor:
@@ -69,6 +80,7 @@ def main_loop(queue: QueueBase):
                     for event in dev["dev"].read():
                         if event.value == 1 and event.code in queue.active_keys:
                             # Failed commands return False
+                            # TODO: Log the keypress / key name
                             if queue.active_keys[event.code]() is False:
                                 negative_beep()
             
