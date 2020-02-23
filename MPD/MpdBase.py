@@ -135,6 +135,7 @@ class Mpd(object):
         with self.connection() if not self.connected() else ExitStack():
             # Get rel_fp of current track
             self.remove_stop_state()
+            # if there is no currentsong, returns an empty dict
             cur_song = self.client.currentsong()
             status = self.client.status()
             rel_fp: Optional[str] = cur_song.get('file', None)

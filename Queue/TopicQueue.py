@@ -54,6 +54,8 @@ class TopicQueue(Mpd, QueueBase, object):
         :clozing: True if clozing.
 
         :topic_keys: Methods available in current queue.
+        
+        :load_initial_queue: The initial queue method for this queue.
         """
 
         super().__init__()
@@ -137,97 +139,108 @@ class TopicQueue(Mpd, QueueBase, object):
                 return True
             else:
                 logger.info("Call to load_queue failed.")
-                return False
         else:
             logger.info("No outstanding topics found in DB.")
-            return False
+        return False
 
     def start_recording(self) -> bool:
         """Start recording a new extract from a topic.
         """
         assert self.current_queue == "global topic queue"
+        assert self.recording is False
+
+        # TODO: check that there is no outstanding parecord process.
 
         click_sound1()
 
         # Get filename of current topic
         cur_song = self.current_track()
-        basename = os.path.basename(cur_song['abs_fp'])
+        filepath = cur_song["abs_fp"]
 
-        # create extract filepath
-        # /home/pi ... /extractfiles/<name-epoch time->.wav
-        extract_fp = os.path.join(EXTRACTFILES_DIR,
-                                  os.path.splitext(basename)[0] +
-                                  "-" +
-                                  str(int(time.time())) +
-                                  EXTRACTFILES_EXT)
+        if filepath:
+            basename = os.path.basename(filepath)
+            source_topic_fp = filepath
+            timestamp = cur_song['elapsed']
 
-        # TODO consider changing to ffmpeg
-        # TODO check the exit code of the subprocess
-        # Start parecord process and load recording options
-        subprocess.Popen(['parecord',
-                          '--channels=1',
-                          '-d',
-                          RECORDING_SINK,
-                          extract_fp], shell=False)
+            topic: TopicFile = (session
+                                .query(TopicFile)
+                                .filter_by(filepath=source_topic_fp)
+                                .one_or_none())
+            if topic:
+                # create extract filepath
+                # /home/pi ... /extractfiles/<name-epoch time->.wav
+                extract_fp = os.path.join(EXTRACTFILES_DIR,
+                                          os.path.splitext(basename)[0] +
+                                          "-" +
+                                          str(int(time.time())) +
+                                          EXTRACTFILES_EXT)
 
-        logger.info("Started a parecord subprocess.")
-        self.load_recording_options()
+                # TODO: Add a 2 minute (?) timeout
+                # Start parecord process and load recording options
+                try:
+                    subprocess.Popen(['parecord',
+                                      '--channels=1',
+                                      '-d',
+                                      RECORDING_SINK,
+                                      extract_fp], shell=False)
+                except OSError as e:
+                    logger.error(f"Failed to lauch parecord subprocess with exception {e}.")
+                    return False
 
-        # Add the extract as a child of the topic
-        # TODO: What if abs_fp returns None?
-        source_topic_fp = cur_song['abs_fp']
-        timestamp = cur_song['elapsed']
-        topic: TopicFile = (session
-                            .query(TopicFile)
-                            .filter_by(filepath=source_topic_fp)
-                            .one_or_none())
-        if topic:
-            extract: ExtractFile = ExtractFile(filepath=extract_fp,
-                                               startstamp=timestamp)
-            topic.extracts.append(extract)
-            session.commit()
-            logger.info("Created a new extract.")
-            return True
+                logger.info("Started a parecord subprocess.")
+                self.load_recording_options()
 
-        logger.error("Currently playing topic not found in DB.")
+                # Add the extract as a child of the topic
+                # TODO: What if abs_fp returns None?
+                extract: ExtractFile = ExtractFile(filepath=extract_fp,
+                                                   startstamp=timestamp)
+                topic.extracts.append(extract)
+                session.commit()
+                logger.info("Started a new extract in DB.")
+                return True
+            else:
+                logger.error("Currently playing topic not found in DB.")
+        else:
+            logger.error("No currently playing track")
         return False
 
     def stop_recording(self) -> bool:
         """Stop the current recording.
         """
+        assert self.current_queue == "global topic queue"
         assert self.recording is True
 
         # Get current song info
         cur_track = self.current_track()
+        if cur_track["abs_fp"]:
+            # Kill the active parecord process
+            child = subprocess.Popen(['pkill', 'parecord'],
+                                      stdout=subprocess.PIPE,
+                                      shell=False)
 
-        # Kill the active parecord process
-        child = subprocess.Popen(['pkill', 'parecord'],
-                                 stdout=subprocess.PIPE,
-                                 shell=False)
+            # If return code is 0, a parecord process was killed
+            response = child.communicate()[0]
+            if child.returncode == 0:
+                espeak("rec stop")
+                self.load_topic_options()
 
-        # TODO Check if this is correct
-        # If return code is 0, a parecord process was killed
-        response = child.communicate()[0]
-        if child.returncode == 0:
-            espeak("rec stop")
-            self.load_topic_options()
-
-            # Get the last inserted extract
-            extract: ExtractFile = (session
-                                    .query(ExtractFile)
-                                    .order_by(ExtractFile.created_at.desc())
-                                    .first())
-            if extract:
-                extract.endstamp = cur_track['elapsed']
-                session.commit()
-                logger.info("Stopped recording.")
-                return True
+                # Get the last inserted extract
+                extract: ExtractFile = (session
+                                        .query(ExtractFile)
+                                        .order_by(ExtractFile.created_at.desc())
+                                        .first())
+                if extract:
+                    extract.endstamp = cur_track['elapsed']
+                    session.commit()
+                    logger.info("Stopped recording.")
+                    return True
+                else:
+                    logger.error("Currently recording extract not found in DB.")
             else:
-                logger.error("Currently recording extract not found in DB.")
-                return False
+                logger.error("There was no active parecord process to stop.")
         else:
-            logger.error("There was no active parecord process to stop.")
-            return False
+            logger.error("No currently playing track.")
+        return False
 
     def next_topic(self) -> bool:
         """ Go to the next topic in the queue at the lastest timestamp.
@@ -238,24 +251,26 @@ class TopicQueue(Mpd, QueueBase, object):
         click_sound1()
 
         # Get information on the next file
-        # TODO: What if abs_fp is None.
-        # TODO Do I need to remove stop state here?
         cur_song = self.current_track()
         filepath = cur_song['abs_fp']
 
-        # Find the topic in the DB
-        topic: TopicFile = (session
-                            .query(TopicFile)
-                            .filter_by(filepath=filepath)
-                            .one_or_none())
+        if filepath:
+            # Find the topic in the DB
+            topic: TopicFile = (session
+                                .query(TopicFile)
+                                .filter_by(filepath=filepath)
+                                .one_or_none())
 
-        # Seek to the current timestamp
-        if topic:
-            with self.connection() if not self.connected() else ExitStack():
-                self.client.seekcur(float(topic.cur_timestamp))
-            logger.info("Playing the next topic.")
-            return True
-        logger.error("Currently playing Topic not in DB.")
+            # Seek to the current timestamp
+            if topic:
+                with self.connection() if not self.connected() else ExitStack():
+                    self.client.seekcur(float(topic.cur_timestamp))
+                logger.info("Playing the next topic.")
+                return True
+            else:
+                logger.error("Currently playing Topic not in DB.")
+        else:
+            logger.error("There is no currently playing track.")
         return False
 
     def prev_topic(self) -> bool:
@@ -266,24 +281,27 @@ class TopicQueue(Mpd, QueueBase, object):
         self.previous()
         click_sound1()
 
-        # TODO: What if abs_fp is None
         # Get information on the previous file
         cur_song = self.current_track()
         filepath = cur_song['abs_fp']
 
-        # Find the topic in the DB
-        topic: TopicFile = (session
-                            .query(TopicFile)
-                            .filter_by(filepath=filepath)
-                            .one_or_none())
+        if filepath:
+            # Find the topic in the DB
+            topic: TopicFile = (session
+                                .query(TopicFile)
+                                .filter_by(filepath=filepath)
+                                .one_or_none())
 
-        # Seek to the current timestamp
-        if topic:
-            with self.connection() if not self.connected() else ExitStack():
-                self.client.seekcur(float(topic.cur_timestamp))
-            logger.info("Playing the next topic.")
-            return True
-        logger.error("Currently playing Topic not in DB")
+            # Seek to the current timestamp
+            if topic:
+                with self.connection() if not self.connected() else ExitStack():
+                    self.client.seekcur(float(topic.cur_timestamp))
+                logger.info("Playing the next topic.")
+                return True
+            else:
+                logger.error("Currently playing Topic not in DB")
+        else:
+            logger.error("No currently playing track.")
         return False
 
     def archive_topic(self) -> bool:
@@ -298,18 +316,22 @@ class TopicQueue(Mpd, QueueBase, object):
         cur_song = self.current_track()
         filepath = cur_song['abs_fp']
 
-        # Find topic in DB
-        topic: TopicFile = (session
-                            .query(TopicFile)
-                            .filter_by(filepath=filepath)
-                            .one_or_none())
+        if filepath:
+            # Find topic in DB
+            topic: TopicFile = (session
+                                .query(TopicFile)
+                                .filter_by(filepath=filepath)
+                                .one_or_none())
 
-        # Archive the Topic
-        if topic:
-            load_beep()
-            topic.archived = 1
-            session.commit()
-            logger.info("Archived a topic.")
-            return True
-        logger.error("Currently playing topic could not in DB.")
+            # Archive the Topic
+            if topic:
+                load_beep()
+                topic.archived = 1
+                session.commit()
+                logger.info("Archived a topic.")
+                return True
+            else:
+                logger.error("Currently playing topic could not in DB.")
+        else:
+            logger.error("No currently playing track.")
         return False

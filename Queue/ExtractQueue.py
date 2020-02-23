@@ -40,7 +40,7 @@ class ExtractQueue(Mpd, QueueBase, object):
 
     def __init__(self):
         """
-        :queue: Name of the current queue.
+        :current_queue: Name of the current queue.
 
         :active_keys: Currently available methods.
 
@@ -51,6 +51,8 @@ class ExtractQueue(Mpd, QueueBase, object):
         :extracting_keys: Methods available while extracting.
 
         :clozing_keys: Methods available while clozing.
+
+        :load_initial_queue: The initial queue method for this queue.
         """
 
         super().__init__()
@@ -114,15 +116,11 @@ class ExtractQueue(Mpd, QueueBase, object):
                     return True
                 else:
                     logger.info("Call to load_queue failed.")
-                    return False
             else:
                 logger.info("No MPD-recognised outstanding extracts found.")
-                espeak("No extracts.")
-                return False
         else:
             logger.info("No extracts found in DB.")
-            espeak("No extracts.")
-            return False
+        return False
 
     def load_cloze_options(self):
         """Set the state options for when clozing.
@@ -161,26 +159,30 @@ class ExtractQueue(Mpd, QueueBase, object):
 
         click_sound1()
         
-        # TODO: What if abs_fp is None
         # Get the currently playing extract
         cur_song = self.current_track()
         cur_timestamp = cur_song['elapsed']
         filepath = cur_song['abs_fp']
 
-        # Find the extract in DB
-        extract: ExtractFile = (session
-                                .query(ExtractFile)
-                                .filter_by(filepath=filepath)
-                                .one_or_none())
+        if filepath:
 
-        # Add a new child item to the extract
-        if extract:
-            extract.items.append(ItemFile(cloze_startstamp=cur_timestamp))
-            session.commit()
-            self.load_cloze_options()
-            logger.info("Started clozing.")
-            return True
-        logger.error("Couldn't find currently playing extract in DB.")
+            # Find the extract in DB
+            extract: ExtractFile = (session
+                                    .query(ExtractFile)
+                                    .filter_by(filepath=filepath)
+                                    .one_or_none())
+
+            # Add a new child item to the extract
+            if extract:
+                extract.items.append(ItemFile(cloze_startstamp=cur_timestamp))
+                session.commit()
+                self.load_cloze_options()
+                logger.info("Started clozing.")
+                return True
+            else:
+                logger.error("Couldn't find currently playing extract in DB.")
+        else:
+            logger.error("No currently playing track.")
         return False
 
     def stop_clozing(self) -> bool:
@@ -194,57 +196,61 @@ class ExtractQueue(Mpd, QueueBase, object):
 
         click_sound2()
 
-        # TODO: What if abs_fp is None
         # Get filepath and timestamp of current extract
         cur_song = self.current_track()
         cur_timestamp = cur_song['elapsed']
         filepath = cur_song['abs_fp']
 
-        # Get extract from DB
-        extract: ExtractFile = (session
-                                .query(ExtractFile)
-                                .filter_by(filepath=filepath)
-                                .one_or_none())
+        if filepath:
 
-        # Get the last inserted itemfile
-        if extract:
-            items: List[ItemFile] = extract.items
-            # TODO: Is there a better way to get the last inserted
-            last_item = max(items, key=lambda item: item.created_at)
-            # Set the endstamp of the item
-            if last_item:
-                if last_item.cloze_startstamp:
-                    if last_item.cloze_startstamp < cur_timestamp:
-                        last_item.cloze_endstamp = cur_timestamp
-                        session.commit()
-                        logger.info("Stopped the current cloze.")
-                        if self.current_queue == "local extract queue":
-                            self.load_local_extract_options()
-                        else:
-                            self.load_global_extract_options()
+            # Get extract from DB
+            extract: ExtractFile = (session
+                                    .query(ExtractFile)
+                                    .filter_by(filepath=filepath)
+                                    .one_or_none())
 
-                        # Send item to the cloze processor
-                        question, cloze = cloze_processor(last_item)
-                        if question and cloze:
-                            last_item.question_filepath = question
-                            last_item.cloze_filepath = cloze
+            # Get the last inserted itemfile
+            if extract:
+                items: List[ItemFile] = extract.items
+                # TODO: Is there a better way to get the last inserted
+                last_item = max(items, key=lambda item: item.created_at)
+                # Set the endstamp of the item
+                if last_item:
+                    if last_item.cloze_startstamp:
+                        if last_item.cloze_startstamp < cur_timestamp:
+                            last_item.cloze_endstamp = cur_timestamp
                             session.commit()
-                            logger.info("New cloze created.")
-                            return True
-                        else:
-                            logger.error("Cloze question or answer not returned from processor.")
+                            logger.info("Stopped the current cloze.")
+                            if self.current_queue == "local extract queue":
+                                self.load_local_extract_options()
+                            else:
+                                self.load_global_extract_options()
+
+                            # Send item to the cloze processor
+                            question, cloze = cloze_processor(last_item)
+                            if question and cloze:
+                                last_item.question_filepath = question
+                                last_item.cloze_filepath = cloze
+                                session.commit()
+                                logger.info("New cloze created.")
+                                return True
+                            else:
+                                logger.error("Cloze question or answer "
+                                             "not returned from processor.")
+                    else:
+                        logger.error("Attempted to stop a cloze without "
+                                     "a startstamp.")
                 else:
-                    logger.error("Attempted to stop a cloze without a startstamp.")
-                    return False
+                    logger.error("Couldn't find last created item for "
+                                 "this extract.")
             else:
-                logger.error("Couldn't find last created item for this extract.")
-                return False
+                logger.error("Couldn't find currently playing extract in DB.")
         else:
-            logger.error("Couldn't find currently playing extract in DB.")
-            return False
+            logger.error("No currently playing track.")
+        return False
 
     def archive_extract(self) -> bool:
-        """ Archive the current extract.
+        """Archive the current extract.
 
         Archived extracts will be deleted by a script (not at runtime)
         if they have no outstanding child items.
@@ -253,23 +259,26 @@ class ExtractQueue(Mpd, QueueBase, object):
         assert self.current_queue in ["local extract queue",
                                       "global extract queue"]
         
-        # TODO: What if abs_fp returns None
         # Get the currently playing extract
         cur_song = self.current_track()
         filepath = cur_song['abs_fp']
 
-        # Find the extract in DB
-        extract: ExtractFile = (session
-                                .query(ExtractFile)
-                                .filter_by(filepath=filepath)
-                                .one_or_none())
+        if filepath:
+            # Find the extract in DB
+            extract: ExtractFile = (session
+                                    .query(ExtractFile)
+                                    .filter_by(filepath=filepath)
+                                    .one_or_none())
 
-        # Archive the extract
-        if extract:
-            extract.archived = True
-            session.commit()
-            load_beep()
-            logger.info("Archived extract.")
-            return True
-        logger.error("Currently playing extract not found in DB.")
+            # Archive the extract
+            if extract:
+                extract.archived = True
+                session.commit()
+                load_beep()
+                logger.info("Archived extract.")
+                return True
+            else:
+                logger.error("Currently playing extract not found in DB.")
+        else:
+            logger.error("No currently playing track.")
         return False

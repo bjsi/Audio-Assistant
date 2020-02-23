@@ -32,7 +32,7 @@ class ItemQueue(Mpd, QueueBase, object):
 
     def __init__(self):
         """
-        :queue: The name of the current queue.
+        :current_queue: The name of the current queue.
 
         :active_keys: Methods available in current queue.
 
@@ -41,6 +41,8 @@ class ItemQueue(Mpd, QueueBase, object):
         :recording: True if recording.
 
         :item_keys: Methods available in the item queue.
+
+        :load_initial_queue: The initial queue method for this queue.
         """
 
         super().__init__()
@@ -89,13 +91,11 @@ class ItemQueue(Mpd, QueueBase, object):
                     return True
                 else:
                     logger.error("Call to load_queue failed.")
-                    return False
             else:
                 logger.info("No MPD-recognised items found in DB.")
-                return False
         else:
             logger.info("No items found in DB.")
-            return False
+        return False
 
     def load_global_item_options(self) -> None:
         """Set state options for global item queue.
@@ -120,23 +120,26 @@ class ItemQueue(Mpd, QueueBase, object):
         assert self.current_queue in ["local item queue",
                                       "global item queue"]
 
-        # TODO: What if abs_fp returns None
         # Get the currently playing item
         cur_song = self.current_track()
         filepath = cur_song['abs_fp']
 
-        # Find the item in DB
-        item: ItemFile = (session
-                          .query(ItemFile)
-                          .filter_by(question_filepath=filepath)
-                          .one_or_none())
+        if filepath:
+            # Find the item in DB
+            item: ItemFile = (session
+                              .query(ItemFile)
+                              .filter_by(question_filepath=filepath)
+                              .one_or_none())
 
-        # Archive the item
-        if item:
-            item.archived = True
-            session.commit()
-            load_beep()
-            logger.info("Archived an item.")
-            return True
-        logger.error("Currently playing item not found in DB.")   
+            # Archive the item
+            if item:
+                item.archived = True
+                session.commit()
+                load_beep()
+                logger.info("Archived an item.")
+                return True
+            else:
+                logger.error("Currently playing item not found in DB.")   
+        else:
+            logger.error("No currently playing track.")
         return False
