@@ -3,21 +3,32 @@ from select import select
 import pyudev
 from evdev import InputDevice
 import time
-from config import CONTROLLER
-from Bluetooth.Device import (BTHeadphones,
-                              BTController)
 import subprocess
 from Sounds.sounds import espeak, negative_beep
 from Queue.QueueBase import QueueBase
+import logging
+from typing import Dict
 
 
-# TODO: Logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter("%(levelname)s:%(name)s:%(funcName)s():"
+                              "%(message)s")
+
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(formatter)
+
+file_handler = logging.FileHandler("main_loop.log")
+file_handler.setFormatter(formatter)
+
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
+
 # Log keypress / keycodes
 # Log command failure
 
-# TODO: Add better comments.
 
-def main_loop(queue: QueueBase):
+def main_loop(queue: QueueBase) -> None:
     """Main entry point for Audio Assistant.
     
     Reads key codes from the controller and executes mapped command.
@@ -26,28 +37,39 @@ def main_loop(queue: QueueBase):
 
     * Requires that they are trusted in bluetoothctl.
     """
-    # TODO: What if this returns False?
-    queue.load_initial_queue()
+    # TODO: load_secondary_queue?
+    if not queue.load_initial_queue():
+        logger.info("Failed to load initial queue")
+        while True:
+            espeak("No files")
+            time.sleep(8)
     context = pyudev.Context()
     monitor = pyudev.Monitor.from_netlink(context)
-    # headphones and controller both in the input subsystem
+    # BT headphones and controller are both in the input subsystem
     monitor.filter_by(subsystem='input')
     monitor.start()
     # TODO What is monitor
-    fds = {monitor.fileno(): monitor}
+    # TODO fds Dict maps file descriptors to ...
+    fds: Dict = {monitor.fileno(): monitor}
     while True:
+        # TODO: What is select.
         r, w, x = select(fds, [], [])
         if monitor.fileno() in r:
             r.remove(monitor.fileno())
+            # TODO: is this python2?
             for udev in iter(monitor.poll, None):
                 if udev.device_node and "event" in udev.device_node:
                     if udev.action == u'add':
                         dev = InputDevice(udev.device_node)
                         # saving both dev and udev.device_node
                         # dev for reading events
-                        # udev.device node for removing the fd from the fds dict when 
+                        # udev.device node for removing
+                        # the fd from the fds dict when
                         # a removal event occurs
-                        fds[dev.fd] = {"dev": dev, "device_node": udev.device_node}
+                        fds[dev.fd] = {
+                                       "dev": dev,
+                                       "device_node": udev.device_node
+                                      }
                         print(f"Device added: {udev}")
                         # TODO When devices are added espeak a message
                         # when controller added 4 events occur

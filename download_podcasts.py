@@ -1,19 +1,9 @@
 import youtube_dl
 import os
-import logging
-import logging.config
-import yaml
 from models import TopicFile, session, YoutubeTag
 from config import (TOPICFILES_DIR,
                     ARCHIVE_FILE)
 from transcript_funcs import vtt_to_text
-
-
-# with open('logging.yaml', 'r') as f:
-#     log_cfg = yaml.safe_load(f.read())
-#
-# logging.config.dictConfig(log_cfg)
-# logger = logging.getLogger('ydl')
 
 
 class Downloader(object):
