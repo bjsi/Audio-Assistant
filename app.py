@@ -87,7 +87,12 @@ class QueueLoop(object):
 
     def handle_controller_add_event(self, udev: pyudev.Device):
         """Add a controller file descriptor to the fds dict.
+
+        file descriptor: int = {"dev": pyudev.Device,
+                                "device_node": str path,
+                                "name": str name of the device's parent}
         """
+        name = udev.parent.get('NAME')
         self.controller_add_event_count += 1
         if self.controller_add_event_count == 4:
             logger.info("Controller has been connected.")
@@ -96,7 +101,8 @@ class QueueLoop(object):
         dev = InputDevice(udev.device_node)
         self.fds[dev.fd] = {
             "dev": dev,
-            "device_node": udev.device_node
+            "device_node": udev.device_node,
+            "name": name
         }
 
     def handle_controller_removed_event(self, udev: pyudev.Device):
@@ -116,11 +122,17 @@ class QueueLoop(object):
 
     def handle_headphones_add_event(self, udev: pyudev.Device):
         """Add the device information to the fds dict.
+
+        file descriptor: int = {"dev": pyudev.Device,
+                                "device_node": str path,
+                                "name": str name of the device's parent}
         """
+        name = udev.parent.get('NAME')
         dev = InputDevice(udev.device_node)
         self.fds[dev.fd] = {
             "dev": dev,
-            "device_node": udev.device_node
+            "device_node": udev.device_node,
+            "name": name
         }
         logger.info("Headphones connected.")
 
@@ -165,37 +177,43 @@ class QueueLoop(object):
 
     def handle_add_event(self, udev: pyudev.Device) -> None:
         """Handle controller and headphones udev add events.
+
+        Event devices can be identified by their parent's NAME property.
         """
         if udev.get('DEVPATH') and 'event' in udev.get('DEVPATH'):
-            dev_name: str = udev.get("NAME")
-            if dev_name:
-                # Controller add event
-                if self.controller["name"] in dev_name or \
-                self.controller["address"] in dev_name:
-                    self.handle_controller_add_event(udev)
+            if udev.parent:
+                dev_name: str = udev.parent.get("NAME")
+                if dev_name:
+                    # Controller add event
+                    if self.controller["name"] in dev_name or \
+                        self.controller["address"] in dev_name:
+                        self.handle_controller_add_event(udev)
 
-                # Headphones add event
-                elif self.headphones["name"] in dev_name or \
-                        self.headphones["address"] in dev_name:
-                    self.handle_headphones_add_event(udev)
+                    # Headphones add event
+                    elif self.headphones["name"] in dev_name or \
+                            self.headphones["address"] in dev_name:
+                        self.handle_headphones_add_event(udev)
 
     def handle_remove_event(self, udev: pyudev.Device) -> None:
         """Sends controller / headphone remove events to their
         respective event handlers.
         """
         if udev.get('DEVPATH') and 'event' in udev.get('DEVPATH'):
-            dev_name: str = udev.get('NAME')
 
-            # Controller remove event
-            if dev_name:
-                if self.controller["name"] in dev_name or \
-                   self.controller["address"] in dev_name:
-                    self.handle_controller_removed_event(udev)
+            # Find the relevant object in the fds dict
+            for fd in self.fds:
+                if self.fds[fd]['device_node'] == udev.device_node:
+                    dev_name = self.fds[fd]['name']
+                    # Controller remove event
+                    if dev_name:
+                        if self.controller["name"] in dev_name or \
+                            self.controller["address"] in dev_name:
+                            self.handle_controller_removed_event(udev)
 
-                # Headphones remove event
-                elif dev_name.contains(self.headphones["name"]) or \
-                        dev_name.contains(self.headphones["address"]):
-                    self.handle_headphones_removed_event(udev)
+                        # Headphones remove event
+                        elif self.headphones["name"] in dev_name or \
+                              self.headphones["address"] in dev_name:
+                            self.handle_headphones_removed_event(udev)
 
     def main_loop(self):
         """Main entry point for Audio Assistant.
