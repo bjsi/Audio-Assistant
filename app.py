@@ -189,8 +189,8 @@ class QueueLoop(object):
                 dev_name: str = udev.parent.get('NAME')
                 
                 # Controller remove event
-                if self.controller["name"] in dev_name or \
-                        self.controller["address"] in dev_name:
+                if dev_name and (dev_name.contains(self.controller["name"]) or \
+                                 dev_name.contains(self.controller["address"])):
                     self.handle_controller_removed_event(udev)
 
                 # Headphones remove event
