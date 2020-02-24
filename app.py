@@ -71,7 +71,7 @@ class QueueLoop(object):
         """
         stdoutdata = subprocess.getoutput("hcitool con")
 
-        if self.headphones["mac_address"] in stdoutdata.split():
+        if self.headphones["address"] in stdoutdata.split():
             return True
         return False
 
@@ -81,7 +81,7 @@ class QueueLoop(object):
         """
         stdoutdata = subprocess.getoutput("hcitool con")
 
-        if self.controller["mac_address"] in stdoutdata.split():
+        if self.controller["address"] in stdoutdata.split():
             return True
         return False
 
@@ -172,12 +172,12 @@ class QueueLoop(object):
 
                 # Controller add event
                 if self.controller["name"] in dev_name or \
-                   self.controller["mac_address"] in dev_name:
+                   self.controller["address"] in dev_name:
                     self.handle_controller_add_event(udev)
 
                 # Headphones add event
                 elif self.headphones["name"] in dev_name or \
-                        self.headphones["mac_address"] in dev_name:
+                        self.headphones["address"] in dev_name:
                     self.handle_headphones_add_event(udev)
 
     def handle_remove_event(self, udev: pyudev.Device) -> None:
@@ -190,12 +190,12 @@ class QueueLoop(object):
                 
                 # Controller remove event
                 if self.controller["name"] in dev_name or \
-                        self.controller["mac_address"] in dev_name:
+                        self.controller["address"] in dev_name:
                     self.handle_controller_removed_event(udev)
 
                 # Headphones remove event
                 elif self.headphones["name"] in dev_name or \
-                        self.headphones["mac_address"] in dev_name:
+                        self.headphones["address"] in dev_name:
                     self.handle_headphones_removed_event(udev)
 
     def main_loop(self):
