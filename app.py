@@ -117,7 +117,7 @@ class QueueLoop(object):
     def handle_headphones_add_event(self, udev: pyudev.Device):
         """Add the device information to the fds dict.
         """
-        dev = InputDevice(udev.deviceNode)
+        dev = InputDevice(udev.device_node)
         self.fds[dev.fd] = {
             "dev": dev,
             "device_node": udev.device_node
