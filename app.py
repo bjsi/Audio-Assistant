@@ -189,14 +189,15 @@ class QueueLoop(object):
                 dev_name: str = udev.parent.get('NAME')
                 
                 # Controller remove event
-                if dev_name and (dev_name.contains(self.controller["name"]) or \
-                                 dev_name.contains(self.controller["address"])):
-                    self.handle_controller_removed_event(udev)
+                if dev_name:
+                    if dev_name.contains(self.controller["name"]) or \
+                       dev_name.contains(self.controller["address"]):
+                        self.handle_controller_removed_event(udev)
 
-                # Headphones remove event
-                elif self.headphones["name"] in dev_name or \
-                        self.headphones["address"] in dev_name:
-                    self.handle_headphones_removed_event(udev)
+                    # Headphones remove event
+                    elif dev_name.contains(self.headphones["name"]) or \
+                            dev_name.contains(self.headphones["address"]):
+                        self.handle_headphones_removed_event(udev)
 
     def main_loop(self):
         """Main entry point for Audio Assistant.
