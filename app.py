@@ -202,18 +202,19 @@ class QueueLoop(object):
 
             # Find the relevant object in the fds dict
             for fd in self.fds:
-                if self.fds[fd]['device_node'] == udev.device_node:
-                    dev_name = self.fds[fd]['name']
-                    # Controller remove event
-                    if dev_name:
-                        if self.controller["name"] in dev_name or \
-                            self.controller["address"] in dev_name:
-                            self.handle_controller_removed_event(udev)
+                if self.fds[fd] != self.monitor:
+                    if self.fds[fd]['device_node'] == udev.device_node:
+                        dev_name = self.fds[fd]['name']
+                        # Controller remove event
+                        if dev_name:
+                            if self.controller["name"] in dev_name or \
+                                 self.controller["address"] in dev_name:
+                                self.handle_controller_removed_event(udev)
 
-                        # Headphones remove event
-                        elif self.headphones["name"] in dev_name or \
-                              self.headphones["address"] in dev_name:
-                            self.handle_headphones_removed_event(udev)
+                            # Headphones remove event
+                            elif self.headphones["name"] in dev_name or \
+                                    self.headphones["address"] in dev_name:
+                                self.handle_headphones_removed_event(udev)
 
     def main_loop(self):
         """Main entry point for Audio Assistant.
