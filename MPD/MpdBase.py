@@ -45,12 +45,10 @@ class Mpd(object):
         """
         try:
             self.client.connect(self.host, self.port)
-            logger.debug("Connected to MPD server.")
             yield
         finally:
             self.client.close()
             self.client.disconnect()
-            logger.debug("Disconnected from MPD server.")
 
     @staticmethod
     def abs_to_rel(abs_fp: str) -> str:

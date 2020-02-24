@@ -227,7 +227,9 @@ class TopicQueue(Mpd, QueueBase, object):
                 # Get the last inserted extract
                 extract: ExtractFile = (session
                                         .query(ExtractFile)
-                                        .order_by(ExtractFile.created_at.desc())
+                                        .order_by(ExtractFile
+                                                  .created_at
+                                                  .desc())
                                         .first())
                 if extract:
                     extract.endstamp = cur_track['elapsed']

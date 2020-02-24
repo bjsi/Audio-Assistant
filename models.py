@@ -415,7 +415,7 @@ class ItemFile(Base):
         """
         extract_fp = self.extract.filepath
         extract_length = self.extract.endstamp - self.extract.startstamp
-        cloze_length = self.cloze_endstamp - self.cloze_starstamp
+        cloze_length = self.cloze_endstamp - self.cloze_startstamp
         cloze_start = self.cloze_startstamp
         cloze_end = self.cloze_endstamp
         basename = os.path.basename(self.extract.filepath)
