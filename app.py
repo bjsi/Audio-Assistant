@@ -216,7 +216,6 @@ class QueueLoop(object):
                             elif self.headphones["name"] in dev_name or \
                                     self.headphones["address"] in dev_name:
                                 self.handle_headphones_removed_event(udev)
-                                break
 
     def main_loop(self):
         """Main entry point for Audio Assistant.
@@ -261,26 +260,25 @@ class QueueLoop(object):
                         elif udev.action == u'remove':
                             self.handle_remove_event(udev)
                             continue
-            #try:
-            for fd in r:
-                # get device events
-                dev = self.fds.get(fd, None)
-                if dev:
-                    for event in dev["dev"].read():
-                        if event.value == 1:
-                            if event.code in self.queue.active_keys:
-                                # Failed commands return False
-                                if queue.active_keys[event.code]() is False:
-                                    negative_beep()
-                                # Log the name of the pressed key.
-                                for keyname, keycode in self.controller['keys'].items():
-                                    if keycode == event.code:
-                                        logger.info(f"{keyname} pressed.")
+            try:
+                for fd in r:
+                    # get device events
+                    dev = self.fds.get(fd, None)
+                    if dev:
+                        for event in dev["dev"].read():
+                            if event.value == 1:
+                                if event.code in self.queue.active_keys:
+                                    # Failed commands return False
+                                    if queue.active_keys[event.code]() is False:
+                                        negative_beep()
+                                    # Log the name of the pressed key.
+                                    for keyname, keycode in self.controller['keys'].items():
+                                        if keycode == event.code:
+                                            logger.info(f"{keyname} pressed.")
                 
-            # TODO: Test without this except block.
-            # Hacky? But works excellently
-            #except OSError:
-                #continue
+            # Hacky, try to find a fix.
+            except OSError:
+                continue
 
 
 if __name__ == "__main__":
