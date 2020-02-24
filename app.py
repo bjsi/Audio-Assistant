@@ -38,11 +38,16 @@ class QueueLoop(object):
         """
         :controller_add_event_count: 4 per connection / disconnection.
 
-        :queue: The queue object.
+        :controller_remove_event_count: 4 per connection / disconnection.
+
+        :queue: The queue object eg. TopicQueue, MainQueue.
 
         :controller: Controller info dict.
 
         :headphones: Headphones info dict.
+
+        :monitor: TODO ... Monitor is filtered down to the input subsystem
+        because BT headphone and controller event devices are found there.
 
         :fds: Dict of file descriptors of monitored devices.
         """
@@ -51,11 +56,14 @@ class QueueLoop(object):
         self.queue: QueueBase = queue
         self.controller = CONTROLLER
         self.headphones = HEADPHONES
-        self.monitor: pyudev.Monitor
+        self.monitor = pyudev.Monitor.from_netlink(pyudev.Context())
+        # BT headphones and controller are both in the input subsystem
+        self.monitor.filter_by(subsystem='input')
+        self.monitor.start()
         # File Descriptors
         # TODO: typing
         # Maps file descriptor
-        self.fds: Dict = {}
+        self.fds = {self.monitor.fileno(): self.monitor}
 
     def wait_connect_headphones(self) -> None:
         """Loop until headphones are connected.
@@ -96,7 +104,8 @@ class QueueLoop(object):
         self.controller_add_event_count += 1
         if self.controller_add_event_count == 4:
             logger.info("Controller has been connected.")
-            espeak("Controller connected")
+            if self.controller_connected():
+                espeak("Controller connected")
             self.controller_add_event_count = 0
         dev = InputDevice(udev.device_node)
         self.fds[dev.fd] = {
@@ -110,6 +119,7 @@ class QueueLoop(object):
         """
         # Create a deep copy of the fds dict.
         # NOTE: Prevents dict size changed while iterating error.
+        # TODO: Can you just add break to remove this
         dic = {k: v for k, v in self.fds.items()}
         for fd in dic:
             if dic[fd] is not self.monitor:
@@ -119,6 +129,8 @@ class QueueLoop(object):
                     if self.controller_remove_event_count == 4:
                         logger.info("Controller disconnected.")
                         self.controller_remove_event_count = 0
+                        if self.headphones_connected():
+                            espeak("Controller disconnected")
 
     def handle_headphones_add_event(self, udev: pyudev.Device):
         """Add the device information to the fds dict.
@@ -135,12 +147,15 @@ class QueueLoop(object):
             "name": name
         }
         logger.info("Headphones connected.")
+        if self.headphones_connected():
+            espeak("Headphones connected")
 
     def handle_headphones_removed_event(self, udev: pyudev.Device):
         """Removes a headphones file descriptor from the fds dict.
         """
         # Create a deep copy of the fds dict
         # NOTE: Prevents dict size changed while iterating error.
+        # TODO: Can you just add break to remove this
         dic = {k: v for k, v in self.fds.items()}
         for fd in dic:
             if dic[fd] is not self.monitor:
@@ -238,14 +253,6 @@ class QueueLoop(object):
                     espeak("No files")
                 logger.info("Failed to load initial queue.")
                 time.sleep(8)
-
-        context = pyudev.Context()
-        self.monitor = pyudev.Monitor.from_netlink(context)
-        # BT headphones and controller are both in the input subsystem
-        self.monitor.filter_by(subsystem='input')
-        self.monitor.start()
-
-        self.fds = {self.monitor.fileno(): self.monitor}
 
         while True:
             # TODO: What is select.
