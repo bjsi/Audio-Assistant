@@ -210,11 +210,13 @@ class QueueLoop(object):
                             if self.controller["name"] in dev_name or \
                                  self.controller["address"] in dev_name:
                                 self.handle_controller_removed_event(udev)
+                                break
 
                             # Headphones remove event
                             elif self.headphones["name"] in dev_name or \
                                     self.headphones["address"] in dev_name:
                                 self.handle_headphones_removed_event(udev)
+                                break
 
     def main_loop(self):
         """Main entry point for Audio Assistant.
