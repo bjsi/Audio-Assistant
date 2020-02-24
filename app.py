@@ -279,8 +279,8 @@ class QueueLoop(object):
                 
             # TODO: Test without this except block.
             # Hacky? But works excellently
-            except OSError:
-                continue
+            #except OSError:
+                #continue
 
 
 if __name__ == "__main__":
