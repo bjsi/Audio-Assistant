@@ -168,16 +168,16 @@ class QueueLoop(object):
         """
         if udev.get('DEVPATH') and 'event' in udev.get('DEVPATH'):
             dev_name: str = udev.get("NAME")
+            if dev_name:
+                # Controller add event
+                if self.controller["name"] in dev_name or \
+                self.controller["address"] in dev_name:
+                    self.handle_controller_add_event(udev)
 
-            # Controller add event
-            if self.controller["name"] in dev_name or \
-               self.controller["address"] in dev_name:
-                self.handle_controller_add_event(udev)
-
-            # Headphones add event
-            elif self.headphones["name"] in dev_name or \
-                    self.headphones["address"] in dev_name:
-                self.handle_headphones_add_event(udev)
+                # Headphones add event
+                elif self.headphones["name"] in dev_name or \
+                        self.headphones["address"] in dev_name:
+                    self.handle_headphones_add_event(udev)
 
     def handle_remove_event(self, udev: pyudev.Device) -> None:
         """Sends controller / headphone remove events to their
