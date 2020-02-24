@@ -1,7 +1,6 @@
 from typing import Dict, Callable, List
 from MPD.MpdBase import Mpd
 from models import ExtractFile, ItemFile, session
-from .extract_funcs import cloze_processor
 from Sounds.sounds import (espeak,
                            click_sound1,
                            click_sound2,
@@ -213,7 +212,8 @@ class ExtractQueue(Mpd, QueueBase, object):
             if extract:
                 items: List[ItemFile] = extract.items
                 # TODO: Is there a better way to get the last inserted
-                last_item = max(items, key=lambda item: item.created_at)
+                last_item: ItemFile = max(items,
+                                          key=lambda item: item.created_at)
                 # Set the endstamp of the item
                 if last_item:
                     if last_item.cloze_startstamp:
@@ -225,18 +225,11 @@ class ExtractQueue(Mpd, QueueBase, object):
                                 self.load_local_extract_options()
                             else:
                                 self.load_global_extract_options()
-
-                            # Send item to the cloze processor
-                            question, cloze = cloze_processor(last_item)
-                            if question and cloze:
-                                last_item.question_filepath = question
-                                last_item.cloze_filepath = cloze
-                                session.commit()
+                            if last_item.process_cloze():
                                 logger.info("New cloze created.")
                                 return True
                             else:
-                                logger.error("Cloze question or answer "
-                                             "not returned from processor.")
+                                logger.error("Call to process_cloze failed.")
                     else:
                         logger.error("Attempted to stop a cloze without "
                                      "a startstamp.")
