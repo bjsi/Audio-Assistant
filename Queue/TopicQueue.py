@@ -26,7 +26,8 @@ from Queue.QueueBase import QueueBase
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-formatter = logging.Formatter('%(levelname)s:%(name)s:%(funcName)s():%(message)s')
+formatter = logging.Formatter("%(levelname)s:%(name)s:%(funcName)s():"
+                              "%(message)s")
 
 console_handler = logging.StreamHandler()
 console_handler.setFormatter(formatter)
@@ -184,7 +185,8 @@ class TopicQueue(Mpd, QueueBase, object):
                                       RECORDING_SINK,
                                       extract_fp], shell=False)
                 except OSError as e:
-                    logger.error(f"Failed to lauch parecord subprocess with exception {e}.")
+                    logger.error(f"Failed to lauch parecord subprocess "
+                                 f"with exception {e}.")
                     return False
 
                 logger.info("Started a parecord subprocess.")
@@ -215,8 +217,8 @@ class TopicQueue(Mpd, QueueBase, object):
         if cur_track["abs_fp"]:
             # Kill the active parecord process
             child = subprocess.Popen(['pkill', 'parecord'],
-                                      stdout=subprocess.PIPE,
-                                      shell=False)
+                                     stdout=subprocess.PIPE,
+                                     shell=False)
 
             # If return code is 0, a parecord process was killed
             response = child.communicate()[0]
@@ -237,7 +239,8 @@ class TopicQueue(Mpd, QueueBase, object):
                     logger.info("Stopped recording.")
                     return True
                 else:
-                    logger.error("Currently recording extract not found in DB.")
+                    logger.error("Currently recording extract "
+                                 "not found in DB.")
             else:
                 logger.error("There was no active parecord process to stop.")
         else:

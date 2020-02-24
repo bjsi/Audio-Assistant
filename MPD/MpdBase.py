@@ -12,7 +12,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(levelname)s:%(name)s:%(funcName)s():%(message)s')
+formatter = logging.Formatter("%(levelname)s:%(name)s:%(funcName)s():"
+                              "%(message)s")
 
 console_handler = logging.StreamHandler()
 console_handler.setFormatter(formatter)

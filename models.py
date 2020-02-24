@@ -321,17 +321,18 @@ class ExtractFile(Base):
         self.append(event)
         session.commit()
     
-    # TODO Should this be a property
-    @property
-    def length(self) -> Optional[float]:
-        """ Return the length of the extract or None """
+    def length(self) -> float:
+        """
+        :returns: Length of the extract.
+        """
         if self.startstamp and self.endstamp:
             return (self.endstamp - self.startstamp)
-        return None
+        return 0.0
 
     def __repr__(self) -> str:
-        return '<ExtractFile: filepath=%r startstamp=%r endstamp=%r length=%r>' % \
-                (self.filepath, self.startstamp, self.endstamp, self.length)
+        return f"<ExtractFile: filepath={self.filepath}" \
+               f"startstamp={self.startstamp} endstamp={self.endstamp}" \
+               f"length={self.length()}>"
 
 
 class ItemFile(Base):
@@ -603,29 +604,6 @@ class MyTag(Base):
 
     def __repr__(self):
         return '<MyTag: tag=%r>' % (self.tag)
-
-
-###########
-# Logging #
-###########
-
-
-class Log(Base):
-    # Remove this?
-    # How much does logging impact performance
-    # Would logging to a text file work better?
-
-    __tablename__ = "logs"
-
-    id = Column(Integer, primary_key=True)
-    logger = Column(String)
-    level = Column(String)
-    trace = Column(String)
-    msg = Column(String)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow())
-
-    def __repr__(self):
-        return "<Log: %s - %s>" % (self.created_at.strftime("%Y-%m-%d %H:%M:%S"), self.msg[:50])
 
 
 Base.metadata.create_all(engine)
