@@ -9,6 +9,7 @@ from Queue.QueueBase import QueueBase
 import logging
 from typing import Dict
 from config import CONTROLLER, HEADPHONES
+from models import TopicFile, ExtractFile, ItemFile
 
 
 logger = logging.getLogger(__name__)
@@ -292,6 +293,12 @@ class QueueLoop(object):
 if __name__ == "__main__":
     # Change queue to an individual queue
     # eg. (TopicQueue) to test in isolation.
+
+    # Remove finished files before load_initial_queue call.
+    ItemFile.remove_finished_files()
+    ExtractFile.remove_finished_files()
+    TopicFile.remove_finished_files()
+    
     queue = MainQueue()
     queue_loop = QueueLoop(queue)
     queue_loop.main_loop()
