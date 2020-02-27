@@ -175,4 +175,4 @@ class AudioDownloader(object):
 
 
 if __name__ == "__main__":
-    downloader = AudioDownloader("PLmj5g7olDDq53V3A3qmw9B_snM6bZqTez")
+    AudioDownloader("PLmj5g7olDDq53V3A3qmw9B_snM6bZqTez").download()
