@@ -154,7 +154,7 @@ class AudioDownloader(object):
                                          view_count=info["view_count"],
                                          like_count=info["like_count"],
                                          dislike_count=info["dislike_count"],
-                                         average_rating=["average_rating"],
+                                         average_rating=info["average_rating"],
                                          downloaded=True,
                                          sm_element_id=self.sm_element_id,
                                          sm_priority=self.sm_priority,
@@ -174,4 +174,4 @@ class AudioDownloader(object):
 
 
 if __name__ == "__main__":
-    AudioDownloader("22Q7HJ3wb4U").download()
+    AudioDownloader("iXhkssevd1g").download()
