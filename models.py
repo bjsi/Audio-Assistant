@@ -63,8 +63,9 @@ def delete_file(file) -> bool:
 ##########
 
 def check_progress(context):
-    """ Runs on the archived Column each time the Topic table is updated
-    If progress > 90% set archived to True """
+    """Runs on the archived Column each time the Topic table is updated
+    If progress > 90% set archived to True
+    """
     cur_timestamp = context.get_current_parameters()['cur_timestamp']
     duration = context.get_current_parameters()['duration']
     if (cur_timestamp / duration > 0.9):
@@ -83,6 +84,8 @@ class TopicFile(Base):
     id: int = Column(Integer, primary_key=True)
     filepath: str = Column(String, nullable=False, unique=True)
     downloaded: bool = Column(Boolean, nullable=False)
+    sm_element_id: int = Column(Integer, default=-1)
+    sm_priority: float = Column(Float, default=-1)
     # Can be set by the user at runtime
     # Can be set automatically if completion > 90%
     archived: bool = Column(Boolean, default=False, onupdate=check_progress)
@@ -91,7 +94,7 @@ class TopicFile(Base):
     deleted: bool = Column(Boolean, default=False)
     youtube_id: str = Column(String)
     title: str = Column(String)
-    duration: int = Column(Integer)
+    duration: float = Column(Float)
     uploader_id: str = Column(String)
     uploader: str = Column(String)
     upload_date: str = Column(String)
