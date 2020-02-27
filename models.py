@@ -3,9 +3,9 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import (Column, Integer,
                         String, DateTime,
-                        Table, Text,
+                        Text,
                         ForeignKey, Boolean,
-                        Float, UniqueConstraint)
+                        Float)
 import datetime
 from sqlalchemy.orm import sessionmaker
 from config import DATABASE_URI, QUESTIONFILES_DIR

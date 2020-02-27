@@ -1,10 +1,9 @@
 import youtube_dl
 import subprocess
 import os
-from models import TopicFile, session, YoutubeTag
+from models import TopicFile, session
 from config import (TOPICFILES_DIR,
                     ARCHIVE_FILE)
-from transcript_funcs import vtt_to_text
 import logging
 
 
