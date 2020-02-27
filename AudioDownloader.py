@@ -127,10 +127,12 @@ class AudioDownloader(object):
                 if self.playback_rate != 1:
                     if self.set_playback_rate(filepath):
                         self.add_topicfile(filepath)
+                        return
                     else:
                         logger.error("Call to set_playback_rate failed.")
                         return
                 self.add_topicfile(filepath)
+                return
             else:
                 logger.error(f"Downloaded audio file {filepath} "
                              "does not exist.")
