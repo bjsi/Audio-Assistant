@@ -69,14 +69,14 @@ def check_progress(context):
     duration = context.get_current_parameters()['duration']
     if (cur_timestamp / duration > 0.9):
         return True
-    else:
-        return False
+    return False
 
 
 class TopicFile(Base):
-    """ Topics are full youtube audio files
-    Evevry ExtractFile is a descendant of
-    a TopicFile"""
+    """Topics are full youtube audio files.
+
+    TopicFiles are parents of ExtractFiles.
+    """
 
     __tablename__ = 'topicfiles'
 
@@ -103,7 +103,7 @@ class TopicFile(Base):
     playback_rate: float = Column(Float, default=1.0)  # eg. 1, 1.25, 1.5
     cur_timestamp: float = Column(Float, default=0)  # seconds.miliseconds
     created_at: DateTime = Column(DateTime, default=datetime.datetime.utcnow())
-    transcript: str = Column(Text)  # webvtt format if available
+    transcript_filepath: str = Column(Text)  # webvtt format if available
 
     # One to many File |-< Extract
     extracts: List["ExtractFile"] = relationship("ExtractFile",
@@ -117,12 +117,8 @@ class TopicFile(Base):
     def remove_finished_files(cls) -> None:
         """Remove finished TopicFiles.
 
-        Removes the audio filepath, youtubedl json file and subs file.
+        Removes the audio filepath and subs file.
         """
-        # TODO remove filepath
-        # TODO remove subs file
-        # TODO remove json file
-
         topics: List[TopicFile] = (session
                                    .query(TopicFile)
                                    .filter_by(deleted=False)
@@ -130,6 +126,7 @@ class TopicFile(Base):
         if topics:
             for topic in topics:
                 if topic.is_finished():
+                    delete_file(topic.transcript_filepath)
                     if delete_file(topic.filepath):
                         topic.deleted = True
                         session.commit()
@@ -165,7 +162,7 @@ class TopicFile(Base):
             if self.archived:
                 extracts = self.extracts
                 if extracts:
-                    if all(extract.archived for extract in extracts):
+                    if all(extract.deleted for extract in extracts):
                         return True
                     else:
                         return False
@@ -212,8 +209,7 @@ class ExtractFile(Base):
                                            back_populates="extract")
 
     # One to many ExtractFile |-< ExtractEvent
-    events = relationship("ExtractEvent",
-                          back_populates="extract")
+    events = relationship("ExtractEvent", back_populates="extract")
 
     @classmethod
     def remove_finished_files(cls) -> None:
@@ -222,7 +218,6 @@ class ExtractFile(Base):
         extracts: List[ExtractFile] = (session
                                        .query(ExtractFile)
                                        .filter_by(deleted=False)
-                                       .filter_by(archived=True)
                                        .all())
         if extracts:
             for extract in extracts:
@@ -249,24 +244,24 @@ class ExtractFile(Base):
 
     def is_finished(self) -> bool:
         """A finished ExtractFile fulfils the following criteria.
-        
-        1. Extract.archived is True.
 
-        2. No outstanding child items.
+        1. Extract.exported is True
+
+        or
+        
+        2. Extract.archived is True.
+
+        and
+    
+        3. No outstanding child items.
 
         :returns: True if the file is finished else False.
         """
-        if self.archived:
-            items = self.items
-            if items:
-                if all(item.archived for item in items):
-                    return True
-                else:
-                    return False
-            else:
-                return True
-        else:
-            return False
+        if self.exported:
+            return True
+        if self.archived and all(item.archived or item.deleted for item in self.items):
+            return True
+        return False
 
     def length(self) -> float:
         """
@@ -318,15 +313,16 @@ class ItemFile(Base):
         A finished ItemFile fulfils the following criteria.
         
         1. ItemFile.archived is True.
+        or
+        2. ItemFile.exported is True.
         """
         items: List[ItemFile] = (session
                                  .query(ItemFile)
                                  .filter_by(deleted=False)
-                                 .filter_by(archived=True)
                                  .all())
         if items:
             for item in items:
-                if item.archived:
+                if item.archived or item.exported:
                     if delete_file(item.cloze_filepath) and delete_file(item.question_filepath):
                         item.deleted = True
                         session.commit()
