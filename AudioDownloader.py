@@ -82,8 +82,10 @@ class AudioDownloader(object):
             return False
         if os.path.isfile(filepath):
             try:
-
-                temp_output_file = f"tmp.{filepath}"
+                temp_dir_name = os.path.dirname(filepath)
+                temp_file_name = os.path.basename(filepath)
+                temp_file_name = temp_file_name + ".tmp"
+                temp_output_file = os.path.join(temp_dir_name, temp_file_name)
                 p = subprocess.call(['ffmpeg',
                                      '-i',
                                      filepath,
