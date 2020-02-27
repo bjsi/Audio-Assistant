@@ -140,7 +140,7 @@ class AudioDownloader(object):
         :filepath: Audio filepath.
         """
 
-        with youtube_dl.YoutubeDL({}) as ydl:
+        with youtube_dl.YoutubeDL(self.ydl_options) as ydl:
             info = ydl.extract_info(self.yt_id, download=False)
 
         if info:
