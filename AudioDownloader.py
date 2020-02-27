@@ -147,11 +147,11 @@ class AudioDownloader(object):
             return
             topic: TopicFile = TopicFile(filepath=filepath,
                                          title=info["title"],
-                                         youtube_id=self.yt_id,
+                                         youtube_id=["id"],
                                          duration=(info["duration"] / self.playback_rate),
                                          uploader=info["uploader"],
                                          uploader_id=info["uploader_id"],
-                                         thumbnail_url=info["thumbnail_url"],
+                                         thumbnail_url=info["thumbnail"],
                                          upload_date=info["upload_date"],
                                          view_count=info["view_count"],
                                          like_count=info["like_count"],
