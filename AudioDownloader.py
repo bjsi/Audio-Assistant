@@ -145,7 +145,7 @@ class AudioDownloader(object):
         if info:
             topic: TopicFile = TopicFile(filepath=filepath,
                                          title=info["title"],
-                                         youtube_id=["id"],
+                                         youtube_id=info["id"],
                                          duration=(info["duration"] / self.playback_rate),
                                          uploader=info["uploader"],
                                          uploader_id=info["uploader_id"],
