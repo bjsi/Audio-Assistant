@@ -61,9 +61,8 @@ class AudioDownloader(object):
         """Download a youtube video's audio.
         """
         try:
-            # TODO try except youtube_dl.utils.DownloadError
             with youtube_dl.YoutubeDL(self.ydl_options) as ydl:
-                ydl.download([self.yt_id])
+                ydl.download([f"https://www.youtube.com/watch?v={self.yt_id}"])
         except youtube_dl.utils.DownloadError as e:
             logger.error(f"Attempt to download {self.yt_id} failed with "
                          f"exception {e}")
