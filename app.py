@@ -295,9 +295,10 @@ if __name__ == "__main__":
     # eg. (TopicQueue) to test in isolation.
 
     # Remove finished files before load_initial_queue call.
-    ItemFile.remove_finished_files()
-    ExtractFile.remove_finished_files()
-    TopicFile.remove_finished_files()
+    # TODO
+    #ItemFile.remove_finished_files()
+    #ExtractFile.remove_finished_files()
+    #TopicFile.remove_finished_files()
     
     queue = MainQueue()
     queue_loop = QueueLoop(queue)

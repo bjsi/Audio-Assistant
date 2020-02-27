@@ -9,7 +9,7 @@ from sqlalchemy import (Column, Integer,
 import datetime
 from sqlalchemy.orm import sessionmaker
 from config import DATABASE_URI, QUESTIONFILES_DIR
-from typing import Optional, List
+from typing import List
 import os
 import logging
 import subprocess
@@ -18,10 +18,6 @@ from subprocess import DEVNULL
 engine = create_engine(DATABASE_URI, echo=True)
 Base = declarative_base()
 Session = sessionmaker(bind=engine)
-
-
-# TODO: Remove Tag tables?
-# TODO Change all datetimes to datetime.datetime.utcnow()
 
 
 logger = logging.getLogger(__name__)
@@ -39,48 +35,32 @@ logger.addHandler(file_handler)
 logger.addHandler(console_handler)
 
 
-# Many to many association table for youtube tags
-yt_topicfile_tags = Table('yt_topicfile_tags', Base.metadata,
-                          Column('topic_id',
-                                 Integer,
-                                 ForeignKey('topicfiles.id'),
-                                 primary_key=True,
-                                 nullable=False),
-                          Column('yttag_id',
-                                 Integer,
-                                 ForeignKey('yttags.id'),
-                                 primary_key=True,
-                                 nullable=False),
-                          # Intention: Prevent adding same tag
-                          # to the same file twice
-                          # TODO not working... Might not matter,
-                          # esp if youtube removes
-                          # duplicates automatically
-                          UniqueConstraint('topic_id', 'yttag_id'))
-
-
-# Many to many association table for my own tags
-my_topicfile_tags = Table('my_topicfile_tags', Base.metadata,
-                          Column('topic_id',
-                                 Integer,
-                                 ForeignKey('topicfiles.id'),
-                                 primary_key=True,
-                                 nullable=False),
-                          Column('mytag_id',
-                                 Integer,
-                                 ForeignKey('mytags.id'),
-                                 primary_key=True,
-                                 nullable=False),
-                          # TODO See above
-                          # Might not matter if I do a term extraction and
-                          # then remove duplicates
-                          # myself...
-                          UniqueConstraint('topic_id', 'mytag_id'))
+def delete_file(file) -> bool:
+    """Deletes a file.
+    :returns: True if the file was deleted else False.
+    """
+    # Check file exists
+    if os.path.isfile(file):
+        try:
+            os.remove(file)
+            logger.info(f"Removed file {file}.")
+            return True
+        except OSError as e:
+            logger.error(f"Exception {e} when attempting "
+                         f"to delete {file}.")
+            return False
+    logger.error(f"Attempted to delete file \"{file}\" "
+                 "but it does not exist.")
+    return False
 
 
 ##############################
 # Topics, Extracts and Items #
 ##############################
+
+##########
+# Topics #
+##########
 
 def check_progress(context):
     """ Runs on the archived Column each time the Topic table is updated
@@ -123,47 +103,53 @@ class TopicFile(Base):
     playback_rate: float = Column(Float, default=1.0)  # eg. 1, 1.25, 1.5
     cur_timestamp: float = Column(Float, default=0)  # seconds.miliseconds
     created_at: DateTime = Column(DateTime, default=datetime.datetime.utcnow())
-    transcript: str = Column(Text)
+    transcript: str = Column(Text)  # webvtt format if available
 
     # One to many File |-< Extract
-    # TODO: Can this be typed as List[ExtractFile]?
-    extracts = relationship("ExtractFile",
-                            back_populates="topic")
+    extracts: List["ExtractFile"] = relationship("ExtractFile",
+                                                 back_populates="topic")
 
-    # TODO: Can this be typed as List[TopicEvent]?
     # One to many File |-< Activity
-    events = relationship("TopicEvent",
-                          back_populates="topic")
-
-    # Many to many File >-< Tag
-    yttags = relationship('YoutubeTag',
-                          secondary=yt_topicfile_tags,
-                          back_populates='topics')
-
-    # Many to many File >-< Tag
-    mytags = relationship('MyTag',
-                          secondary=my_topicfile_tags,
-                          back_populates='topics')
+    events: List["TopicEvent"] = relationship("TopicEvent",
+                                              back_populates="topic")
 
     @classmethod
     def remove_finished_files(cls) -> None:
         """Remove finished TopicFiles.
+
+        Removes the audio filepath, youtubedl json file and subs file.
         """
+        # TODO remove filepath
+        # TODO remove subs file
+        # TODO remove json file
+
         topics: List[TopicFile] = (session
                                    .query(TopicFile)
                                    .filter_by(deleted=False)
                                    .all())
-        count = 0
         if topics:
             for topic in topics:
                 if topic.is_finished():
-                    if topic.delete_file():
+                    if delete_file(topic.filepath):
                         topic.deleted = True
-                        count += 1
                         session.commit()
-        if count > 0:
-            logger.info(f"Deleted {count} finished TopicFiles.")
         
+    def add_event(self, event_type: str, timestamp: float, duration: float):
+        """Add an event to the TopicFile.
+        :returns: True on success else False.
+        """
+        if event_type in ["stop", "play", "pause"]:
+            if duration > 0:
+                event = TopicEvent(event=event_type,
+                                   timestamp=timestamp,
+                                   duration=duration)
+                self.events.append(event)
+                session.commit()
+                logger.debug(f"Added {event_type} event to {self} with "
+                             f"duration {duration}s.")
+                return True
+        return False
+
     def is_finished(self) -> bool:
         """A finished TopicFile fulfils the following criteria.
         
@@ -186,41 +172,14 @@ class TopicFile(Base):
                 return True
         return False
 
-    def delete_file(self) -> bool:
-        """
-        :returns: True if the file was deleted else False.
-        """
-        # Check file exists
-        if os.path.isfile(self.filepath):
-            try:
-                os.remove(self.filepath)
-                return True
-            except OSError as e:
-                logger.error(f"Exception {e} when attempting to "
-                             f"delete {self.filepath}")
-                return False
-        logger.error(f"Attempted to delete file {self.filepath} "
-                     "but it does not exist.")
-        return False
-
-    def add_event(self, event: str, timestamp: float, duration: float):
-        """ Add an event to the current TopicFile """
-        # TODO data validation of parameters
-        event = TopicEvent(event=event,
-                           timestamp=timestamp,
-                           duration=duration)
-        self.append(event)
-        session.commit()
-
-    # TODO Should this be a property?
-
     def progress(self) -> float:
-        """" Returns percentage listened to """
+        """
+        :returns: Percentage listened to.
+        """
         return (self.cur_timestamp / self.duration) * 100
 
     def __repr__(self) -> str:
-        return '<TopicFile: title=%r youtube_id=%r>' % \
-                (self.title, self.youtube_id)
+        return f"<TopicFile: title={self.title}>"
 
 
 class ExtractFile(Base):
@@ -235,22 +194,22 @@ class ExtractFile(Base):
     created_at: DateTime = Column(DateTime, default=datetime.datetime.utcnow())
     startstamp: float = Column(Float, nullable=False)  # Seconds.miliseconds
     endstamp: float = Column(Float)  # Seconds.miliseconds
-    transcript: str = Column(Text, nullable=True)
-    # Set by the user
+    # Set by the user at runtime.
     archived: bool = Column(Boolean, default=False)
     # Archived extracts are deleted if they have no outstanding child items
     # Archived extracts with child items are deleted after export
     deleted: bool = Column(Boolean, default=False)
+    exported: bool = Column(Boolean, default=False)  # True if exported to SM.
+    # True if should be exported to SM, set at runtime.
+    to_export: bool = Column(Boolean, default=False)  
 
     # One to one ExtractFile (child) |-| TopicFile (parent)
     topic_id: int = Column(Integer, ForeignKey('topicfiles.id'))
-    # TODO: Can this be typed as TopicFile
-    topic = relationship("TopicFile", back_populates="extracts")
+    topic: TopicFile = relationship("TopicFile", back_populates="extracts")
 
-    # TODO: Can this be typed as List[ItemFile]
     # One to many ExtractFile |-< ItemFiles
-    items = relationship("ItemFile",
-                         back_populates="extract")
+    items: List["ItemFile"] = relationship("ItemFile",
+                                           back_populates="extract")
 
     # One to many ExtractFile |-< ExtractEvent
     events = relationship("ExtractEvent",
@@ -265,17 +224,29 @@ class ExtractFile(Base):
                                        .filter_by(deleted=False)
                                        .filter_by(archived=True)
                                        .all())
-        count = 0
         if extracts:
             for extract in extracts:
                 if extract.is_finished():
-                    if extract.delete_file():
+                    if delete_file(extract.filepath):
                         extract.deleted = True
-                        count += 1
                         session.commit()
-        if count > 0:
-            logger.info(f"Deleted {count} finished TopicFiles.")
         
+    def add_event(self, event_type: str, timestamp: float, duration: float):
+        """Add an event to the ExtractFile.
+        :returns: True on success else False.
+        """
+        if event_type in ["stop", "play", "pause"]:
+            if duration > 0:
+                event = ExtractEvent(event=event_type,
+                                     timestamp=timestamp,
+                                     duration=duration)
+                self.events.append(event)
+                session.commit()
+                logger.debug(f"Added {event_type} event to {self} with "
+                             f"duration {duration}s.")
+                return True
+        return False
+
     def is_finished(self) -> bool:
         """A finished ExtractFile fulfils the following criteria.
         
@@ -292,46 +263,22 @@ class ExtractFile(Base):
                     return True
                 else:
                     return False
-            return True
-        return False
-
-    def delete_file(self) -> bool:
-        """Delete ExtractFile.filepath.
-        :returns: True if the file was deleted else False.
-        """
-        # Check file exists
-        if os.path.isfile(self.filepath):
-            try:
-                os.remove(self.filepath)
+            else:
                 return True
-            except OSError as e:
-                logger.error(f"Exception {e} when attempting "
-                             f"to delete {self.filepath}.")
-                return False
-        logger.error(f"Attempted to delete file {self.filepath} "
-                     "but it does not exist.")
-        return False
+        else:
+            return False
 
-    def add_event(self, event: str, timestamp: float, duration: float):
-        """ Add an event to the current TopicFile """
-        # TODO data validation of parameters
-        event = ExtractEvent(event=event,
-                             timestamp=timestamp,
-                             duration=duration)
-        self.append(event)
-        session.commit()
-    
     def length(self) -> float:
         """
-        :returns: Length of the extract.
+        :returns: Length of the extract if start and end else 0.0
         """
         if self.startstamp and self.endstamp:
             return (self.endstamp - self.startstamp)
         return 0.0
 
     def __repr__(self) -> str:
-        return f"<ExtractFile: filepath={self.filepath}" \
-               f"startstamp={self.startstamp} endstamp={self.endstamp}" \
+        return f"<ExtractFile: filepath={self.filepath} " \
+               f"startstamp={self.startstamp} endstamp={self.endstamp} " \
                f"length={self.length()}>"
 
 
@@ -353,151 +300,158 @@ class ItemFile(Base):
     # Archived files deleted by script
     # Non-archived items archived and deleted after export
     deleted: bool = Column(Boolean, default=False)
+    exported: bool = Column(Boolean, default=False)  # True if exported to SM
     cloze_startstamp: float = Column(Float)  # seconds.miliseconds
     cloze_endstamp: float = Column(Float)  # seconds.miliseconds
+    extract_id: int = Column(Integer, ForeignKey('extractfiles.id'))
 
     # One to one ItemFile (child) |-| ExtractFile (parent)
-    extract_id: int = Column(Integer, ForeignKey('extractfiles.id'))
-    # TODO: can this be typed as ExtractFile
-    extract = relationship("ExtractFile", back_populates="items")
+    extract: ExtractFile = relationship("ExtractFile", back_populates="items")
 
     # One to many ItemFile |-< ItemEvent
-    # TODO: can this be typed as ItemEvent
-    events = relationship("ItemEvent",
-                          back_populates="item")
+    events: List["ItemEvent"] = relationship("ItemEvent", back_populates="item")
 
     @classmethod
     def remove_finished_files(cls) -> None:
         """Remove finished ItemFiles.
+        
+        A finished ItemFile fulfils the following criteria.
+        
+        1. ItemFile.archived is True.
         """
         items: List[ItemFile] = (session
                                  .query(ItemFile)
                                  .filter_by(deleted=False)
                                  .filter_by(archived=True)
                                  .all())
-        count = 0
         if items:
             for item in items:
-                if item.is_finished():
-                    if item.delete_file():
+                if item.archived:
+                    if delete_file(item.cloze_filepath) and delete_file(item.question_filepath):
                         item.deleted = True
-                        count += 1
                         session.commit()
-            logger.info(f"Deleted {count} finished TopicFiles.")
         
-    def is_finished(self) -> bool:
-        """A finished ItemFile fulfils the following criteria.
-        
-        1. ItemFile.archived is True.
-
-        :returns: True if the file is finished else False.
+    def add_event(self, event_type: str, timestamp: float, duration: float):
+        """Add an event to the ItemFile.
+        :returns: True on success else False.
         """
-        return self.archived
-
-    def delete_file(self) -> bool:
-        """Delete ItemFile.filepath.
-        :returns: True if the file was deleted else False.
-        """
-        # Check file exists
-        if os.path.isfile(self.filepath):
-            try:
-                os.remove(self.filepath)
+        if event_type in ["stop", "play", "pause"]:
+            if duration > 0:
+                event = ItemEvent(event=event_type,
+                                  timestamp=timestamp,
+                                  duration=duration)
+                self.events.append(event)
+                session.commit()
+                logger.debug(f"Added {event_type} event to {self} with "
+                             f"duration {duration}s.")
                 return True
-            except OSError as e:
-                logger.error(f"Exception {e} when attempting "
-                             f"to delete {self.filepath}.")
-                return False
-        logger.error(f"Attempted to delete file {self.filepath} "
-                     "but it does not exist.")
         return False
 
     def process_cloze(self) -> bool:
         """Creates a question and cloze from an ItemFile.
         """
-        extract_fp = self.extract.filepath
-        extract_length = self.extract.endstamp - self.extract.startstamp
-        cloze_length = self.cloze_endstamp - self.cloze_startstamp
-        cloze_start = self.cloze_startstamp
-        cloze_end = self.cloze_endstamp
-        basename = os.path.basename(self.extract.filepath)
-        filename, ext = os.path.splitext(basename)
+            
+        if os.path.isfile(self.extract.filepath):
+            extract_fp = self.extract.filepath
+            basename = os.path.basename(self.extract.filepath)
+            filename, ext = os.path.splitext(basename)
+            if self.extract.endstamp and self.extract.startstamp and \
+               self.extract.length() > 0:
+                extract_length = self.extract.length()
+                if self.cloze_endstamp and self.cloze_startstamp and \
+                   self.length() > 0:
+                    cloze_start = self.cloze_startstamp
+                    cloze_end = self.cloze_endstamp
+                    cloze_length = self.length()
 
-        question_fp = os.path.join(QUESTIONFILES_DIR,
-                                   (filename + "-" +
-                                    "QUESTION" + "-" +
-                                    str(self.id) +
-                                    ext))
+                    # Extend the output cloze length slightly to improve audio
+                    # TODO Test this
+                    output_cloze_start = cloze_start
+                    output_cloze_end = cloze_end
 
-        cloze_fp = os.path.join(QUESTIONFILES_DIR,
-                                (filename + "-" +
-                                 "CLOZE" + "-" +
-                                 str(self.id) +
-                                 ext))
-        
-        # Non-blocking
-        try:
-            # TODO Test waiting for exit code?
-            subprocess.Popen([
-                    # INPUTS
-                    # The extract file
-                    'ffmpeg',
-                    '-i',
-                    extract_fp,
-                    # Sine wave beep generator
-                    '-f',
-                    'lavfi',
-                    '-i',
-                    'sine=frequency=1000:duration=' + str(cloze_length),
-                    # FILTERS
-                    '-filter_complex',
-                    # Cut the beginning of the extract before the cloze
-                    '[0:a]atrim=' + "0" + ":" + str(cloze_start) + "[beg]" + ";" + \
-                    # Cut the beginning of the cloze to the end of the cloze
-                    '[0:a]atrim=' + str(cloze_start) + ":" + str(cloze_end) + "[cloze]" + ";" + \
-                    # Cut the end of the extract after the cloze
-                    '[0:a]atrim=' + str(cloze_end) + ":" + str(extract_length) + "[end]" + ";" + \
-                    # concatenate the files
-                    # [1:0] is the sine wave
-                    '[beg][1:0][end]concat=n=3:v=0:a=1[question]',
-                    '-map',
-                    # Output the clozed extract
-                    '[question]',
-                    question_fp,
-                    '-map',
-                    # Output the clozed word / phrase
-                    '[cloze]',
-                    cloze_fp
-            ], shell=False, stdout=DEVNULL)
+                    if cloze_start > 0.3:
+                        output_cloze_start -= 0.3
 
-            self.question_filepath = question_fp
-            self.cloze_filepath = cloze_fp
-            logger.info("Created a new question / cloze pair.")
-            return True
-        except OSError as e:
-            logger.error(f"Call to ffmpeg subprocess "
-                         f"failed with exception {e}.")
-            return False
+                    if cloze_end + 0.3 < self.extract.endstamp:
+                        output_cloze_end += 0.3
 
-    def add_event(self, event: str, timestamp: float, duration: float):
-        """ Add an event to the current TopicFile """
-        # TODO data validation of parameters
-        event = ItemEvent(event=event,
-                          timestamp=timestamp,
-                          duration=duration)
-        self.append(event)
-        session.commit()
+                    question_fp = os.path.join(QUESTIONFILES_DIR,
+                                               (filename + "-" +
+                                                "QUESTION" + "-" +
+                                                str(self.id) +
+                                                ext))
 
-    # TODO Should this be a property
-    @property
-    def length(self) -> Optional[float]:
-        """ Return the length of the cloze or none"""
+                    cloze_fp = os.path.join(QUESTIONFILES_DIR,
+                                            (filename + "-" +
+                                             "CLOZE" + "-" +
+                                             str(self.id) +
+                                             ext))
+                                         
+                    # Non-blocking
+                    try:
+                        # TODO Test waiting for exit code?
+                        subprocess.Popen([
+                                # INPUTS
+                                # The extract file
+                                'ffmpeg',
+                                '-i',
+                                extract_fp,
+                                # Sine wave beep generator
+                                '-f',
+                                'lavfi',
+                                '-i',
+                                'sine=frequency=1000:duration=' + str(cloze_length),
+                                # FILTERS
+                                '-filter_complex',
+                                # Cut the beginning of the extract before the cloze
+                                '[0:a]atrim=' + "0" + ":" + str(cloze_start) + "[beg]" + ";" + \
+                                # Cut the beginning of the cloze to the end of the cloze
+                                '[0:a]atrim=' + str(output_cloze_start) + ":" + str(output_cloze_end) + "[cloze]" + ";" + \
+                                # Cut the end of the extract after the cloze
+                                '[0:a]atrim=' + str(cloze_end) + ":" + str(extract_length) + "[end]" + ";" + \
+                                # concatenate the files
+                                # [1:0] is the sine wave
+                                '[beg][1:0][end]concat=n=3:v=0:a=1[question]',
+                                '-map',
+                                # Output the clozed extract
+                                '[question]',
+                                question_fp,
+                                '-map',
+                                # Output the clozed word / phrase
+                                '[cloze]',
+                                cloze_fp
+                        ], shell=False, stdout=DEVNULL)
+
+                        self.question_filepath = question_fp
+                        self.cloze_filepath = cloze_fp
+                        logger.info("Created a new question / cloze pair.")
+                        return True
+                    except OSError as e:
+                        logger.error(f"Call to ffmpeg subprocess "
+                                     f"failed with exception {e}.")
+                        return False
+                else:
+                    logger.error(f"Attempted to create cloze on "
+                                 "item with invalid length.")
+            else:
+                logger.error(f"Attempted to create cloze on "
+                             "extract with invalid length.")
+        else:
+            logger.error(f"Extract filepath does not exist.")
+        return False
+
+    def length(self) -> float:
+        """
+        :returns: Length of the cloze or 0.0
+        """
         if self.cloze_startstamp and self.cloze_endstamp:
             return (self.cloze_startstamp - self.cloze_endstamp)
-        return None
+        return 0.0
 
     def __repr__(self) -> str:
-        return '<ItemFile: question=%r cloze=%r>' % \
-                (self.question_filepath, self.cloze_filepath)
+        return f"<ItemFile: question_filepath={self.question_filepath} " \
+               f"cloze_filepath={self.cloze_filepath}>"
+
 
 ###################
 # Activity Tables #
@@ -509,20 +463,20 @@ class TopicEvent(Base):
 
     __tablename__ = "topicevents"
 
-    id = Column(Integer, primary_key=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow())
-    event = Column(String, nullable=False)  # play/pause/stop (mpd status)
-    timestamp = Column(Float, nullable=False)  # seconds.miliseconds
-    duration = Column(Float, default=0)  # seconds.miliseconds
+    id: int = Column(Integer, primary_key=True)
+    created_at: DateTime = Column(DateTime, default=datetime.datetime.utcnow())
+    event: str = Column(String, nullable=False)  # play/pause/stop (mpd status)
+    timestamp: float = Column(Float, nullable=False)  # seconds.miliseconds
+    duration: float = Column(Float, default=0)  # seconds.miliseconds
+    topic_id: int = Column(Integer, ForeignKey('topicfiles.id'))
 
     # Many to One TopicEvent >-| TopicFile
-    topic_id = Column(Integer, ForeignKey('topicfiles.id'))
-    topic = relationship("TopicFile",
-                         back_populates="events")
+    topic: TopicFile = relationship("TopicFile", back_populates="events")
 
     def __repr__(self):
-        return "<TopicEvent: event=%r created_at=%r duration=%r>" % \
-                (self.event, self.timestamp, self.duration)
+        return f"<TopicEvent: event={self.event} " \
+               f"created_at={self.created_at} " \
+               f"duration={self.duration}>"
 
 
 class ExtractEvent(Base):
@@ -530,20 +484,20 @@ class ExtractEvent(Base):
 
     __tablename__ = "extractevents"
 
-    id = Column(Integer, primary_key=True)
-    event = Column(String, nullable=False)  # play, pause
-    timestamp = Column(Float, nullable=False)  # seconds.miliseconds
-    created_at = Column(DateTime, default=datetime.datetime.utcnow())
-    duration = Column(Float, default=0)  # seconds.miliseconds
+    id: int = Column(Integer, primary_key=True)
+    event: str = Column(String, nullable=False)  # play, pause
+    timestamp: float = Column(Float, nullable=False)  # seconds.miliseconds
+    created_at: DateTime = Column(DateTime, default=datetime.datetime.utcnow())
+    duration: float = Column(Float, default=0)  # seconds.miliseconds
 
     # Many to one ExtractEvent >-| ExtractFile
-    extract_id = Column(Integer, ForeignKey('extractfiles.id'))
-    extract = relationship("ExtractFile",
-                           back_populates="events")
+    extract_id: int = Column(Integer, ForeignKey('extractfiles.id'))
+    extract: ExtractFile = relationship("ExtractFile", back_populates="events")
 
     def __repr__(self):
-        return "<ExtractEvent: event=%r created_at=%r duration=%r>" % \
-                (self.event, self.timestamp, self.duration)
+        return f"<ExtractEvent: event={self.event} " \
+               f"created_at={self.created_at} " \
+               f"duration={self.duration}>"
 
 
 class ItemEvent(Base):
@@ -551,59 +505,20 @@ class ItemEvent(Base):
 
     __tablename__ = "itemevents"
 
-    id = Column(Integer, primary_key=True)
-    event = Column(String, nullable=False)  # play/pause/stop (mpd state)
-    timestamp = Column(Float, nullable=False)  # seconds.miliseconds
-    created_at = Column(DateTime, default=datetime.datetime.utcnow())
-    duration = Column(Float, default=0)  # seconds.miliseconds
+    id: int = Column(Integer, primary_key=True)
+    event: str = Column(String, nullable=False)  # play/pause/stop (mpd state)
+    timestamp: float = Column(Float, nullable=False)  # seconds.miliseconds
+    created_at: DateTime = Column(DateTime, default=datetime.datetime.utcnow())
+    duration: float = Column(Float, default=0)  # seconds.miliseconds
 
     # Many to one ItemEvent >-| ItemFile
-    item_id = Column(Integer, ForeignKey('itemfiles.id'))
-    item = relationship("ItemFile",
-                        back_populates="events")
+    item_id: int = Column(Integer, ForeignKey('itemfiles.id'))
+    item: ItemFile = relationship("ItemFile", back_populates="events")
 
     def __repr__(self):
-        return "<ItemEvent: event=%r created_at=%r duration=%r>" % \
-                (self.event, self.timestamp, self.duration)
-
-###########
-# Tagging #
-###########
-
-
-class YoutubeTag(Base):
-    __tablename__ = 'yttags'
-
-    # Got it to work by removing the unique constraint on the
-    # tag attribute
-
-    id = Column(Integer, primary_key=True)
-    tag = Column(String(50), nullable=False)
-    topics = relationship('TopicFile',
-                          secondary=yt_topicfile_tags,
-                          back_populates='yttags')
-
-    def __init__(self, tag):
-        self.tag = tag
-
-    def __repr__(self):
-        return '<YoutubeTag: tag=%r>' % (self.tag)
-
-
-class MyTag(Base):
-    __tablename__ = 'mytags'
-
-    id = Column(Integer, primary_key=True)
-    tag = Column(String(50), nullable=False)
-    topics = relationship('TopicFile',
-                          secondary=my_topicfile_tags,
-                          back_populates='mytags')
-
-    def __init__(self, tag):
-        self.tag = tag
-
-    def __repr__(self):
-        return '<MyTag: tag=%r>' % (self.tag)
+        return f"<ItemEvent: event={self.event} " \
+               f"created_at={self.created_at} " \
+               f"duration={self.duration}>"
 
 
 Base.metadata.create_all(engine)
