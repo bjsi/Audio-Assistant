@@ -143,8 +143,6 @@ class AudioDownloader(object):
             info = ydl.extract_info(self.yt_id, download=False)
 
         if info:
-            print(info)
-            return
             topic: TopicFile = TopicFile(filepath=filepath,
                                          title=info["title"],
                                          youtube_id=["id"],
@@ -176,4 +174,4 @@ class AudioDownloader(object):
 
 
 if __name__ == "__main__":
-    AudioDownloader("b9pILsBw_-c").download()
+    AudioDownloader("22Q7HJ3wb4U").download()
