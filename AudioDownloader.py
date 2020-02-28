@@ -57,7 +57,7 @@ class AudioDownloader(object):
                 'max_downloads': 1
         }
 
-    def download(self):
+    def download(self) -> None:
         """Download a youtube video's audio.
         """
         try:
@@ -66,7 +66,6 @@ class AudioDownloader(object):
         except youtube_dl.utils.DownloadError as e:
             logger.error(f"Attempt to download {self.yt_id} failed with "
                          f"exception {e}")
-            return
 
     def set_playback_rate(self, filepath: str) -> bool:
         """Make a subprocess call to ffmpeg to set the playback rate.
