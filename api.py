@@ -48,12 +48,12 @@ class Youtube(Resource):
     def post(self):
         """Start a youtube_dl download
         """
-        dl_req = request.data
+        dl_req = request.get_json()
         if dl_req:
             # TODO wait for the finished hook return status somehow
             AudioDownloader(**dl_req).download()
-            return download_request, 201
-        return download_request, 404
+            return dl_req, 201
+        return dl_req, 404
 
 
 if __name__ == "__main__":
