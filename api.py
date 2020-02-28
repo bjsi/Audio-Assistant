@@ -45,12 +45,13 @@ class Ping(Resource):
 class Youtube(Resource):
     @api.response(201, "Successfully downloaded audio file to pi")
     @api.expect(download_request)
-    def post(self, youtube_id):
+    def post(self):
         """Start a youtube_dl download
         """
         if download_request:
             # TODO wait for the finished hook return status somehow
             AudioDownloader(**download_request).download()
+            return download_request, 201
         return download_request, 404
 
 
