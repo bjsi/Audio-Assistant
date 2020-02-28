@@ -444,7 +444,7 @@ class ItemFile(Base):
         :returns: Length of the cloze or 0.0
         """
         if self.cloze_startstamp and self.cloze_endstamp:
-            return (self.cloze_startstamp - self.cloze_endstamp)
+            return (self.cloze_endstamp - self.cloze_startstamp)
         return 0.0
 
     def __repr__(self) -> str:
