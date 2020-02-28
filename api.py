@@ -36,7 +36,7 @@ download_request = api.model('Download Request', {
 class Ping(Resource):
     @api.response(200, "Pinged the audio assistant API")
     def get(self):
-        """
+        """Check if API is online.
         """
         return "ping", 200
 
