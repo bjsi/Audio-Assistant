@@ -25,7 +25,7 @@ assistant_ns = api.namespace('assistant',
                                          "Audio Assistant via the API")
 
 download_request = api.model('Download Request', {
-        "id": fields.String,
+        "yt_id": fields.String,
         "playback_rate": fields.Float,
         "sm_element_id": fields.Integer,
         "sm_priority": fields.Float,
