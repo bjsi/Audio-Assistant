@@ -424,6 +424,7 @@ class ItemFile(Base):
                         self.question_filepath = question_fp
                         self.cloze_filepath = cloze_fp
                         logger.info("Created a new question / cloze pair.")
+                        session.commit()
                         return True
                     except OSError as e:
                         logger.error(f"Call to ffmpeg subprocess "
