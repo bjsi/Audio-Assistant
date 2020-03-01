@@ -195,11 +195,12 @@ class Mpd(object):
         print("vol up")
         with self.connection() if not self.connected() else ExitStack():
             status = self.client.status()
-            cur_vol = int(status['volume'])
-            new_vol = cur_vol + increment
-            if new_vol > 100:
-                return
-            self.client.setvol(new_vol)
+            cur_vol = status.get('volume')
+            if cur_vol:
+                new_vol = int(cur_vol) + increment
+                if new_vol > 100:
+                    return
+                self.client.setvol(new_vol)
         logger.debug(f"Increasing volume {increment} points.")
 
     def volume_down(self, increment=5) -> None:
@@ -207,11 +208,12 @@ class Mpd(object):
         """
         with self.connection() if not self.connected() else ExitStack():
             status = self.client.status()
-            cur_vol = int(status['volume'])
-            new_vol = cur_vol - 5
-            if new_vol < 0:
-                return
-            self.client.setvol(new_vol)
+            cur_vol = status.get('volume')
+            if cur_vol:
+                new_vol = int(cur_vol) - increment
+                if new_vol < 0:
+                    return
+                self.client.setvol(new_vol)
         logger.debug(f"Decreasing volume {increment} points.")
 
     def stutter_forward(self) -> None:
