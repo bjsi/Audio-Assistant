@@ -144,7 +144,7 @@ class AudioDownloader(object):
 
         with youtube_dl.YoutubeDL({}) as ydl:
             # find individual video id - depends on filename being id.ext
-            video_id = os.path.splitext(filepath)[0]
+            video_id = os.path.splitext(os.path.basename(filepath))[0]
             info = ydl.extract_info(video_id, download=False)
 
         if info:
