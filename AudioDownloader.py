@@ -142,8 +142,10 @@ class AudioDownloader(object):
         :filepath: Audio filepath.
         """
 
-        with youtube_dl.YoutubeDL({'playlist': False}) as ydl:
-            info = ydl.extract_info(self.yt_id, download=False)
+        with youtube_dl.YoutubeDL({}) as ydl:
+            # find individual video id - depends on filename being id.ext
+            video_id = os.path.splitext(filepath)[0]
+            info = ydl.extract_info(video_id, download=False)
 
         if info:
             topic: TopicFile = TopicFile(filepath=filepath,
