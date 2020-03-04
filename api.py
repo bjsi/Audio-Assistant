@@ -31,12 +31,6 @@ download_request = api.model('Download Request', {
         "sm_priority": fields.Float,
         })
 
-download_progress = api.model("Download Progress", {
-    "yt_id": fields.String,
-    "progress": fields.Integer,
-    "error": fields.Boolean
-})
-
 
 @assistant_ns.route("/ping")
 class Ping(Resource):
@@ -57,29 +51,23 @@ class Youtube(Resource):
         dl_req = request.get_json()
         if dl_req:
             # TODO wait for the finished hook return status somehow
-            app.config[dl_req["yt_id"]] = {}
-            app.config[dl_req["yt_id"]]["updated"] = False
-            app.config[dl_req["yt_id"]]["progress"] = 0
-            app.config[dl_req["yt_id"]]["error"] = False
+            app.config["updated"] = False
+            app.config["progress"] = 0
+            app.config["error"] = False
             AudioDownloader(config=app.config, **dl_req).download()
             return dl_req, 201
         return dl_req, 404
 
 
-@assistant_ns.route("/progress/<yt_id>")
+@assistant_ns.route("/progress")
 class Progress(Resource):
     @api.response(200, "Successfully polled download progress")
-    def get(self, yt_id: str):
+    def get(self):
         """Poll the progress of the current youtube-dl download.
         """
-        if app.config.get(yt_id):
-            if app.config[yt_id].get('updated'):
-                app.config[yt_id]["updated"] = False
-                return {
-                    "yt_id": yt_id,
-                    "progress": app.config[yt_id]["progress"],
-                    "error": app.config[yt_id]["error"]
-                }
+        if app.config.get('updated'):
+            app.config["updated"] = False
+            return app.config["progress"]
 
 
 if __name__ == "__main__":
