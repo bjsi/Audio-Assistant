@@ -29,6 +29,7 @@ class AudioDownloader(object):
 
     def __init__(self,
                  yt_id: str,
+                 config=None,
                  sm_element_id: int = -1,
                  sm_priority: float = -1,
                  playback_rate: float = 1.0):
@@ -56,6 +57,20 @@ class AudioDownloader(object):
                 'outtmpl': os.path.join(TOPICFILES_DIR, '%(id)s.%(ext)s'),
                 'max_downloads': 1
         }
+        if config:
+            self.config = config
+            self.ydl_options["progress_hooks"].append(self.download_progress_hook)
+
+    def download_progress_hook(self, target):
+        """Update app.config['updated']
+        """
+        if target['status'] == 'downloading':
+            if target['_percent_str'] != self.config['_percent_str']:
+                self.config['updated'] = True
+        
+        elif target['status'] == 'finished':
+            self.config['updated'] = True
+            self.config['_percent_str'] = '100%'
 
     def download(self) -> None:
         """Download a youtube video's audio.

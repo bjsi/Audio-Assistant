@@ -32,6 +32,7 @@ download_request = api.model('Download Request', {
         })
 
 
+
 @assistant_ns.route("/ping")
 class Ping(Resource):
     @api.response(200, "Pinged the audio assistant API")
@@ -51,7 +52,7 @@ class Youtube(Resource):
         dl_req = request.get_json()
         if dl_req:
             # TODO wait for the finished hook return status somehow
-            AudioDownloader(**dl_req).download()
+            AudioDownloader(config=app.config, **dl_req).download()
             return dl_req, 201
         return dl_req, 404
 
