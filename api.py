@@ -64,7 +64,7 @@ class Progress(Resource):
     def get(self):
         """Poll the progress of the current youtube-dl download.
         """
-        if app.config["updated"] == True:
+        if app.config["updated"]:
             app.config["updated"] = False
             return app.config["progress"], 200
 
