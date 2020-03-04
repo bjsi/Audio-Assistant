@@ -31,7 +31,7 @@ download_request = api.model('Download Request', {
         "sm_priority": fields.Float,
         })
 
-download_progress = api.models("Download Progress", {
+download_progress = api.model("Download Progress", {
     "yt_id": fields.String,
     "progress": fields.Integer,
     "error": fields.Boolean
@@ -59,6 +59,7 @@ class Youtube(Resource):
             # TODO wait for the finished hook return status somehow
             app.config[dl_req["yt_id"]]["updated"] = False
             app.config[dl_req["yt_id"]]["progress"] = 0
+            app.config[dl_req["yt_id"]]["error"] = False
             AudioDownloader(config=app.config, **dl_req).download()
             return dl_req, 201
         return dl_req, 404

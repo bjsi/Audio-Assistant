@@ -65,19 +65,22 @@ class AudioDownloader(object):
         """Update app.config['updated']
         """
         if target['status'] == 'downloading':
+            filename = target["filename"]
+            youtube_id = os.path.splitext(os.path.basename(filename))[0]
+
             if target.get('downloaded_bytes') and target.get('total_bytes'):
-                if (target['downloaded_bytes'] / target['total_bytes']) != self.config['progress']:
-                    self.config['updated'] = True
-                    self.config["progress"] = int(target['downloaded_bytes'] / target['total_bytes']) * 100
-                    print('\n\n' + str(self.config["progress"]) + "%" + '\n\n')
+                if (target['downloaded_bytes'] / target['total_bytes']) != self.config[youtube_id]['progress']:
+                    self.config[youtube_id]['updated'] = True
+                    self.config[youtube_id]["progress"] = int(target['downloaded_bytes'] / target['total_bytes']) * 100
+                    print('\n\n' + str(self.config[youtube_id]["progress"]) + "%" + '\n\n')
         
         elif target['status'] == "error":
-            self.config["updated"] = True
-            self.config["error"] = True
+            self.config[youtube_id]["updated"] = True
+            self.config[youtube_id]["error"] = True
         
         elif target['status'] == 'finished':
-            self.config['updated'] = True
-            self.config['progress'] = 1
+            self.config[youtube_id]['updated'] = True
+            self.config[youtube_id]['progress'] = 1
 
     def download(self) -> None:
         """Download a youtube video's audio.
