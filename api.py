@@ -75,7 +75,11 @@ class Progress(Resource):
         if app.config.get(yt_id):
             if app.config[yt_id].get('updated'):
                 app.config[yt_id]["updated"] = False
-                return app.config["yt_id"]["progress"], 200
+                return {
+                    "yt_id": yt_id,
+                    "progress": app.config[yt_id]["progress"],
+                    "error": app.config[yt_id]["error"]
+                }
 
 
 if __name__ == "__main__":
