@@ -53,7 +53,8 @@ class Youtube(Resource):
         if dl_req:
             # TODO wait for the finished hook return status somehow
             AudioDownloader(config=app.config, **dl_req).download()
-            print(app.config["progress"])
+            app.config["updated"] = False
+            app.config["progress"] = 0
             return dl_req, 201
         return dl_req, 404
 
