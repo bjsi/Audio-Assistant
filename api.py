@@ -32,10 +32,6 @@ download_request = api.model('Download Request', {
         })
 
 
-app.config["progress"] = 0
-app.config["updated"] = False
-
-
 @assistant_ns.route("/ping")
 class Ping(Resource):
     @api.response(200, "Pinged the audio assistant API")
@@ -55,9 +51,9 @@ class Youtube(Resource):
         dl_req = request.get_json()
         if dl_req:
             # TODO wait for the finished hook return status somehow
-            AudioDownloader(config=app.config, **dl_req).download()
             app.config["updated"] = False
             app.config["progress"] = 0
+            AudioDownloader(config=app.config, **dl_req).download()
             return dl_req, 201
         return dl_req, 404
 
@@ -75,3 +71,5 @@ class Progress(Resource):
 
 if __name__ == "__main__":
     app.run(debug=True, threading=True)
+    app.config["progress"] = 0
+    app.config["updated"] = False
