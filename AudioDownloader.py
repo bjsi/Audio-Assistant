@@ -69,7 +69,7 @@ class AudioDownloader(object):
                 if (target['downloaded_bytes'] / target['total_bytes']) != self.config['progress']:
                     self.config['updated'] = True
                     self.config["progress"] = target['downloaded_bytes'] / target['total_bytes']
-                    print(str(self.config["progress"]*100) + "%")
+                    print('\n\n' + str(int(self.config["progress"]*100)) + "%" + '\n\n')
         
         elif target['status'] == 'finished':
             self.config['updated'] = True
