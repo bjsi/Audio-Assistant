@@ -71,7 +71,7 @@ class AudioDownloader(object):
             if target.get('downloaded_bytes') and target.get('total_bytes'):
                 if (target['downloaded_bytes'] / target['total_bytes']) != self.config[youtube_id]['progress']:
                     self.config[youtube_id]['updated'] = True
-                    self.config[youtube_id]["progress"] = int(target['downloaded_bytes'] / target['total_bytes']) * 100
+                    self.config[youtube_id]["progress"] = int(target['downloaded_bytes'] / target['total_bytes'] * 100)
                     print('\n\n' + str(self.config[youtube_id]["progress"]) + "%" + '\n\n')
         
         elif target['status'] == "error":
@@ -80,7 +80,7 @@ class AudioDownloader(object):
         
         elif target['status'] == 'finished':
             self.config[youtube_id]['updated'] = True
-            self.config[youtube_id]['progress'] = 1
+            self.config[youtube_id]['progress'] = 100
 
     def download(self) -> None:
         """Download a youtube video's audio.
