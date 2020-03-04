@@ -57,6 +57,7 @@ class Youtube(Resource):
         dl_req = request.get_json()
         if dl_req:
             # TODO wait for the finished hook return status somehow
+            app.config[dl_req["yt_id"]] = {}
             app.config[dl_req["yt_id"]]["updated"] = False
             app.config[dl_req["yt_id"]]["progress"] = 0
             app.config[dl_req["yt_id"]]["error"] = False
