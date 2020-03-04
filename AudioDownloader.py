@@ -65,12 +65,13 @@ class AudioDownloader(object):
         """Update app.config['updated']
         """
         if target['status'] == 'downloading':
-            if target['_percent_str'] != self.config['_percent_str']:
+            if target['_percent_str'] != self.config['progess']:
                 self.config['updated'] = True
+                self.config["progress"] = target["_percent_str"]
         
         elif target['status'] == 'finished':
             self.config['updated'] = True
-            self.config['_percent_str'] = '100%'
+            self.config['progress'] = '100%'
 
     def download(self) -> None:
         """Download a youtube video's audio.

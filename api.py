@@ -53,8 +53,20 @@ class Youtube(Resource):
         if dl_req:
             # TODO wait for the finished hook return status somehow
             AudioDownloader(config=app.config, **dl_req).download()
+            print(app.config["progress"])
             return dl_req, 201
         return dl_req, 404
+
+
+@assistant_ns.route("/progress")
+class Progress(Resource):
+    @api.response(200, "Successfully polled download progress")
+    def get(self):
+        """Poll the progress of the current youtube-dl download.
+        """
+        if app.config["updated"] == True:
+            app.config["updated"] = False
+            return app.config["progress"], 200
 
 
 if __name__ == "__main__":
