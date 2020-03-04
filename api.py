@@ -32,6 +32,9 @@ download_request = api.model('Download Request', {
         })
 
 
+app.config["progress"] = 0
+app.config["updated"] = False
+
 
 @assistant_ns.route("/ping")
 class Ping(Resource):
