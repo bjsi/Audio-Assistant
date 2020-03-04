@@ -64,10 +64,11 @@ class AudioDownloader(object):
     def download_progress_hook(self, target):
         """Update app.config['updated']
         """
-        if target['status'] == 'downloading':
-            filename = target["filename"]
-            youtube_id = os.path.splitext(os.path.basename(filename))[0]
 
+        filename = target["filename"]
+        youtube_id = os.path.splitext(os.path.basename(filename))[0]
+
+        if target['status'] == 'downloading':
             if target.get('downloaded_bytes') and target.get('total_bytes'):
                 if (target['downloaded_bytes'] / target['total_bytes']) != self.config[youtube_id]['progress']:
                     self.config[youtube_id]['updated'] = True
