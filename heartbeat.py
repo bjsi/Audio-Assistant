@@ -107,12 +107,13 @@ class MpdHeartbeat(Mpd, object):
                             last_event.timestamp = timestamp
                             session.commit()
                             logger.info(f"Updated last event {last_event}.")
-                    # Create a new event
-                    if file.add_event(event_type=event,
-                                      timestamp=timestamp,
-                                      duration=0):
-                        session.commit()
-                        logger.info(f"Added new {event} event for file {file}.")
+                        # Create a new event
+                        else:
+                            file.add_event(event_type=event,
+                                           timestamp=timestamp,
+                                           duration=0)
+                            session.commit()
+                            logger.info(f"Added new {event} event for file {file}.")
                     else:
                         logger.error(f"Call to add_event on {file} failed.")
                 else:
