@@ -13,7 +13,10 @@ from config import (KEY_X,
                     KEY_LEFT,
                     KEY_DOWN,
                     KEY_OK,
-                    KEY_MENU)
+                    KEY_MENU,
+                    GAME_X,
+                    GAME_B,
+                    GAME_A)
 import logging
 from Queue.QueueBase import QueueBase
 
@@ -76,7 +79,12 @@ class ExtractQueue(Mpd, QueueBase, object):
                 KEY_LEFT:   self.stutter_backward,
                 KEY_UP:     self.get_extract_topic,
                 KEY_DOWN:   self.get_extract_items,
-                KEY_MENU:   self.archive_extract
+                GAME_X:     self.volume_up,
+                GAME_B:     self.volume_down,
+                GAME_A:     self.archive_extract,
+                GAME_OK:    self.toggle_to_export,
+                # KEY_MENU clashes with GAME_X
+                # KEY_MENU:   self.archive_extract
         }
 
         # Keycodes mapped to methods for clozing.
@@ -86,6 +94,37 @@ class ExtractQueue(Mpd, QueueBase, object):
                 KEY_LEFT:   self.stutter_backward,
                 KEY_OK:     self.stop_clozing,
         }
+
+    def toggle_to_export(self) -> bool:
+        """Toggles the to_export field of the current extract.
+
+        :returns: True on success else false.
+        """
+        # Get the currently playing extract
+        cur_song = self.current_track()
+        filepath = cur_song['abs_fp']
+        extract: ExtractFile = (session
+                                .query(ExtractFile)
+                                .filter_by(filepath=filepath)
+                                .one_or_none())
+
+        if extract:
+            if extract.to_export:
+                extract.to_export = False
+                session.commit()
+                espeak("Export true")
+            else:
+                extract.to_export = True
+                session.commit()
+                espeak("Export false")
+
+            logger.info(f"{extract} to_export field was "
+                        f"set to {extract.to_export}")
+            return True
+
+        else:
+            logger.error("Currently playing extract not found in DB.")
+            return False
 
     def get_global_extracts(self) -> bool:
         """Get global extracts and load global extract queue.

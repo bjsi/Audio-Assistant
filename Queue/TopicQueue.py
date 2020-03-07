@@ -18,7 +18,8 @@ from config import (KEY_X,
                     KEY_OK,
                     GAME_X,
                     GAME_B,
-                    KEY_MENU)
+                    KEY_MENU,
+                    GAME_A)
 from contextlib import ExitStack
 import logging
 from Queue.QueueBase import QueueBase
@@ -80,7 +81,9 @@ class TopicQueue(Mpd, QueueBase, object):
                 KEY_OK:     self.start_recording,
                 GAME_X:     self.volume_up,
                 GAME_B:     self.volume_down,
-                KEY_MENU:   self.archive_topic
+                # KEY_MENU seems to clash with GAME_X
+                # KEY_MENU:   self.archive_topic
+                GAME_A:     self.archive_topic,
         }
 
         self.recording_keys: Dict[int, Callable] = {
