@@ -3,7 +3,7 @@ from MPD.MpdBase import Mpd
 from models import (session,
                     TopicFile)
 import logging
-
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -29,23 +29,35 @@ class MpdListener(Mpd, object):
         super().__init__()
         self.interval = interval
 
+    def find_file(self, filepath: str) -> Optional[TopicFile]:
+        """Attempts to find the row corresponding to the filepath
+        in the TopicFile table.
+        """
+        # Find the topic
+        topic: TopicFile = (session
+                            .query(TopicFile)
+                            .filter_by(filepath=filepath)
+                            .one_or_none())
+        if topic:
+            logger.info(f"Found currently playing {topic}.")
+            return topic
+        return None
+
     def listen_loop(self):
         """Polls the MPD server, updates TopicFile current timestamp.
         """
         while True:
             with self.connection():
                 status = self.client.status()
-                cur_song = self.client.currentsong()
+                cur_song = self.current_track()
+            
             state = status["state"]
-            if state not in ["pause", "stop"]:
-                rel_fp = cur_song["file"]
-                if rel_fp:
-                    abs_fp = self.rel_to_abs(rel_fp)
-                    cur_timestamp = float(status["elapsed"])
-                    topic: TopicFile = (session
-                                        .query(TopicFile)
-                                        .filter_by(filepath=abs_fp)
-                                        .one_or_none())
+            abs_fp = cur_song["abs_fp"]
+            cur_timestamp = float(status.get("elapsed", 0))
+
+            if state not in ["pause", "stop"] and abs_fp and cur_timestamp:
+                if abs_fp:
+                    topic = self.find_file(abs_fp)
                     if topic:
                         db_timestamp = topic.cur_timestamp
                         if cur_timestamp > db_timestamp:
