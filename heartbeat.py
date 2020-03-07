@@ -108,9 +108,11 @@ class MpdHeartbeat(Mpd, object):
                             session.commit()
                             logger.info(f"Updated {event} event for file {file}.")
                     # Create a new event
-                    file.add_event(event=event, timestamp=timestamp)
-                    session.commit()
-                    logger.info(f"Added new {event} event for file {file}.")
+                    if file.add_event(event_type=event, timestamp=timestamp):
+                        session.commit()
+                        logger.info(f"Added new {event} event for file {file}.")
+                    else:
+                        logger.error(f"Call to add_event on {file} failed.")
                 else:
                     logger.error("Currently playing track not found in DB.")
             time.sleep(self.interval)
