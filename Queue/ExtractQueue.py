@@ -218,7 +218,7 @@ class ExtractQueue(Mpd, QueueBase, object):
                 # TESTING adjust the cloze_startstamp back 0.2 seconds
                 new_item.cloze_startstamp = cur_timestamp
                 if cur_timestamp > 0.1:
-                    new_item.cloze_startstamp -= 0.2
+                    new_item.cloze_startstamp
                 extract.items.append(new_item)
                 session.commit()
                 self.load_cloze_options()
