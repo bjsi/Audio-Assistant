@@ -256,7 +256,7 @@ class Mpd(object):
             status = self.client.status()
             cur_timestamp = float(status.get('elapsed', 0.0))
             seek_to = cur_timestamp - 0.165
-            seek_to = cur_timestamp - 0.23
+            seek_to = cur_timestamp - 0.24
             if seek_to < 0:
                 return
             self.client.seekcur(seek_to)
@@ -264,7 +264,7 @@ class Mpd(object):
             time.sleep(0.2)
             self.client.pause(1)
             self.client.seekcur(seek_to + 0.2)
-        logger.debug("Stutter forward.")
+            logger.debug("Stutter forward.")
 
     def repeat(self, state: int) -> None:
         """Repeat if 1, do not repeat if 0.
