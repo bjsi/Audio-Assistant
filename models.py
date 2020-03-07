@@ -354,8 +354,9 @@ class ItemFile(Base):
             extract_fp = self.extract.filepath
             basename = os.path.basename(self.extract.filepath)
             filename, ext = os.path.splitext(basename)
-            if self.extract.endstamp and self.extract.startstamp and \
-               self.extract.length() > 0:
+            if self.extract.endstamp:
+                if self.extract.startstamp:
+                    if extract.length() > 0:
                 extract_length = self.extract.length()
                 if self.cloze_endstamp and self.cloze_startstamp and \
                    self.length() > 0:

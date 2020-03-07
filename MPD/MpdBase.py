@@ -199,9 +199,10 @@ class Mpd(object):
             if cur_vol:
                 new_vol = int(cur_vol) + increment
                 if new_vol > 100:
+                    logger.debug(f"Max volume.")
                     return
                 self.client.setvol(new_vol)
-        logger.debug(f"Increasing volume {increment} points.")
+                logger.debug(f"Increasing volume {increment} points.")
 
     def volume_down(self, increment=5) -> None:
         """Decrease the volume.
@@ -212,9 +213,10 @@ class Mpd(object):
             if cur_vol:
                 new_vol = int(cur_vol) - increment
                 if new_vol < 0:
+                    logger.debug(f"Min volume.")
                     return
                 self.client.setvol(new_vol)
-        logger.debug(f"Decreasing volume {increment} points.")
+                logger.debug(f"Decreasing volume {increment} points.")
 
     def stutter_forward(self) -> None:
         """Seek forward frame-by-frame for accurate clozing.
