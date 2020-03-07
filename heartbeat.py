@@ -44,9 +44,9 @@ class MpdHeartbeat(Mpd, object):
             with self.connection():
                 status = self.client.status()
                 event = status['state']
-                timestamp = status['elapsed']
-                filepath = self.client.currentsong()['file']
-            if event != "stop":
+                timestamp = status.get('elapsed')
+                filepath = self.current_track['abs_fp']
+            if event != "stop" and timestamp and filepath:
                 file: Union[TopicFile, ExtractFile, ItemFile] = \
                         (session
                          .query(TopicFile, ItemFile, ExtractFile)
