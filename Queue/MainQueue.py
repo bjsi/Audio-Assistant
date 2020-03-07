@@ -112,7 +112,6 @@ class MainQueue(TopicQueue, ExtractQueue, ItemQueue, QueueBase, object):
         self.recording = False
         self.active_keys = self.extracting_keys
         self.current_queue = "local extract queue"
-        espeak(self.current_queue)
         logger.info("Loaded local extract options.")
 
     def get_topic_extracts(self) -> bool:
@@ -146,10 +145,14 @@ class MainQueue(TopicQueue, ExtractQueue, ItemQueue, QueueBase, object):
                         if self.mpd_recognised(rel_fp):
                             extract_queue.append(rel_fp)
                 if extract_queue:
-                    self.load_queue(extract_queue)
-                    logger.info("Loaded local extract queue.")
-                    self.load_local_extract_options()
-                    return True
+                    queue_length = self.load_queue(extract_queue)
+                    if queue_length > 0:
+                        logger.info("Loaded local extract queue.")
+                        espeak(f"{queue_length} local extract{'' if queue_length == 1 else 's'}")
+                        self.load_local_extract_options()
+                        return True
+                    else:
+                        logger.error("Call to load_queue failed.")
                 else:
                     logger.info(f"No outstanding extracts found for {topic}.")
             else:
@@ -216,13 +219,15 @@ class MainQueue(TopicQueue, ExtractQueue, ItemQueue, QueueBase, object):
                         topics.insert(0, parent_rel_fp)
 
                     # Load global topic queue
-                    if self.load_queue(topics):
+                    queue_length = self.load_queue(topics)
+                    if queue_length > 0:
                         self.load_topic_options()
                     # Seek to the startstamp of the child extract
                         with self.connection() if not self.connected() else ExitStack():
                             self.remove_stop_state()
                             self.client.seekcur(extract.startstamp)
                         logger.info("Loaded global topic queue.")
+                        espeak(f"{queue_length} global topic{'' if queue_length == 1 else 's'}")
                         return True
                     else:
                         logger.error("Call to load_queue failed.")
@@ -269,8 +274,10 @@ class MainQueue(TopicQueue, ExtractQueue, ItemQueue, QueueBase, object):
                         if self.mpd_recognised(rel_fp):
                             item_queue.append(rel_fp)
                 if item_queue:
-                    if self.load_queue(item_queue):
+                    queue_length = self.load_queue(item_queue)
+                    if queue_length > 0:
                         logger.info("Loaded local item queue.")
+                        espeak(f"{queue_length} local item{'' if queue_length == 1 else 's'}")
                         self.load_local_item_options()
                         return True
                     else:
@@ -295,7 +302,6 @@ class MainQueue(TopicQueue, ExtractQueue, ItemQueue, QueueBase, object):
         self.clozing = False
         self.recording = False
         logger.info("Loaded local item options.")
-        espeak(self.current_queue)
 
     ####################################
     # Item (child) -> Extract (parent) #
@@ -343,8 +349,10 @@ class MainQueue(TopicQueue, ExtractQueue, ItemQueue, QueueBase, object):
                     # Move parent extract to the front and load playlist
                     extract_queue.remove(parent_extract_fp)
                     extract_queue.insert(0, parent_extract_fp)
-                    if self.load_queue(extract_queue):
+                    queue_length = self.load_queue(extract_queue)
+                    if queue_length > 0:
                         logger.info("Loaded local extract queue.")
+                        espeak(f"{queue_length} local extract{'' if queue_length == 1 else 's'}")
                         self.load_local_extract_options()
                         return True
                     else:

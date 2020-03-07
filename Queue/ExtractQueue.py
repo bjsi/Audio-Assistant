@@ -104,28 +104,31 @@ class ExtractQueue(Mpd, QueueBase, object):
         # Get the currently playing extract
         cur_song = self.current_track()
         filepath = cur_song['abs_fp']
-        extract: ExtractFile = (session
-                                .query(ExtractFile)
-                                .filter_by(filepath=filepath)
-                                .one_or_none())
 
-        if extract:
-            if extract.to_export:
-                extract.to_export = False
-                session.commit()
-                espeak("Export true")
+        if filepath:
+            extract: ExtractFile = (session
+                                    .query(ExtractFile)
+                                    .filter_by(filepath=filepath)
+                                    .one_or_none())
+
+            if extract:
+                if extract.to_export:
+                    extract.to_export = False
+                    session.commit()
+                    espeak("Export true")
+                else:
+                    extract.to_export = True
+                    session.commit()
+                    espeak("Export false")
+
+                logger.info(f"{extract} to_export field was "
+                            f"set to {extract.to_export}")
+                return True
             else:
-                extract.to_export = True
-                session.commit()
-                espeak("Export false")
-
-            logger.info(f"{extract} to_export field was "
-                        f"set to {extract.to_export}")
-            return True
-
+                logger.error("Currently playing extract not found in DB.")
         else:
-            logger.error("Currently playing extract not found in DB.")
-            return False
+            logger.error("No currently playing track.")
+        return False
 
     def get_global_extracts(self) -> bool:
         """Get global extracts and load global extract queue.
@@ -150,8 +153,11 @@ class ExtractQueue(Mpd, QueueBase, object):
                 if self.mpd_recognised(rel_fp):
                     extract_queue.append(rel_fp)
             if extract_queue:
-                if self.load_queue(extract_queue):
-                    logger.info("Loaded global extract queue.")
+                queue_length = self.load_queue(extract_queue)
+                if queue_length > 0:
+                    logger.info(f"Loaded global extract queue "
+                                f"with {queue_length} tracks.")
+                    espeak(f"{queue_length} global extract{'' if queue_length == 1 else 's'}")
                     self.load_global_extract_options()
                     return True
                 else:
@@ -188,7 +194,6 @@ class ExtractQueue(Mpd, QueueBase, object):
         self.active_keys = self.extracting_keys
         self.current_queue = "global extract queue"
         logger.info("Loaded global extract queue options.")
-        espeak(self.current_queue)
 
     def start_clozing(self) -> bool:
         """Start a cloze deletion on an extract

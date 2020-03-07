@@ -101,7 +101,6 @@ class TopicQueue(Mpd, QueueBase, object):
         self.current_queue = "global topic queue"
         self.recording = False
         self.clozing = False
-        espeak(self.current_queue)
         logger.info("Loaded global topic options.")
 
     def load_recording_options(self) -> None:

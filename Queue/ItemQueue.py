@@ -6,7 +6,8 @@ from Sounds.sounds import load_beep
 from config import (KEY_X,
                     KEY_B,
                     KEY_Y,
-                    KEY_MENU)
+                    KEY_MENU,
+                    GAME_A)
 import logging
 from Queue.QueueBase import QueueBase
 
@@ -61,7 +62,7 @@ class ItemQueue(Mpd, QueueBase, object):
                 KEY_X:      self.toggle,
                 KEY_B:      self.previous,
                 KEY_Y:      self.next,
-                KEY_MENU:   self.archive_item
+                GAME_A:     self.archive_item
         }
 
     def get_global_items(self) -> bool:
@@ -85,8 +86,10 @@ class ItemQueue(Mpd, QueueBase, object):
                 if self.mpd_recognised(rel_fp):
                     item_queue.append(rel_fp)
             if item_queue:
-                if self.load_queue(item_queue):
-                    logger.info("Loaded a global item queue.")
+                queue_length = self.load_queue(item_queue)
+                if queue_length > 0:
+                    logger.info(f"Loaded a global item queue with {queue_length} items.")
+                    espeak(f"{queue_length} global item{'' if queue_length == 1 else 's'}")
                     self.load_global_item_options()
                     return True
                 else:
@@ -108,7 +111,6 @@ class ItemQueue(Mpd, QueueBase, object):
         self.current_queue = "global item queue"
         self.clozing = False
         self.recording = False
-        espeak(self.current_queue)
         logger.info("Loaded global item options.")
 
     def archive_item(self) -> bool:

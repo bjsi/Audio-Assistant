@@ -90,11 +90,11 @@ class Mpd(object):
                 logger.debug(f"MPD does not recognise file {rel_fp}.")
         return False
 
-    def load_queue(self, queue: List[str]) -> bool:
+    def load_queue(self, queue: List[str]) -> int:
         """Loads a queue of audio tracks.
 
         :queue: List of MPD base-relative filepaths.
-        :returns: True on success, false on failure.
+        :returns: Number of tracks in the queue.
         """
         if queue:
             with self.connection() if not self.connected() else ExitStack():
@@ -102,8 +102,8 @@ class Mpd(object):
                 for file in queue:
                     self.client.add(file)
             logger.info(f"Loaded a new queue with {len(queue)} tracks.")
-            return True
-        return False
+            return len(queue)
+        return 0
 
     def remove_stop_state(self) -> None:
         """MPD state can be play, pause or stop.
