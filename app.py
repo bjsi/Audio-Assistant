@@ -278,8 +278,8 @@ class QueueLoop(object):
                             if event.value == 1:
                                 if event.code in self.queue.active_keys:
                                     # Failed commands return False
-                                    #if queue.active_keys[event.code]() is False:
-                                        #negative_beep()
+                                    if queue.active_keys[event.code]() is False:
+                                        negative_beep()
                                     # Log the name of the pressed key.
                                     for keyname, keycode in self.controller['keys'].items():
                                         if keycode == event.code:
