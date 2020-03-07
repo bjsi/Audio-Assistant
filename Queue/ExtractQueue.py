@@ -215,10 +215,10 @@ class ExtractQueue(Mpd, QueueBase, object):
             # Add a new child item to the extract
             if extract:
                 new_item = ItemFile()
-                # TESTING adjust the cloze_startstamp back 0.1 seconds
+                # TESTING adjust the cloze_startstamp back 0.2 seconds
                 new_item.cloze_startstamp = cur_timestamp
                 if cur_timestamp > 0.1:
-                    new_item.cloze_startstamp -= 0.1
+                    new_item.cloze_startstamp -= 0.2
                 extract.items.append(new_item)
                 session.commit()
                 self.load_cloze_options()
