@@ -139,15 +139,14 @@ class TopicFile(Base):
         :returns: True on success else False.
         """
         if event_type in ["stop", "play", "pause"]:
-            if duration > 0:
-                event = TopicEvent(event=event_type,
-                                   timestamp=timestamp,
-                                   duration=duration)
-                self.events.append(event)
-                session.commit()
-                logger.debug(f"Added {event_type} event to {self} with "
-                             f"duration {duration}s.")
-                return True
+            event = TopicEvent(event=event_type,
+                               timestamp=timestamp,
+                               duration=duration)
+            self.events.append(event)
+            session.commit()
+            logger.debug(f"Added {event_type} event to {self} with "
+                         f"duration {duration}s.")
+            return True
         return False
 
     def is_finished(self) -> bool:
@@ -234,15 +233,14 @@ class ExtractFile(Base):
         :returns: True on success else False.
         """
         if event_type in ["stop", "play", "pause"]:
-            if duration > 0:
-                event = ExtractEvent(event=event_type,
-                                     timestamp=timestamp,
-                                     duration=duration)
-                self.events.append(event)
-                session.commit()
-                logger.debug(f"Added {event_type} event to {self} with "
-                             f"duration {duration}s.")
-                return True
+            event = ExtractEvent(event=event_type,
+                                 timestamp=timestamp,
+                                 duration=duration)
+            self.events.append(event)
+            session.commit()
+            logger.debug(f"Added {event_type} event to {self} with "
+                         f"duration {duration}s.")
+            return True
         return False
 
     def is_finished(self) -> bool:
@@ -335,15 +333,14 @@ class ItemFile(Base):
         :returns: True on success else False.
         """
         if event_type in ["stop", "play", "pause"]:
-            if duration > 0:
-                event = ItemEvent(event=event_type,
-                                  timestamp=timestamp,
-                                  duration=duration)
-                self.events.append(event)
-                session.commit()
-                logger.debug(f"Added {event_type} event to {self} with "
-                             f"duration {duration}s.")
-                return True
+            event = ItemEvent(event=event_type,
+                              timestamp=timestamp,
+                              duration=duration)
+            self.events.append(event)
+            session.commit()
+            logger.debug(f"Added {event_type} event to {self} with "
+                         f"duration {duration}s.")
+            return True
         return False
 
     def process_cloze(self) -> bool:
