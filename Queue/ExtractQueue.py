@@ -266,13 +266,13 @@ class ExtractQueue(Mpd, QueueBase, object):
                         if last_item.cloze_startstamp < cur_timestamp:
                             last_item.cloze_endstamp = cur_timestamp
                             session.commit()
-                            logger.info("Stopped the current cloze.")
+                            logger.info(f"Stopped clozing {last_item}")
                             if self.current_queue == "local extract queue":
                                 self.load_local_extract_options()
                             else:
                                 self.load_global_extract_options()
                             if last_item.process_cloze():
-                                logger.info("New cloze created.")
+                                logger.info(f"Processed cloze {last_item}.")
                                 return True
                             else:
                                 logger.error("Call to process_cloze failed.")
