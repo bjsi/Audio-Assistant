@@ -85,10 +85,6 @@ class MpdHeartbeat(Mpd, object):
                 event = status['state']
                 timestamp = status.get('elapsed')
                 filepath = self.current_track()['abs_fp']
-            if event != "stop":
-                if timestamp:
-                    if filepath:
-                        self.find_file(filepath)
 
             if event != "stop" and timestamp and filepath:
                 file = self.find_file(filepath)
