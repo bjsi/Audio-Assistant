@@ -481,9 +481,9 @@ class TopicEvent(Base):
     event: str = Column(String, nullable=False)  # play/pause/stop (mpd status)
     timestamp: float = Column(Float, nullable=False)  # seconds.miliseconds
     duration: float = Column(Float, default=0)  # seconds.miliseconds
-    topic_id: int = Column(Integer, ForeignKey('topicfiles.id'))
 
     # Many to One TopicEvent >-| TopicFile
+    topic_id: int = Column(Integer, ForeignKey('topicfiles.id'))
     topic: TopicFile = relationship("TopicFile", back_populates="events")
 
     def __repr__(self):
