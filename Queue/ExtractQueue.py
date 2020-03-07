@@ -214,10 +214,12 @@ class ExtractQueue(Mpd, QueueBase, object):
 
             # Add a new child item to the extract
             if extract:
-                extract.items.append(ItemFile(cloze_startstamp=cur_timestamp))
+                new_item = ItemFile()
+                new_item.cloze_startstamp = cur_timestamp
+                extract.items.append(new_item)
                 session.commit()
                 self.load_cloze_options()
-                logger.info("Started clozing.")
+                logger.info(f"Started new cloze {new_item}.")
                 return True
             else:
                 logger.error("Couldn't find currently playing extract in DB.")

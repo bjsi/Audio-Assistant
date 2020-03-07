@@ -448,8 +448,9 @@ class ItemFile(Base):
         return 0.0
 
     def __repr__(self) -> str:
-        return f"<ItemFile: question_filepath={self.question_filepath} " \
-               f"cloze_filepath={self.cloze_filepath}>"
+        return f"<ItemFile: id={self.id} extract_id={self.extract_id} " \
+               f"cloze_startstamp={self.cloze_startstamp} " \
+               f"cloze_endstamp={self.cloze_endstamp}>"
 
 
 ###################
