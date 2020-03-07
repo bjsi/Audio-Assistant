@@ -106,7 +106,7 @@ class MpdHeartbeat(Mpd, object):
                             last_event.duration = duration
                             last_event.timestamp = timestamp
                             session.commit()
-                            logger.info(f"Updated {event} event for file {file}.")
+                            logger.info(f"Updated last event {last_event}.")
                     # Create a new event
                     if file.add_event(event_type=event,
                                       timestamp=timestamp,
