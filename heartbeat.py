@@ -10,7 +10,7 @@ from contextlib import contextmanager
 from sqlalchemy import or_
 import logging
 from MPD.MpdBase import Mpd
-from typing import Union
+from typing import Union, Optional
 
 
 logger = logging.getLogger(__name__)
@@ -36,6 +36,45 @@ class MpdHeartbeat(Mpd, object):
         super().__init__()
         self.interval = interval
 
+    def find_file(self, filepath: str) -> Optional[Union[TopicFile,
+                                                         ItemFile,
+                                                         ExtractFile]]:
+        """Search TopicFile, ExtractFile and ItemFile tables to find the row
+        corresponding to the filepath.
+        """
+
+        # Search TopicFile table
+        topic: TopicFile = (session
+                            .query(TopicFile)
+                            .filter_by(filepath=filepath)
+                            .one_or_none())
+        if topic:
+            logger.info(f"Found currently playing {topic}.")
+            return topic
+        
+        else:
+            # Search ExtractFile table
+            extract: ExtractFile = (session
+                                    .query(ExtractFile)
+                                    .filter_by(filepath=filepath)
+                                    .one_or_none())
+            if extract:
+                logger.info(f"Found currently playing {extract}.")
+                return extract
+
+            else:
+                # Search ItemFile table
+                item: ItemFile = (session
+                                  .query(ItemFile)
+                                  .filter_by(question_filepath=filepath)
+                                  .one_or_none())
+
+                if item:
+                    logger.info(f"Found currently playing {item}.")
+                    return item
+
+        return None
+
     def heartbeat_loop(self):
         """Polls the MPD server, for events.
         """
@@ -46,14 +85,13 @@ class MpdHeartbeat(Mpd, object):
                 event = status['state']
                 timestamp = status.get('elapsed')
                 filepath = self.current_track()['abs_fp']
+            if event != "stop":
+                if timestamp:
+                    if filepath:
+                        self.find_file(filepath)
+
             if event != "stop" and timestamp and filepath:
-                file: Union[TopicFile, ExtractFile, ItemFile] = \
-                        (session
-                         .query(TopicFile, ItemFile, ExtractFile)
-                         .filter(or_(TopicFile.filepath == filepath,
-                                     ExtractFile.filepath == filepath,
-                                     ItemFile.question_filepath == filepath))
-                         .one_or_none())
+                file = self.find_file(filepath)
                 if file:
                     events = file.events
                     if events:
