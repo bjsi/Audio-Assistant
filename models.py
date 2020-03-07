@@ -9,7 +9,7 @@ from sqlalchemy import (Column, Integer,
 import datetime
 from sqlalchemy.orm import sessionmaker
 from config import DATABASE_URI, QUESTIONFILES_DIR
-from typing import List
+from typing import List, Optional
 import os
 import logging
 import subprocess
@@ -446,6 +446,22 @@ class ItemFile(Base):
         if self.cloze_startstamp and self.cloze_endstamp:
             return (self.cloze_endstamp - self.cloze_startstamp)
         return 0.0
+
+    def topicfile_startstamp(self) -> Optional[float]:
+        """
+        :returns: Startstamp of the cloze in the topicfile if startstamp else None.
+        """
+        if self.cloze_startstamp:
+            return self.extract.startstamp + self.cloze_startstamp
+        return None
+
+    def topicfile_endstamp(self) -> Optional[float]:
+        """
+        :returns: Endstamp of the cloze in the topicfile if endstamp else None.
+        """
+        if self.cloze_endstamp:
+            return self.cloze_endstamp + self.extract.startstamp
+        return None
 
     def __repr__(self) -> str:
         return f"<ItemFile: id={self.id} extract_id={self.extract_id} " \
