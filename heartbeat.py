@@ -45,7 +45,7 @@ class MpdHeartbeat(Mpd, object):
                 status = self.client.status()
                 event = status['state']
                 timestamp = status.get('elapsed')
-                filepath = self.current_track['abs_fp']
+                filepath = self.current_track()['abs_fp']
             if event != "stop" and timestamp and filepath:
                 file: Union[TopicFile, ExtractFile, ItemFile] = \
                         (session
