@@ -220,12 +220,20 @@ class Mpd(object):
 
     def stutter_forward(self) -> None:
         """Seek forward frame-by-frame for accurate clozing.
+
+        Stutter forward and stutter backward require special attention
+        because toggling play and pause cuts off a small section of audio
+        before it starts playing through headphones.
+
+        :returns: None
         """
         with self.connection() if not self.connected() else ExitStack():
             self.remove_stop_state()
             status = self.client.status()
             cur_timestamp = float(status.get('elapsed', 0.0))
             # TODO Keep adjusting the seek amount
+            # This feels pretty much perfect.
+
             seek_to = cur_timestamp - 0.165
             self.client.seekcur(seek_to)
             self.client.pause(0)
@@ -236,18 +244,26 @@ class Mpd(object):
 
     def stutter_backward(self) -> None:
         """Seek backward frame-by-frame for accurate clozing.
+
+        Stutter forward and stutter backward require special attention
+        because toggling play and pause cuts off a small section of audio
+        before it starts playing through headphones.
+
+        :returns: None
         """
         with self.connection() if not self.connected() else ExitStack():
             self.remove_stop_state()
             status = self.client.status()
             cur_timestamp = float(status.get('elapsed', 0.0))
-            seek_to = cur_timestamp - 0.40
+            seek_to = cur_timestamp - 0.165
+            seek_to = cur_timestamp - 0.2
             if seek_to < 0:
                 return
             self.client.seekcur(seek_to)
             self.client.pause(0)
             time.sleep(0.2)
             self.client.pause(1)
+            self.client.seekcur(seek_to + 0.2)
         logger.debug("Stutter forward.")
 
     def repeat(self, state: int) -> None:
