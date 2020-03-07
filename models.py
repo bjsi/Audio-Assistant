@@ -272,7 +272,7 @@ class ExtractFile(Base):
         """
         if self.startstamp and self.endstamp:
             return (self.endstamp - self.startstamp)
-        return 0.0
+        return 0
 
     def __repr__(self) -> str:
         return f"<ExtractFile: filepath={self.filepath} " \
@@ -354,7 +354,7 @@ class ItemFile(Base):
             extract_fp = self.extract.filepath
             basename = os.path.basename(self.extract.filepath)
             filename, ext = os.path.splitext(basename)
-            if self.extract.endstamp and self.extract.startstamp and extract.length() > 0:
+            if self.extract.endstamp and self.extract.startstamp and self.extract.length() > 0:
                 extract_length = self.extract.length()
                 if self.cloze_endstamp and self.cloze_startstamp and \
                    self.length() > 0:
