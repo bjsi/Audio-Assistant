@@ -15,7 +15,7 @@ import logging
 import subprocess
 from subprocess import DEVNULL
 
-engine = create_engine(DATABASE_URI, echo=True)
+engine = create_engine(DATABASE_URI, echo=False)
 Base = declarative_base()
 Session = sessionmaker(bind=engine)
 
