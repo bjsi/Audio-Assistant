@@ -256,7 +256,7 @@ class Mpd(object):
             status = self.client.status()
             cur_timestamp = float(status.get('elapsed', 0.0))
             seek_to = cur_timestamp - 0.165
-            seek_to = cur_timestamp - 0.2
+            seek_to = cur_timestamp - 0.23
             if seek_to < 0:
                 return
             self.client.seekcur(seek_to)
