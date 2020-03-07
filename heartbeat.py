@@ -96,7 +96,7 @@ class MpdHeartbeat(Mpd, object):
                     events = file.events
                     if events:
                         last_event = max(events,
-                                        key=lambda event: event.created_at)
+                                         key=lambda event: event.created_at)
                         # Check if same event
                         if last_event.event == event:
                             # Update duration
@@ -108,7 +108,9 @@ class MpdHeartbeat(Mpd, object):
                             session.commit()
                             logger.info(f"Updated {event} event for file {file}.")
                     # Create a new event
-                    if file.add_event(event_type=event, timestamp=timestamp):
+                    if file.add_event(event_type=event,
+                                      timestamp=timestamp,
+                                      duration=0):
                         session.commit()
                         logger.info(f"Added new {event} event for file {file}.")
                     else:
