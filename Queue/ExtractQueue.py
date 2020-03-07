@@ -16,7 +16,8 @@ from config import (KEY_X,
                     KEY_MENU,
                     GAME_X,
                     GAME_B,
-                    GAME_A)
+                    GAME_A,
+                    GAME_OK)
 import logging
 from Queue.QueueBase import QueueBase
 
