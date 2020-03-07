@@ -136,8 +136,10 @@ class TopicQueue(Mpd, QueueBase, object):
                                       self.abs_to_rel(topic.filepath)
                                       for topic in topics
                                      ]
-            if self.load_queue(topic_queue):
+            queue_length = self.load_queue(topic_queue)
+            if queue_length > 0:
                 logger.info("Loaded global topic queue.")
+                espeak(f"{queue_length} global topic{'' if queue_length == 1 else 's'}")
                 self.load_topic_options()
                 return True
             else:
