@@ -1,13 +1,8 @@
-from config import (HOST,
-                    PORT)
 from models import (TopicFile,
                     ExtractFile,
                     ItemFile,
                     session)
 import time
-import mpd
-from contextlib import contextmanager
-from sqlalchemy import or_
 import logging
 from MPD.MpdBase import Mpd
 from typing import Union, Optional

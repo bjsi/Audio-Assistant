@@ -105,7 +105,7 @@ class TopicFile(Base):
     average_rating: float = Column(Float)  # 0 to 5 float
     playback_rate: float = Column(Float, default=1.0)  # eg. 1, 1.25, 1.5
     cur_timestamp: float = Column(Float, default=0)  # seconds.miliseconds
-    created_at: DateTime = Column(DateTime, default=datetime.datetime.utcnow())
+    created_at: DateTime = Column(DateTime, default=datetime.datetime.utcnow)
     transcript_filepath: str = Column(Text)  # webvtt format if available
 
     # One to many File |-< Extract
@@ -190,7 +190,7 @@ class ExtractFile(Base):
 
     id: int = Column(Integer, primary_key=True)
     filepath: str = Column(String, nullable=False, unique=True)
-    created_at: DateTime = Column(DateTime, default=datetime.datetime.utcnow())
+    created_at: DateTime = Column(DateTime, default=datetime.datetime.utcnow)
     startstamp: float = Column(Float, nullable=False)  # Seconds.miliseconds
     endstamp: float = Column(Float)  # Seconds.miliseconds
     # Set by the user at runtime.
@@ -288,7 +288,7 @@ class ItemFile(Base):
     __tablename__ = "itemfiles"
 
     id: int = Column(Integer, primary_key=True)
-    created_at: DateTime = Column(DateTime, default=datetime.datetime.utcnow())
+    created_at: DateTime = Column(DateTime, default=datetime.datetime.utcnow)
     question_filepath: str = Column(String, unique=True)
     cloze_filepath: str = Column(String, unique=True)
     # Set by the user
@@ -477,7 +477,7 @@ class TopicEvent(Base):
     __tablename__ = "topicevents"
 
     id: int = Column(Integer, primary_key=True)
-    created_at: DateTime = Column(DateTime, default=datetime.datetime.utcnow())
+    created_at: DateTime = Column(DateTime, default=datetime.datetime.utcnow)
     event: str = Column(String, nullable=False)  # play/pause/stop (mpd status)
     timestamp: float = Column(Float, nullable=False)  # seconds.miliseconds
     duration: float = Column(Float, default=0)  # seconds.miliseconds
@@ -500,7 +500,7 @@ class ExtractEvent(Base):
     id: int = Column(Integer, primary_key=True)
     event: str = Column(String, nullable=False)  # play, pause
     timestamp: float = Column(Float, nullable=False)  # seconds.miliseconds
-    created_at: DateTime = Column(DateTime, default=datetime.datetime.utcnow())
+    created_at: DateTime = Column(DateTime, default=datetime.datetime.utcnow)
     duration: float = Column(Float, default=0)  # seconds.miliseconds
 
     # Many to one ExtractEvent >-| ExtractFile
@@ -521,7 +521,7 @@ class ItemEvent(Base):
     id: int = Column(Integer, primary_key=True)
     event: str = Column(String, nullable=False)  # play/pause/stop (mpd state)
     timestamp: float = Column(Float, nullable=False)  # seconds.miliseconds
-    created_at: DateTime = Column(DateTime, default=datetime.datetime.utcnow())
+    created_at: DateTime = Column(DateTime, default=datetime.datetime.utcnow)
     duration: float = Column(Float, default=0)  # seconds.miliseconds
 
     # Many to one ItemEvent >-| ItemFile
