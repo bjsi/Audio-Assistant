@@ -62,16 +62,6 @@ def delete_file(file) -> bool:
 # Topics #
 ##########
 
-def check_progress(context):
-    """Runs on the archived Column each time the Topic table is updated
-    If progress > 90% set archived to True
-    """
-    cur_timestamp = context.get_current_parameters()['cur_timestamp']
-    duration = context.get_current_parameters()['duration']
-    if (cur_timestamp / duration > 0.9):
-        return True
-    return False
-
 
 class TopicFile(Base):
     """Topics are full youtube audio files.
@@ -88,7 +78,7 @@ class TopicFile(Base):
     sm_priority: float = Column(Float, default=-1)
     # Can be set by the user at runtime
     # Can be set automatically if completion > 90%
-    archived: bool = Column(Boolean, default=False, onupdate=check_progress)
+    archived: bool = Column(Boolean, default=False)
     # If no outstanding extracts and archived is True,
     # Topic will be deleted by a script and deleted will be set to 1
     deleted: bool = Column(Boolean, default=False)
