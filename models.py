@@ -40,7 +40,7 @@ def delete_file(file) -> bool:
     :returns: True if the file was deleted else False.
     """
     # Check file exists
-    if os.path.isfile(file):
+    if file and os.path.isfile(file):
         try:
             os.remove(file)
             logger.info(f"Removed file {file}.")
@@ -119,7 +119,8 @@ class TopicFile(Base):
         if topics:
             for topic in topics:
                 if topic.is_finished():
-                    delete_file(topic.transcript_filepath)
+                    if topic.transcript_filepath:
+                        delete_file(topic.transcript_filepath)
                     if delete_file(topic.filepath):
                         topic.deleted = True
                         session.commit()
