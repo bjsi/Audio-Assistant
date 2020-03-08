@@ -304,7 +304,9 @@ class ItemFile(Base):
         A finished ItemFile fulfils the following criteria.
         
         1. ItemFile.archived is True.
+
         or
+
         2. ItemFile.exported is True.
         """
         items: List[ItemFile] = (session

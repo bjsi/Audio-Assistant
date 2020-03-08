@@ -296,9 +296,9 @@ if __name__ == "__main__":
 
     # Remove finished files before load_initial_queue call.
     # TODO
-    #ItemFile.remove_finished_files()
-    #ExtractFile.remove_finished_files()
-    #TopicFile.remove_finished_files()
+    ItemFile.remove_finished_files()
+    ExtractFile.remove_finished_files()
+    TopicFile.remove_finished_files()
     
     queue = MainQueue()
     queue_loop = QueueLoop(queue)
