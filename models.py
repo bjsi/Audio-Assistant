@@ -14,6 +14,7 @@ import os
 import logging
 import subprocess
 from subprocess import DEVNULL
+from AudioDownloader import AudioDownloader
 
 engine = create_engine(DATABASE_URI, echo=False)
 Base = declarative_base()
@@ -54,6 +55,47 @@ def delete_file(file) -> bool:
     return False
 
 
+class Playlist(Base):
+    """Represents a youtube playlist.
+    """
+    __tablename__ = 'playlists'
+
+    id: int = Column(Integer, primary_key=True)
+    playlist_id: str = Column(String, unique=True, nullable=False)
+    title: str = Column(String)
+    uploader_id: str = Column(String)
+    sm_element_id: int = Column(Integer)
+    sm_element_priority: int = Column(Float)
+    archived: bool = Column(Boolean, default=False)
+
+    # One to many Playlist |-< TopicFile
+    topics: List["TopicFile"] = relationship("TopicFile",
+                                             backpopulates="playlist")
+
+    def has_outstanding_topic(self) -> bool:
+        """
+        :returns: True if the playlist has an outstanding TopicFile.
+        """
+        # Get playlist's topics
+        topics: List["TopicFile"] = self.topics
+        if topics:
+            if any(not topic.is_finished for topic in topics):
+                return True
+        return False
+
+    def download(self):
+        """Start a youtube_dl download for the playlist.
+        """
+        if not self.archived:
+            AudioDownloader(yt_id=self.playlist_id).download()
+
+        else:
+            print("Can't download videos for archived playlist {}")
+
+    def __repr__(self):
+        return f"<Playlist: id={self.id} title={self.title}>"
+
+
 ##############################
 # Topics, Extracts and Items #
 ##############################
@@ -82,7 +124,8 @@ class TopicFile(Base):
     # If no outstanding extracts and archived is True,
     # Topic will be deleted by a script and deleted will be set to 1
     deleted: bool = Column(Boolean, default=False)
-    youtube_id: str = Column(String)
+    # TODO: unique = True
+    youtube_id: str = Column(String, unique=True)
     title: str = Column(String)
     duration: float = Column(Float)
     uploader_id: str = Column(String)
@@ -97,6 +140,11 @@ class TopicFile(Base):
     cur_timestamp: float = Column(Float, default=0)  # seconds.miliseconds
     created_at: DateTime = Column(DateTime, default=datetime.datetime.utcnow)
     transcript_filepath: str = Column(Text)  # webvtt format if available
+
+    # Many to One TopicFiles >-| Playlist
+    playlist_id: int = Column(Integer, ForeignKey('playlists.id'))
+    playlist: Playlist = relationship("Playlist",
+                                      backpopulates="topics")
 
     # One to many File |-< Extract
     extracts: List["ExtractFile"] = relationship("ExtractFile",

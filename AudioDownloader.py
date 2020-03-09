@@ -1,10 +1,11 @@
 import youtube_dl
 import subprocess
 import os
-from models import TopicFile, session
+from models import TopicFile, session, Playlist
 from config import (TOPICFILES_DIR,
                     ARCHIVE_FILE)
 import logging
+from typing import Dict
 
 
 logger = logging.getLogger(__name__)
@@ -57,9 +58,31 @@ class AudioDownloader(object):
                 'outtmpl': os.path.join(TOPICFILES_DIR, '%(id)s.%(ext)s'),
                 'max_downloads': 1
         }
+        
+        # For Flask API downloads
         if config:
             self.config = config
             self.ydl_options["progress_hooks"].append(self.download_progress_hook)
+
+        # Playlist information
+        self.playlist = False
+        self.playlist_uploader_id = None
+        self.playlist_id = None
+        self.playlist_title = None
+
+    def is_playlist(self, id: str) -> bool:
+        """Get ydl info dict for youtube id to check whether it is a playlist or video.
+        """
+        # TODO: What if id doesn't exist
+        with youtube_dl.YoutubeDL({}) as ydl:
+            info_dict = ydl.extract_info(id, download=False, process=False)
+            if info_dict.get("_type") == "playlist":
+                self.is_playlist = True
+                self.playlist_uploader_id = info_dict["uploader_id"]
+                self.playlist_id = info_dict["id"]
+                self.playlist_title = info_dict["title"]
+            else:
+                self.is_playlist = False
 
     def download_progress_hook(self, target):
         """Update app.config['updated']
@@ -186,10 +209,27 @@ class AudioDownloader(object):
                                          sm_element_id=self.sm_element_id,
                                          sm_priority=self.sm_priority,
                                          playback_rate=self.playback_rate)
-
+            
             subs_file = os.path.splitext(filepath)[0] + ".en.vtt"
             if os.path.exists(subs_file):
                 topic.transcript_filepath = subs_file
+
+            if self.playlist:
+                if self.playlist_id and \
+                   self.playlist_title and \
+                   self.playlist_uploader_id:
+
+                    # Search for existing playlist in DB
+                    playlist: Playlist = (session
+                                          .query(Playlist)
+                                          .filter_by(playlist_id=self.playlist_id)
+                                          .one_or_none())
+                    if not playlist:
+                        playlist = Playlist(playlist_id=self.playlist_id,
+                                            title=self.playlist_title
+                                            uploader_id=self.playlist_uploader_id)
+                        playlist.topics.append(topic)
+                        session.add(playlist)
             
             session.add(topic)
             session.commit()
@@ -201,4 +241,4 @@ class AudioDownloader(object):
 
 
 if __name__ == "__main__":
-    AudioDownloader("PLwmPBqRou8APdG6K-Ks0lV2yL0yqCFHOu", playback_rate=1).download()
+    AudioDownloader("PLwmPBqRou8APdG6K-Ks0lV2yL0yqCFHOu").download()
