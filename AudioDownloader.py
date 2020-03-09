@@ -213,7 +213,7 @@ class AudioDownloader(object):
             if os.path.exists(subs_file):
                 topic.transcript_filepath = subs_file
 
-            if self.playlist:
+            if self.is_playlist:
                 if self.playlist_id and \
                    self.playlist_title and \
                    self.playlist_uploader_id:
