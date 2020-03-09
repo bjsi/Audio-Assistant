@@ -67,21 +67,18 @@ class Playlist(Base):
     sm_element_id: int = Column(Integer, default=-1)
     sm_element_priority: int = Column(Float, default=-1)
     archived: bool = Column(Boolean, default=False)
+    # Aim to keep this many videos from this playlist in the TopicFile queue.
+    outstanding_target: int = Column(Integer, default=1)
 
     # One to many Playlist |-< TopicFile
     topics: List["TopicFile"] = relationship("TopicFile",
                                              back_populates="playlist")
 
-    def has_outstanding_topic(self) -> bool:
+    def has_outstanding(self) -> int:
         """
-        :returns: True if the playlist has an outstanding TopicFile.
+        :returns: Number of outstanding TopicFiles for the playlist.
         """
-        # Get playlist's topics
-        topics: List["TopicFile"] = self.topics
-        if topics:
-            if any(not topic.is_finished for topic in topics):
-                return True
-        return False
+        return len(list(not topic.is_finished for topic in self.topics))
 
     def __repr__(self):
         return f"<Playlist: id={self.id} title={self.title}>"
@@ -115,7 +112,6 @@ class TopicFile(Base):
     # If no outstanding extracts and archived is True,
     # Topic will be deleted by a script and deleted will be set to 1
     deleted: bool = Column(Boolean, default=False)
-    # TODO: unique = True
     youtube_id: str = Column(String, unique=True)
     title: str = Column(String)
     duration: float = Column(Float)

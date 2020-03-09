@@ -5,6 +5,7 @@ from models import TopicFile, session, Playlist
 from config import (TOPICFILES_DIR,
                     ARCHIVE_FILE)
 import logging
+from typing import List
 
 
 logger = logging.getLogger(__name__)
@@ -32,7 +33,8 @@ class AudioDownloader(object):
                  config=None,
                  sm_element_id: int = -1,
                  sm_priority: float = -1,
-                 playback_rate: float = 1.0):
+                 playback_rate: float = 1.0,
+                 max_downloads: int = 1):
         """
         :url: Url of the youtube video.
         :playback_rate: Desired playback rate for the audio track.
@@ -55,7 +57,7 @@ class AudioDownloader(object):
                 'sub_format': 'vtt',
                 'ignoreerrors': True,
                 'outtmpl': os.path.join(TOPICFILES_DIR, '%(id)s.%(ext)s'),
-                'max_downloads': 1
+                'max_downloads': max_downloads
         }
         
         # For Flask API downloads
@@ -239,5 +241,31 @@ class AudioDownloader(object):
             return
 
 
+def get_new_playlist_items():
+    """Get new playlist items for outstanding playlists.
+    """
+    playlists: List[Playlist] = (session
+                                 .query(Playlist)
+                                 .filter_by(archived=False)
+                                 .all())
+
+    if playlists:
+        for playlist in playlists:
+            outstanding = playlist.has_outstanding()
+            target = playlist.outstanding_target
+            if outstanding < target:
+                # Number of oustanding topics for this playlist
+                # is less than the number the user requested to
+                # be in the TopicFile queue at any time, so
+                # start download
+                to_download = target - outstanding
+                logger.debug(f"{playlist} has {outstanding} outstanding " 
+                             f"TopicFiles. Outstanding target for this "
+                             f"Playlist is {target}. Starting ydl download "
+                             f"with max_downloads set to {to_download}.")
+                AudioDownloader(yt_id=playlist.playlist_id,
+                                max_downloads=to_download).download()
+
+        
 if __name__ == "__main__":
     AudioDownloader("PLwmPBqRou8APdG6K-Ks0lV2yL0yqCFHOu").download()
