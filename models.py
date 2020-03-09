@@ -70,7 +70,7 @@ class Playlist(Base):
 
     # One to many Playlist |-< TopicFile
     topics: List["TopicFile"] = relationship("TopicFile",
-                                             backpopulates="playlist")
+                                             back_populates="playlist")
 
     def has_outstanding_topic(self) -> bool:
         """
@@ -135,7 +135,7 @@ class TopicFile(Base):
     # Many to One TopicFiles >-| Playlist
     playlist_id: int = Column(Integer, ForeignKey('playlists.id'))
     playlist: Playlist = relationship("Playlist",
-                                      backpopulates="topics")
+                                      back_populates="topics")
 
     # One to many File |-< Extract
     extracts: List["ExtractFile"] = relationship("ExtractFile",
