@@ -5,7 +5,6 @@ from models import TopicFile, session, Playlist
 from config import (TOPICFILES_DIR,
                     ARCHIVE_FILE)
 import logging
-from typing import Dict
 
 
 logger = logging.getLogger(__name__)
@@ -70,10 +69,9 @@ class AudioDownloader(object):
         self.playlist_id = None
         self.playlist_title = None
 
-    def is_playlist(self, id: str) -> bool:
+    def check_is_playlist(self, id: str) -> None:
         """Get ydl info dict for youtube id to check whether it is a playlist or video.
         """
-        # TODO: What if id doesn't exist
         with youtube_dl.YoutubeDL({}) as ydl:
             info_dict = ydl.extract_info(id, download=False, process=False)
             if info_dict.get("_type") == "playlist":
@@ -105,6 +103,7 @@ class AudioDownloader(object):
     def download(self) -> None:
         """Download a youtube video's audio.
         """
+        self.check_is_playlist(self.yt_id)
         try:
             with youtube_dl.YoutubeDL(self.ydl_options) as ydl:
                 ydl.download([self.yt_id])
