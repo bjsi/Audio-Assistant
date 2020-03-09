@@ -268,4 +268,4 @@ def get_new_playlist_items():
 
         
 if __name__ == "__main__":
-    AudioDownloader("PLwmPBqRou8APdG6K-Ks0lV2yL0yqCFHOu").download()
+    get_new_playlist_items()

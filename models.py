@@ -62,10 +62,12 @@ class Playlist(Base):
 
     id: int = Column(Integer, primary_key=True)
     playlist_id: str = Column(String, unique=True, nullable=False)
+    created_at: DateTime = Column(DateTime, default=datetime.datetime.utcnow)
     title: str = Column(String)
+    language: str = Column(String)
     uploader_id: str = Column(String)
     sm_element_id: int = Column(Integer, default=-1)
-    sm_element_priority: int = Column(Float, default=-1)
+    sm_priority: int = Column(Float, default=-1)
     archived: bool = Column(Boolean, default=False)
     # Aim to keep this many videos from this playlist in the TopicFile queue.
     outstanding_target: int = Column(Integer, default=1)
@@ -112,6 +114,7 @@ class TopicFile(Base):
     # If no outstanding extracts and archived is True,
     # Topic will be deleted by a script and deleted will be set to 1
     deleted: bool = Column(Boolean, default=False)
+    language: str = Column(String)
     youtube_id: str = Column(String, unique=True)
     title: str = Column(String)
     duration: float = Column(Float)
