@@ -14,7 +14,6 @@ import os
 import logging
 import subprocess
 from subprocess import DEVNULL
-from AudioDownloader import AudioDownloader
 
 engine = create_engine(DATABASE_URI, echo=False)
 Base = declarative_base()
@@ -83,14 +82,6 @@ class Playlist(Base):
             if any(not topic.is_finished for topic in topics):
                 return True
         return False
-
-    def download(self):
-        """Start a youtube_dl download for the playlist.
-        """
-        if not self.archived:
-            AudioDownloader(yt_id=self.playlist_id).download()
-        else:
-            print("Can't download videos for archived playlist {}")
 
     def __repr__(self):
         return f"<Playlist: id={self.id} title={self.title}>"
