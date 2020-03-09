@@ -64,7 +64,7 @@ class AudioDownloader(object):
             self.ydl_options["progress_hooks"].append(self.download_progress_hook)
 
         # Playlist information
-        self.playlist = False
+        self.is_playlist = False
         self.playlist_uploader_id = None
         self.playlist_id = None
         self.playlist_title = None
