@@ -56,7 +56,8 @@ def delete_file(file) -> bool:
 
 
 class Playlist(Base):
-    """Represents a youtube playlist.
+
+    """Represents a youtube playlist containing TopicFiles.
     """
     __tablename__ = 'playlists'
 
@@ -64,8 +65,8 @@ class Playlist(Base):
     playlist_id: str = Column(String, unique=True, nullable=False)
     title: str = Column(String)
     uploader_id: str = Column(String)
-    sm_element_id: int = Column(Integer)
-    sm_element_priority: int = Column(Float)
+    sm_element_id: int = Column(Integer, default=-1)
+    sm_element_priority: int = Column(Float, default=-1)
     archived: bool = Column(Boolean, default=False)
 
     # One to many Playlist |-< TopicFile
@@ -88,7 +89,6 @@ class Playlist(Base):
         """
         if not self.archived:
             AudioDownloader(yt_id=self.playlist_id).download()
-
         else:
             print("Can't download videos for archived playlist {}")
 

@@ -226,7 +226,7 @@ class AudioDownloader(object):
                                           .one_or_none())
                     if not playlist:
                         playlist = Playlist(playlist_id=self.playlist_id,
-                                            title=self.playlist_title
+                                            title=self.playlist_title,
                                             uploader_id=self.playlist_uploader_id)
                         playlist.topics.append(topic)
                         session.add(playlist)
