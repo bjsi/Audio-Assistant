@@ -193,7 +193,7 @@ class TopicFile(Base):
 
         :returns: True if the file is finished else False.
         """
-        if ((self.cur_timestamp / self.duration) < 0.9) or self.archived:
+        if ((self.cur_timestamp / self.duration) > 0.9) or self.archived:
             extracts = self.extracts
             if extracts:
                 if all(extract.deleted for extract in extracts):
