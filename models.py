@@ -234,7 +234,10 @@ class ExtractFile(Base):
     deleted: bool = Column(Boolean, default=False)
     exported: bool = Column(Boolean, default=False)  # True if exported to SM.
     # True if should be exported to SM, set at runtime.
-    to_export: bool = Column(Boolean, default=False)  
+    to_export: bool = Column(Boolean, default=False)
+
+    sm_element_id: int = Column(Integer, default=-1)
+    sm_priority: float = Column(Float, default=-1)
 
     # One to one ExtractFile (child) |-| TopicFile (parent)
     topic_id: int = Column(Integer, ForeignKey('topicfiles.id'))

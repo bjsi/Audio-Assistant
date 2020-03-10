@@ -225,23 +225,28 @@ class AudioDownloader(object):
                    self.playlist_uploader_id:
 
                     # Search for existing playlist in DB
+                    # Don't add new playlists here
                     playlist: Playlist = (session
                                           .query(Playlist)
                                           .filter_by(playlist_id=self.playlist_id)
                                           .one_or_none())
-                    if not playlist:
-                        playlist = Playlist(playlist_id=self.playlist_id,
-                                            title=self.playlist_title,
-                                            language=self.language,
-                                            outstanding_target=self.max_downloads,
-                                            uploader_id=self.playlist_uploader_id)
-                        playlist.topics.append(topic)
-                        session.add(playlist)
+                    # Inherit the playlist's language and priority
+                    topic.sm_priority = playlist.sm_priority
+                    topic.language = playlist.language
+                    playlist.topics.append(topic)
+
+                    #if not playlist:
+                    #    playlist = Playlist(playlist_id=self.playlist_id,
+                    #                        title=self.playlist_title,
+                    #                        language=self.language,
+                    #                        outstanding_target=self.max_downloads,
+                    #                        uploader_id=self.playlist_uploader_id)
+                    #    playlist.topics.append(topic)
+                    #    session.add(playlist)
             
             session.add(topic)
             session.commit()
             logger.info(f"Successfully added {topic} to DB.")
-
         else:
             logger.error("YDL info extraction failed.")
             return
