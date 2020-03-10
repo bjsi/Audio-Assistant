@@ -189,15 +189,14 @@ class TopicFile(Base):
 
         :returns: True if the file is finished else False.
         """
-        if (self.cur_timestamp / self.duration) < 0.9:
-            if self.archived:
-                extracts = self.extracts
-                if extracts:
-                    if all(extract.deleted for extract in extracts):
-                        return True
-                    else:
-                        return False
-                return True
+        if (self.cur_timestamp / self.duration) < 0.9 or self.archived:
+            extracts = self.extracts
+            if extracts:
+                if all(extract.deleted for extract in extracts):
+                    return True
+                else:
+                    return False
+            return True
         return False
 
     def progress(self) -> float:
