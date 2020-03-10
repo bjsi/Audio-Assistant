@@ -101,6 +101,8 @@ class ExtractQueue(Mpd, QueueBase, object):
 
         :returns: True on success else false.
         """
+        assert "extract" in self.current_queue
+
         # Get the currently playing extract
         cur_song = self.current_track()
         filepath = cur_song['abs_fp']
