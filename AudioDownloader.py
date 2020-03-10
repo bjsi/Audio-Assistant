@@ -45,6 +45,7 @@ class AudioDownloader(object):
 
         self.yt_id = yt_id
         self.language = language
+        self.max_downloads = max_downloads
         self.playback_rate = playback_rate
         self.sm_element_id = sm_element_id
         self.sm_priority = sm_priority
@@ -199,6 +200,7 @@ class AudioDownloader(object):
             topic: TopicFile = TopicFile(filepath=filepath,
                                          title=info["title"],
                                          youtube_id=info["id"],
+                                         language=self.language,
                                          duration=(info["duration"] / self.playback_rate),
                                          uploader=info["uploader"],
                                          uploader_id=info["uploader_id"],
@@ -230,6 +232,8 @@ class AudioDownloader(object):
                     if not playlist:
                         playlist = Playlist(playlist_id=self.playlist_id,
                                             title=self.playlist_title,
+                                            language=self.language,
+                                            outstanding_target=self.max_downloads,
                                             uploader_id=self.playlist_uploader_id)
                         playlist.topics.append(topic)
                         session.add(playlist)
