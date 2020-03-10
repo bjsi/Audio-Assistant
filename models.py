@@ -80,7 +80,11 @@ class Playlist(Base):
         """
         :returns: Number of outstanding TopicFiles for the playlist.
         """
-        return len(list(not topic.is_finished() for topic in self.topics))
+        not_finished = 0
+        for topic in self.topics:
+            if not topic.is_finished():
+                not_finished += 1
+        return not_finished
 
     def __repr__(self):
         return f"<Playlist: id={self.id} title={self.title}>"
