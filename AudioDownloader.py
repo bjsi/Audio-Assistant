@@ -56,8 +56,8 @@ class AudioDownloader(object):
                 'download_archive': ARCHIVE_FILE,
                 'writesubtitles': True,
                 'writeautomaticsub': True,
-                'sub_lang': [language],
-                'sub_format': 'vtt',
+                'subtitleslangs': [language],
+                'subtitlesformat': 'vtt',
                 'ignoreerrors': True,
                 'outtmpl': os.path.join(TOPICFILES_DIR, '%(id)s.%(ext)s'),
                 'max_downloads': max_downloads
