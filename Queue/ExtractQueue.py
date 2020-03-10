@@ -117,11 +117,11 @@ class ExtractQueue(Mpd, QueueBase, object):
                 if extract.to_export:
                     extract.to_export = False
                     session.commit()
-                    espeak("Export true")
+                    espeak("Export false")
                 else:
                     extract.to_export = True
                     session.commit()
-                    espeak("Export false")
+                    espeak("Export true")
 
                 logger.info(f"{extract} to_export field was "
                             f"set to {extract.to_export}")
