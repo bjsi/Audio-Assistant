@@ -31,6 +31,7 @@ class AudioDownloader(object):
     def __init__(self,
                  yt_id: str,
                  config=None,
+                 language: str = 'en',
                  sm_element_id: int = -1,
                  sm_priority: float = -1,
                  playback_rate: float = 1.0,
@@ -43,6 +44,7 @@ class AudioDownloader(object):
         """
 
         self.yt_id = yt_id
+        self.language = language
         self.playback_rate = playback_rate
         self.sm_element_id = sm_element_id
         self.sm_priority = sm_priority
@@ -53,7 +55,7 @@ class AudioDownloader(object):
                 'download_archive': ARCHIVE_FILE,
                 'writesubtitles': True,
                 'writeautomaticsub': True,
-                'sub_lang': ['en'],
+                'sub_lang': [language],
                 'sub_format': 'vtt',
                 'ignoreerrors': True,
                 'outtmpl': os.path.join(TOPICFILES_DIR, '%(id)s.%(ext)s'),
@@ -211,7 +213,7 @@ class AudioDownloader(object):
                                          sm_priority=self.sm_priority,
                                          playback_rate=self.playback_rate)
             
-            subs_file = os.path.splitext(filepath)[0] + ".en.vtt"
+            subs_file = os.path.splitext(filepath)[0] + f".{self.language}.vtt"
             if os.path.exists(subs_file):
                 topic.transcript_filepath = subs_file
 
