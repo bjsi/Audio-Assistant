@@ -70,9 +70,7 @@ class AudioDownloader(object):
 
         # Playlist information
         self.is_playlist = False
-        self.playlist_uploader_id = None
         self.playlist_id = None
-        self.playlist_title = None
 
     def check_is_playlist(self, id: str) -> None:
         """Get ydl info dict for youtube id to check whether it is a playlist or video.
@@ -220,9 +218,7 @@ class AudioDownloader(object):
                 topic.transcript_filepath = subs_file
 
             if self.is_playlist:
-                if self.playlist_id and \
-                   self.playlist_title and \
-                   self.playlist_uploader_id:
+                if self.playlist_id:
 
                     # Search for existing playlist in DB
                     # Don't add new playlists here
