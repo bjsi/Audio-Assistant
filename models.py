@@ -235,6 +235,8 @@ class ExtractFile(Base):
     exported: bool = Column(Boolean, default=False)  # True if exported to SM.
     # True if should be exported to SM, set at runtime.
     to_export: bool = Column(Boolean, default=False)
+    # Added from SM importer
+    transcript: str = Column(String)
 
     sm_element_id: int = Column(Integer, default=-1)
     sm_priority: float = Column(Float, default=-1)
