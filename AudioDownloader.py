@@ -271,7 +271,8 @@ def get_new_playlist_items():
                              f"Playlist is {target}. Starting ydl download "
                              f"with max_downloads set to {to_download}.")
                 AudioDownloader(yt_id=playlist.playlist_id,
-                                max_downloads=to_download).download()
+                                max_downloads=to_download,
+                                language=playlist.language).download()
 
         
 if __name__ == "__main__":
